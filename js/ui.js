@@ -13,6 +13,7 @@ W.UI = {
       sector: $('sectorlabel'), pausehint: $('pausehint'),
       crewlist: $('crewlist'), power: $('powerpanel'), weapons: $('weaponpanel'),
       escape: $('escapebtn'), modal: $('modal-root'), canvas: $('game'),
+      fleetui: $('fleetui'), sigCloser: $('sigCloser'), sigBreak: $('sigBreak'), sigCount: $('sigCount'),
     };
 
     // rich tooltips: any element with data-tip shows a styled explainer box
@@ -43,6 +44,14 @@ W.UI = {
     this.els.escape.dataset.tip = '<b>Raise full sail</b> — run from this fight. A timer fills ' +
       '(faster with more hands in the Sails); when it completes you escape to the chart. No loot for running.';
 
+    if (this.els.sigCloser) {
+      this.els.sigCloser.addEventListener('click', () => W.Fleet.hoist('closer'));
+      this.els.sigBreak.addEventListener('click', () => W.Fleet.hoist('breakoff'));
+      this.els.sigCloser.dataset.tip = '<b>Engage the enemy more closely</b> — for the next three rounds ' +
+        'the whole line fights harder and boards more boldly. One of your two hoists.';
+      this.els.sigBreak.dataset.tip = '<b>Discontinue the action</b> — the squadron withdraws in good ' +
+        'order next round. No prizes, no rout. One of your two hoists.';
+    }
     this.els.canvas.addEventListener('click', (e) => this.onCanvasClick(e));
     this.els.escape.addEventListener('click', () => {
       if (W.Combat.active) W.Combat.toggleEscape();
@@ -122,6 +131,16 @@ W.UI = {
     }
 
     els.escape.classList.toggle('hidden', !(W.state.mode === 'combat' && W.Combat.active));
+    if (els.fleetui) {
+      const showSig = W.state.mode === 'fleet' && W.Fleet.active && W.Fleet.phase === 'battle';
+      els.fleetui.classList.toggle('hidden', !showSig);
+      if (showSig) {
+        const spent = W.Fleet.signals <= 0 || !!W.Fleet.pendingSignal;
+        els.sigCloser.disabled = spent;
+        els.sigBreak.disabled = spent;
+        els.sigCount.textContent = `hoists left: ${W.Fleet.signals}`;
+      }
+    }
     els.escape.classList.toggle('escaping', W.Combat.escaping);
     els.escape.textContent = W.Combat.escaping
       ? `FLEEING… ${Math.floor(W.Combat.escape * 100)}%` : 'RAISE FULL SAIL';
@@ -145,7 +164,7 @@ W.UI = {
       div.className = 'crewitem' + (this.sel.crew === c ? ' sel' : '');
       div.dataset.tip = `<b>${c.name}</b> — ${race.name}<br>${race.desc}<br>` +
         `<span class="tchips">repairs ×${race.repair} · fights ×${race.combat} · speed ×${race.speed}` +
-        `${race.amphib ? ' · cannot drown' : ''}${race.fireproof ? ' · fireproof' : ''}</span><br>` +
+        `${race.waterRes === 0 ? ' · cannot drown' : ''}${race.fireRes < 1 ? ' · shrugs off fire and flood' : ''}</span><br>` +
         `Click them, then click a room, to send them there. They act on their own once they arrive.`;
       div.innerHTML =
         `<span class="cdot" style="background:${race.color}"></span><b>${c.name}</b>` +
@@ -337,7 +356,7 @@ W.UI = {
        <span class="wchips">${W.weaponInfo(def).join(' · ')}</span></div>`).join('');
     const rlist = Object.entries(W.RACES).map(([key, r]) =>
       `<div class="gterm"><span class="gdot${key === 'brass' ? ' square' : ''}" style="background:${r.color}"></span><b>${r.name}</b> — ${r.desc}<br>
-       <span class="wchips">repairs ×${r.repair} · fights ×${r.combat} · speed ×${r.speed}${r.amphib ? ' · cannot drown' : ''}${r.fireproof ? ' · fireproof' : ''}</span></div>`).join('');
+       <span class="wchips">repairs ×${r.repair} · fights ×${r.combat} · speed ×${r.speed}${r.waterRes === 0 ? ' · cannot drown' : ''}${r.fireRes < 1 ? ' · shrugs off fire and flood' : ''}</span></div>`).join('');
 
     const pipelineSvg = `
       <svg viewBox="0 0 720 100" width="100%" height="105">
@@ -793,51 +812,57 @@ W.UI = {
   // --- Line of Battle (fleet prototype) ---
   openMuster() {
     const F = W.Fleet;
-    let body = `<p>Your squadron lies hove to, and the enemy's topsails are on the horizon:
-      <b>${F.enemy.map(s => `${s.name} (${F.CLASSES[s.cls].name})`).join(', ')}</b>.
-      Set your line, choose your plan, and trust your captains — once the guns speak,
-      signals are lost in the smoke.</p><h4>YOUR LINE (van to rear)</h4>`;
+    let body = `<p>The enemy's topsails are on the horizon:
+      <b>${F.enemy.map((s, i) => `${i + 1}. ${s.name} (${F.CLASSES[s.cls].name})`).join(' · ')}</b>.
+      Give each of your captains a target and a tactic — the plan is drawn on the chart as you
+      set it. Once the guns speak you have two signal hoists, and no more voice than that.</p>
+      <h4>YOUR LINE AND ORDERS (van to rear)</h4>`;
+    const tacOpts = (sel) => Object.entries(F.TACTICS)
+      .map(([id, tc]) => `<option value="${id}"${id === sel ? ' selected' : ''}>${tc.name}</option>`).join('');
+    const tgtOpts = (sel) => F.enemy
+      .map((s, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${s.name}</option>`).join('');
     F.ships.forEach((s, i) => {
       const t = F.TRAITS[s.captain.trait];
       body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
-        <span class="sdesc">${F.CLASSES[s.cls].name}, ${s.guns} guns — Capt. ${s.captain.name},
-        <i>${t.name}</i>: ${t.desc}</span>
+        <span class="sdesc">${F.CLASSES[s.cls].name}, ${s.guns} guns — Capt. ${s.captain.name}
+        (<i>${t.name}</i>)<br>
+        <label>Target <select data-tgt="${i}">${tgtOpts(s.order.target)}</select></label>
+        <label style="margin-left:8px">Tactic <select data-tac="${i}">${tacOpts(s.order.tactic)}</select></label></span>
         ${i > 0 ? `<button data-swap="${i}">move up</button>` : ''}</div>`;
     });
-    // each doctrine is a drawn route, sketched as on the admiral's plan
-    const sketch = (routes) =>
-      `<svg viewBox="0 0 150 80" width="150" height="80" style="background:#e8dab2;border:1px solid #8a6a42;border-radius:4px">
-        <line x1="108" y1="10" x2="118" y2="70" stroke="#a02418" stroke-width="1.5" stroke-dasharray="5 4"/>
-        <circle cx="110" cy="22" r="3" fill="none" stroke="#a02418"/>
-        <circle cx="113" cy="40" r="3" fill="none" stroke="#a02418"/>
-        <circle cx="116" cy="58" r="3" fill="none" stroke="#a02418"/>
-        ${routes.map(d => `<path d="${d}" fill="none" stroke="#3a2a17" stroke-width="1.5" stroke-dasharray="4 3" marker-end="none"/>`).join('')}
-      </svg>`;
-    body += `<h4>THE PLAN — each is a course your line will actually sail</h4>
-      <div style="display:flex;gap:14px;margin-bottom:8px">
-        <div style="text-align:center"><div class="gcap">Break the Line</div>${sketch([
-          'M8 20 C 50 16, 80 18, 112 30', 'M8 44 C 50 42, 80 48, 115 52', 'M8 66 C 55 66, 90 60, 117 64'])}</div>
-        <div style="text-align:center"><div class="gcap">Rake and Refuse</div>${sketch([
-          'M8 18 C 40 22, 60 26, 66 30', 'M8 42 C 40 44, 60 46, 66 48', 'M8 64 C 40 64, 60 64, 66 64'])}</div>
-        <div style="text-align:center"><div class="gcap">Close Action</div>${sketch([
-          'M8 20 L 100 22', 'M8 44 L 103 40', 'M8 66 L 106 58'])}</div>
+    body += `<div class="gcap" style="margin:4px 0 8px">${Object.entries(F.TACTICS)
+      .map(([id, tc]) => `<b>${tc.name}</b>: ${tc.desc}`).join(' ')}</div>`;
+    body += `<h4>OR SET A CLASSIC PLAN</h4>
+      <div class="mbtns row" style="margin-top:4px">
+        ${Object.entries(F.PRESETS).map(([id, p]) =>
+          `<button data-preset="${id}">${p.name}</button>`).join('')}
       </div>`;
     const m = this.modal({
       wide: true,
       title: '⚔ Line of Battle — Muster',
       body,
-      buttons: Object.entries(F.DOCTRINES).map(([id, d]) => ({
-        label: `${d.name} — ${d.desc}`,
-        fn: () => { this.closeModal(); F.begin(id); },
-      })).concat([{
-        label: 'Strike below (back to title)',
-        fn: () => { F.close(); W.state.mode = 'title'; this.openTitle(); },
-      }]),
+      buttons: [
+        { label: '⚑ Engage the enemy', fn: () => { this.closeModal(); F.begin(); } },
+        { label: 'Strike below (back to title)', fn: () => { F.close(); W.state.mode = 'title'; this.openTitle(); } },
+      ],
+      row: true,
     });
     m.querySelectorAll('[data-swap]').forEach(b => {
-      b.addEventListener('click', () => {
-        F.swapLine(+b.dataset.swap, +b.dataset.swap - 1);
-        this.openMuster();
+      b.addEventListener('click', () => { F.swapLine(+b.dataset.swap, +b.dataset.swap - 1); this.openMuster(); });
+    });
+    m.querySelectorAll('[data-preset]').forEach(b => {
+      b.addEventListener('click', () => { F.applyPreset(b.dataset.preset); this.openMuster(); });
+    });
+    m.querySelectorAll('select[data-tgt]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        F.ships[+sel.dataset.tgt].order.target = +sel.value;
+        F.planName = 'Your Own Plan';
+      });
+    });
+    m.querySelectorAll('select[data-tac]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        F.ships[+sel.dataset.tac].order.tactic = sel.value;
+        F.planName = 'Your Own Plan';
       });
     });
   },
@@ -855,12 +880,17 @@ W.UI = {
   openFleetEnd() {
     const s = W.Fleet.summary;
     this.modal({
-      title: s.win ? '⚑ The Enemy Line Is Broken' : 'The Squadron Breaks Off',
+      title: s.win ? '⚑ The Enemy Line Is Broken'
+        : (s.withdraw ? 'Off in Good Order' : 'The Action Is Lost'),
       body: `<p>${s.win
         ? `After ${s.rounds} rounds of it, the last of them yields. You take ${s.prizes}
            prize${s.prizes === 1 ? '' : 's'} and lose ${s.lost} of your own ships.`
-        : `After ${s.rounds} rounds, the action is lost. You bring ${s.remaining}
-           ship${s.remaining === 1 ? '' : 's'} out of it.`}</p>
+        : (s.withdraw
+          ? `You discontinue the action after ${s.rounds} rounds and bring ${s.remaining}
+             ship${s.remaining === 1 ? '' : 's'} off to fight another day. No prizes — and no widows
+             you didn't have to make.`
+          : `After ${s.rounds} rounds, the action is lost. You bring ${s.remaining}
+             ship${s.remaining === 1 ? '' : 's'} out of it.`)}</p>
         ${s.win ? `<p class="goldnote">Prize money: ⚜ ${s.gold} (not yet banked — prototype)</p>` : ''}
         <p class="sub">Line of Battle is a prototype: doctrine, line order, captains, morale,
         strikes, prizes, and one crisis. The campaign wrapper comes next.</p>`,

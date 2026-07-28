@@ -1,16 +1,17 @@
 'use strict';
 
-// LINE OF BATTLE (prototype) — the fleet autobattler layer.
-// All agency is in the muster: line order, captains, doctrine. Once the guns
-// speak, signals are lost in the smoke and the plan must stand on its own —
-// except when a crisis aboard the flagship drops you into the ship herself.
+// LINE OF BATTLE (prototype) — the fleet layer.
+// An admiral's agency lives in the plan: every ship gets her own TARGET and
+// TACTIC, the plan is drawn as routes on the chart, and once the guns speak
+// your only voice is two signal hoists — everything else is your captains.
 
 W.Fleet = {
   active: false,
   phase: null,          // 'muster' | 'battle' | 'crisis' | 'done'
   ships: [], enemy: [],
-  doctrine: null, gauge: false,
+  planName: null, gauge: false,
   round: 0, roundT: 0, log: [],
+  signals: 2, pendingSignal: null, closerRounds: 0,
   crisisUsed: false, pendingCrisis: false, crisisTimer: 0,
   result: null, summary: null,
 
@@ -23,26 +24,33 @@ W.Fleet = {
 
   TRAITS: {
     gunnery:   { name: 'Gunnery Master', desc: '+20% broadside weight.' },
-    boarder:   { name: 'Boarder',        desc: 'Twice as likely to force a surrender up close.' },
+    boarder:   { name: 'Boarder',        desc: 'Twice as likely to carry a ship by boarding.' },
     ironsides: { name: 'Old Ironsides',  desc: 'His crew\'s morale never breaks below 20 while he stands.' },
     weatherly: { name: 'Weatherly',      desc: 'Better odds of holding the weather gauge at the start.' },
   },
 
-  DOCTRINES: {
+  // per-ship orders — the real vocabulary of the plan
+  TACTICS: {
+    engage: { name: 'Engage her',    desc: 'Lie alongside the target and trade broadsides. The honest duel.' },
+    cut:    { name: 'Cut the line',  desc: 'Cross her stern for a devastating rake (3rd round) — but eat fire on the way in.' },
+    range:  { name: 'Hold the range', desc: 'Stand off and harry her rigging. Little harm done to you — or quickly to her.' },
+    board:  { name: 'Board her',     desc: 'Close fast and carry her by the sword, from the 2nd round.' },
+    screen: { name: 'Screen the flag', desc: 'Stay by the flagship and take fire meant for her. Little of your own gunnery.' },
+  },
+
+  // the classic doctrines survive as quick-set templates over per-ship orders
+  PRESETS: {
     breakline: {
       name: 'Break the Line',
-      desc: 'Cut their line in two columns. You eat unanswered fire on the approach '
-        + '(rounds 1–2), then rake them as you pass (round 3) and it becomes a brawl.',
+      set: [{ tactic: 'cut', target: 1 }, { tactic: 'cut', target: 2 }, { tactic: 'engage', target: 0 }],
     },
     gauge: {
       name: 'Rake and Refuse',
-      desc: 'Hold the weather gauge and keep the range. Less damage both ways — but '
-        + 'far less to you, and your chain-shot works on their rigging all day.',
+      set: [{ tactic: 'range', target: 0 }, { tactic: 'range', target: 1 }, { tactic: 'range', target: 2 }],
     },
     close: {
       name: 'Close Action',
-      desc: '"No captain can do very wrong if he places his ship alongside that of the '
-        + 'enemy." Heavy fire both ways, and boarding from round 2.',
+      set: [{ tactic: 'board', target: 0 }, { tactic: 'board', target: 1 }, { tactic: 'engage', target: 2 }],
     },
   },
 
@@ -51,9 +59,9 @@ W.Fleet = {
     return {
       cls, name, side,
       hull: c.hull, hullMax: c.hull, guns: c.guns,
-      // your crews are better drilled; corsair crews break sooner
       morale: side === 'player' ? 70 : 64,
-      struck: false, sunk: false,
+      struck: false, sunk: false, rakeDone: false,
+      order: { tactic: 'engage', target: 0 },
       captain: { name: captName, trait, alive: true },
     };
   },
@@ -70,9 +78,11 @@ W.Fleet = {
       this.makeShip('brig', 'Vulture', W.nameFor(), W.pick(traits), 'enemy'),
       this.makeShip('frigate', 'Basilisk', W.nameFor(), W.pick(traits), 'enemy'),
     ];
-    this.doctrine = null;
+    this.ships.forEach((s, i) => { s.order = { tactic: 'engage', target: Math.min(i, 2) }; });
+    this.planName = null;
     this.round = 0; this.roundT = 0;
     this.log = [];
+    this.signals = 2; this.pendingSignal = null; this.closerRounds = 0;
     this.crisisUsed = false; this.pendingCrisis = false;
     this.result = null; this.summary = null;
     this.active = true;
@@ -87,11 +97,21 @@ W.Fleet = {
     }
   },
 
-  begin(doctrineId) {
-    this.doctrine = doctrineId;
+  applyPreset(id) {
+    const p = this.PRESETS[id];
+    if (!p) return;
+    this.ships.forEach((s, i) => {
+      const o = p.set[Math.min(i, p.set.length - 1)];
+      s.order = { tactic: o.tactic, target: o.target };
+    });
+    this.planName = p.name;
+  },
+
+  begin() {
     const weatherly = this.ships.filter(s => s.captain.trait === 'weatherly' && s.captain.alive).length;
     this.gauge = W.chance(0.5 + 0.2 * weatherly);
-    this.say(`The line forms. Doctrine: ${this.DOCTRINES[doctrineId].name}. ` +
+    if (!this.planName) this.planName = 'Your Own Plan';
+    this.say(`The line forms — ${this.planName}. ` +
       (this.gauge ? 'You hold the weather gauge.' : 'The enemy holds the weather gauge.'));
     this.phase = 'battle';
   },
@@ -103,6 +123,17 @@ W.Fleet = {
 
   alive(list) { return list.filter(s => !s.struck && !s.sunk); },
 
+  // signal hoists: your only voice once battle is joined
+  hoist(kind) {
+    if (this.signals <= 0 || this.pendingSignal || this.phase !== 'battle') return false;
+    this.signals--;
+    this.pendingSignal = kind;
+    this.say(kind === 'closer'
+      ? 'The flags climb the halyard: ENGAGE THE ENEMY MORE CLOSELY.'
+      : 'The flags climb the halyard: DISCONTINUE THE ACTION.');
+    return true;
+  },
+
   tick(dt) {
     if (this.phase !== 'battle' || this.result || this.pendingCrisis) return;
     this.roundT += dt;
@@ -112,49 +143,76 @@ W.Fleet = {
     }
   },
 
-  // one exchange of broadsides down the line
+  // a live target for a ship whose ordered opponent is already out of it
+  targetOf(s) {
+    let t = this.enemy[s.order.target];
+    if (!t || t.struck || t.sunk) {
+      t = this.alive(this.enemy)[0] || null; // standing order: nearest that still flies colors
+    }
+    return t;
+  },
+
   resolveRound() {
     this.round++;
     const mine = this.alive(this.ships);
     const theirs = this.alive(this.enemy);
     if (!mine.length || !theirs.length) return this.finishBattle();
+
+    // signals take effect as the new round begins
+    if (this.pendingSignal === 'breakoff') {
+      this.pendingSignal = null;
+      this.say('The squadron hauls off in good order.');
+      return this.finishBattle('withdraw');
+    }
+    if (this.pendingSignal === 'closer') {
+      this.pendingSignal = null;
+      this.closerRounds = 3;
+      this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 5); });
+      this.say('The line cheers and crowds sail.');
+    }
+    if (this.closerRounds > 0) this.closerRounds--;
+
     this.say(`— Round ${this.round} —`);
 
-    const d = this.doctrine;
-    const approach = d === 'breakline' && this.round <= 2;
-    const rakeRound = d === 'breakline' && this.round === 3;
-
-    // pair off down the line; spare ships double up on the last opponent
-    const pairs = [];
-    const n = Math.max(mine.length, theirs.length);
-    for (let i = 0; i < n; i++) {
-      pairs.push([mine[Math.min(i, mine.length - 1)], theirs[Math.min(i, theirs.length - 1)]]);
+    // your ships fight their orders
+    for (const a of mine) {
+      const b = this.targetOf(a);
+      if (b) this.fireOn(a, b);
     }
-
-    for (const [a, b] of pairs) {
-      this.fireOn(a, b, { approach, rakeRound });
-      if (!b.struck && !b.sunk) this.fireOn(b, a, { counterApproach: approach });
-    }
-
-    // boarding under Close Action
-    if (d === 'close' && this.round >= 2) {
-      for (const [a, b] of pairs) {
-        if (a.struck || a.sunk || b.struck || b.sunk) continue;
-        let odds = b.morale < 55 ? 0.18 : 0.05;
-        if (a.captain.trait === 'boarder' && a.captain.alive) odds *= 2;
-        if (W.chance(odds)) {
-          b.struck = true;
-          this.say(`${a.name} grapples and boards ${b.name} — her colors come down!`);
-          this.fxAt(b, 'boom');
+    // enemy ships pick their marks: whoever engages them, else the flagship
+    const flag = this.ships[0];
+    for (const b of this.alive(this.enemy)) {
+      let mark = mine.find(s => this.targetOf(s) === b) || flag;
+      if (mark.struck || mark.sunk) mark = this.alive(this.ships)[0];
+      if (!mark) break;
+      // a screening ship takes fire meant for the flagship
+      if (mark === flag) {
+        const screen = mine.find(s => s.order.tactic === 'screen' && s !== flag);
+        if (screen && W.chance(0.45)) {
+          mark = screen;
+          this.say(`${screen.name} puts herself between the enemy and the flag.`);
         }
+      }
+      this.fireOn(b, mark);
+    }
+
+    // boarding attempts
+    for (const a of mine) {
+      if (a.order.tactic !== 'board' || this.round < 2) continue;
+      const b = this.targetOf(a);
+      if (!b || b.struck || b.sunk) continue;
+      let odds = (b.morale < 55 ? 0.22 : 0.07) * (this.closerRounds > 0 ? 1.5 : 1);
+      if (a.captain.trait === 'boarder' && a.captain.alive) odds *= 2;
+      if (W.chance(odds)) {
+        b.struck = true;
+        this.say(`${a.name} grapples and boards ${b.name} — her colors come down!`);
+        this.fxAt(b, 'boom');
       }
     }
 
     this.checkStrikes(this.ships);
     this.checkStrikes(this.enemy);
 
-    // crisis: the flagship in trouble drops you into the ship herself
-    const flag = this.ships[0];
     if (!this.crisisUsed && !flag.struck && !flag.sunk && flag.hull < flag.hullMax * 0.65) {
       this.crisisUsed = true;
       this.pendingCrisis = true;
@@ -167,35 +225,45 @@ W.Fleet = {
     }
   },
 
-  fireOn(a, b, opts) {
-    let dmg = a.guns * W.rand(0.75, 1.25) * 0.42;
-    if (a.side === 'player') dmg *= 1.08; // drill tells
-    if (a.captain.trait === 'gunnery' && a.captain.alive) dmg *= 1.2;
-    const d = this.doctrine;
+  fireOn(a, b) {
     const aIsMine = a.side === 'player';
+    const tac = aIsMine ? a.order.tactic : 'engage';
+    const victimTac = b.side === 'player' ? b.order.tactic : 'engage';
+
+    let dmg = a.guns * W.rand(0.75, 1.25) * 0.42;
+    if (aIsMine) dmg *= 1.16; // drill tells
+    if (a.captain.trait === 'gunnery' && a.captain.alive) dmg *= 1.2;
+    if (aIsMine && this.closerRounds > 0) dmg *= 1.18;
+    if (this.gauge) dmg *= aIsMine ? 1.1 : 0.92;
+
+    let rake = false;
     if (aIsMine) {
-      if (opts.approach) dmg *= 0.35;
-      if (opts.rakeRound) dmg *= 2.2;
-      if (d === 'gauge') dmg *= 0.9;
-      if (d === 'close') dmg *= 1.25;
-      if (this.gauge) dmg *= 1.1;
-    } else {
-      if (opts.counterApproach) dmg *= 1.3;
-      if (d === 'gauge') dmg *= 0.75;
-      if (d === 'close') dmg *= 1.25;
-      if (this.gauge) dmg *= 0.92;
+      if (tac === 'cut') {
+        if (this.round <= 2) dmg *= 0.35;
+        else if (!a.rakeDone) { a.rakeDone = true; rake = true; dmg *= 2.2; }
+        else dmg *= 1.05;
+      }
+      if (tac === 'range') dmg *= 0.6;
+      if (tac === 'board') dmg *= 1.1;
+      if (tac === 'screen') dmg *= 0.7;
     }
-    dmg = Math.max(0.5, dmg);
+    // how hard the victim is to hurt depends on HER orders — but a refusing
+    // line cannot refuse forever: the enemy comes down on her, round by round
+    if (victimTac === 'range') dmg *= Math.min(1, 0.4 + Math.max(0, this.round - 4) * 0.15);
+    if (victimTac === 'cut' && this.round <= 2) dmg *= this.gauge ? 1.25 : 1.45;
+    if (victimTac === 'board') dmg *= 1.15;
+
+    dmg = Math.max(0.4, dmg);
     b.hull -= dmg;
     let moraleHit = dmg * 1.2;
-    if (opts.rakeRound && aIsMine) {
+    if (rake) {
       moraleHit += 22;
       this.say(`${a.name} cuts the line and rakes ${b.name} stem to stern!`);
     }
+    if (aIsMine && tac === 'range') moraleHit += 4; // harried without reply
     b.morale -= moraleHit;
     const floor = (b.captain.trait === 'ironsides' && b.captain.alive) ? 20 : 0;
     b.morale = Math.max(floor, b.morale);
-    // captains are targets too
     if (b.hull < b.hullMax * 0.5 && b.captain.alive && W.chance(0.04)) {
       b.captain.alive = false;
       b.morale -= 18;
@@ -230,7 +298,7 @@ W.Fleet = {
     if (!p) return;
     if (kind === 'boom') W.boom(p.x, p.y, 40);
     else {
-      W.boom(p.x + W.rand(-30, 30), p.y + W.rand(-10, 10), 26);
+      W.boom(p.x + W.rand(-24, 24), p.y + W.rand(-8, 8), 24);
       W.burst(p.x, p.y, '#7d7f84', 5, 40, 0.8, 3);
     }
   },
@@ -263,7 +331,7 @@ W.Fleet = {
   endCrisis(kind) {
     const flag = this.ships[0];
     if (kind === 'saved') {
-      this.say('The fire is beaten out — the flag signals: ENGAGE THE ENEMY MORE CLOSELY. The line cheers.');
+      this.say('The fire is beaten out — the line cheers the flag.');
       this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 8); });
     } else if (kind === 'burned') {
       flag.hull -= 6;
@@ -279,22 +347,24 @@ W.Fleet = {
     if (flag.struck || flag.sunk) this.finishBattle();
   },
 
-  finishBattle() {
+  finishBattle(kind) {
     if (this.result) return;
     const flag = this.ships[0];
     const myAlive = this.alive(this.ships).length;
     const theirAlive = this.alive(this.enemy).length;
     const prizes = this.enemy.filter(s => s.struck).length;
-    const win = theirAlive === 0 && !flag.struck && !flag.sunk;
-    this.result = win ? 'victory' : 'defeat';
+    const win = kind !== 'withdraw' && theirAlive === 0 && !flag.struck && !flag.sunk;
+    this.result = win ? 'victory' : (kind === 'withdraw' ? 'withdraw' : 'defeat');
     this.summary = {
-      win, rounds: this.round, prizes,
+      win, withdraw: kind === 'withdraw',
+      rounds: this.round, prizes,
       lost: this.ships.filter(s => s.struck || s.sunk).length,
       remaining: myAlive,
       gold: win ? 30 + prizes * 25 : 0,
     };
     this.say(win ? `The enemy line is broken. ${prizes} prize${prizes === 1 ? '' : 's'} taken.`
-      : 'The squadron breaks off the action.');
+      : (kind === 'withdraw' ? 'You bring the squadron off intact enough to fight again.'
+        : 'The action is lost.'));
     this.phase = 'done';
   },
 

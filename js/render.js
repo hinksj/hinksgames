@@ -921,28 +921,42 @@ W.Render = {
 
   enemyAnchor(i) { return { x: 640 + i * 22, y: 92 + i * 122 }; },
 
-  routeFor(i, doctrine) {
+  // every ship's ORDER draws her own route on the plan
+  routeFor(i) {
+    const F = W.Fleet;
+    const s = F.ships[i];
     const start = { x: 105, y: 115 + i * 100 };
-    const tgt = this.enemyAnchor(Math.min(i, 2));
-    if (doctrine === 'breakline') {
-      // two columns cut the line perpendicular, then curl alongside
-      return { dur: 5, pts: [start,
-        { x: 340, y: start.y - 8 },
-        { x: tgt.x - 190, y: tgt.y - 60 + (i % 2) * 34 },
-        { x: tgt.x - 46, y: tgt.y + 4 }] };
+    const o = (s && s.order) || { tactic: 'engage', target: Math.min(i, 2) };
+    const tgt = this.enemyAnchor(W.clamp(o.target | 0, 0, 2));
+    switch (o.tactic) {
+      case 'cut':
+        return { dur: 5, pts: [start,
+          { x: 340, y: start.y - 8 },
+          { x: tgt.x - 190, y: tgt.y - 60 + (i % 2) * 34 },
+          { x: tgt.x - 46, y: tgt.y + 4 }] };
+      case 'range':
+        return { dur: 3, pts: [start,
+          { x: 220, y: start.y + 10 },
+          { x: 300, y: start.y + 24 },
+          { x: 330, y: 110 + i * 108 }] };
+      case 'board':
+        return { dur: 3, pts: [start,
+          { x: 330, y: start.y },
+          { x: tgt.x - 160, y: tgt.y - 8 },
+          { x: tgt.x - 44, y: tgt.y }] };
+      case 'screen': {
+        const fp = i === 0 ? { x: 330, y: 200 } : this.routeFor(0).pts[3];
+        return { dur: 3.5, pts: [start,
+          { x: 280, y: start.y },
+          { x: fp.x - 90, y: fp.y + 42 },
+          { x: fp.x - 48, y: fp.y + 30 }] };
+      }
+      default:
+        return { dur: 3.5, pts: [start,
+          { x: 330, y: start.y },
+          { x: tgt.x - 170, y: tgt.y - 12 },
+          { x: tgt.x - 48, y: tgt.y + 4 }] };
     }
-    if (doctrine === 'gauge') {
-      // hold the range: run a parallel line and keep it
-      return { dur: 3, pts: [start,
-        { x: 220, y: start.y + 10 },
-        { x: 300, y: start.y + 24 },
-        { x: 330, y: 110 + i * 108 }] };
-    }
-    // close action: straight at them, alongside
-    return { dur: 3.5, pts: [start,
-      { x: 330, y: start.y },
-      { x: tgt.x - 170, y: tgt.y - 12 },
-      { x: tgt.x - 48, y: tgt.y }] };
   },
 
   fleetPos(ship) {
@@ -956,11 +970,11 @@ W.Render = {
     }
     const i = F.ships.indexOf(ship);
     if (i < 0) return null;
-    if (!F.doctrine) {
+    if (F.phase === 'muster') {
       const s = { x: 105, y: 115 + i * 100 };
       return { x: s.x, y: s.y, h: 0 };
     }
-    const r = this.routeFor(i, F.doctrine);
+    const r = this.routeFor(i);
     const tt = W.clamp(prog / r.dur, 0, 0.999);
     const pos = this.bez(r.pts, tt);
     const ahead = this.bez(r.pts, Math.min(0.9999, tt + 0.01));
@@ -1052,12 +1066,12 @@ W.Render = {
     ctx.stroke();
 
     // your intended routes, sketched as the admiral drew them
-    if (F.doctrine) {
+    if (F.phase !== 'muster') {
       ctx.strokeStyle = 'rgba(58,42,23,0.45)';
       ctx.setLineDash([5, 6]);
       ctx.lineWidth = 1.5;
       F.ships.forEach((s, i) => {
-        const r = this.routeFor(i, F.doctrine);
+        const r = this.routeFor(i);
         ctx.beginPath();
         for (let k = 0; k <= 24; k++) {
           const pt = this.bez(r.pts, k / 24);
@@ -1109,9 +1123,9 @@ W.Render = {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#5a4020';
     ctx.font = 'bold 15px "IM Fell English", Georgia';
-    if ((F.phase === 'battle' || F.phase === 'done') && F.doctrine) {
+    if ((F.phase === 'battle' || F.phase === 'done') && F.planName) {
       const gaugeNote = F.gauge ? 'you hold the weather gauge' : 'they hold the weather gauge';
-      ctx.fillText(`THE PLAN, AS FOUGHT — ${F.DOCTRINES[F.doctrine].name} — round ${F.round} — ${gaugeNote}`, 500, 24);
+      ctx.fillText(`THE PLAN, AS FOUGHT — ${F.planName} — round ${F.round} — ${gaugeNote}`, 500, 24);
     }
     ctx.textAlign = 'left';
     ctx.font = '12.5px "IM Fell English", Georgia';

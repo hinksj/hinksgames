@@ -23,7 +23,9 @@ W.Main = {
       } else if (test === 'fleet') {
         W.UI.closeModal();
         W.Fleet.newSkirmish();
-        W.Fleet.begin('breakline');
+        W.Fleet.applyPreset('breakline');
+        W.Fleet.ships[2].order = { tactic: 'screen', target: 0 };
+        W.Fleet.begin();
       }
     } else {
       W.UI.openTitle();
