@@ -1,0 +1,161 @@
+/* COMMODORE CUP — 1980s vaporwave table */
+:root {
+  --bg: #14052e;
+  --bg2: #2a0a52;
+  --panel: rgba(26, 8, 58, 0.92);
+  --panel-line: #7b2ff7;
+  --pink: #ff5fb2;
+  --cyan: #5fd6ff;
+  --gold: #ffd166;
+  --text: #f4f0ff;
+  --dim: #b9a8e0;
+  --card-w: 92px;
+  --card-h: 147px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -10%, #ff5fb244 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg2) 60%, #3d1160 100%);
+  color: var(--text);
+  font: 15px/1.45 "Avenir Next", "Trebuchet MS", Verdana, sans-serif;
+  min-height: 100%;
+}
+h1, h2, h3, .script { font-family: "Snell Roundhand", "Brush Script MT", cursive; }
+
+button {
+  font: inherit; color: var(--text); cursor: pointer;
+  background: linear-gradient(180deg, #7b2ff7, #4a12a8);
+  border: 1px solid #a86bff; border-radius: 8px; padding: 7px 16px;
+}
+button:hover:not(:disabled) { filter: brightness(1.25); }
+button:disabled { opacity: 0.4; cursor: default; }
+button.gold { background: linear-gradient(180deg, #d99a1f, #a86a00); border-color: var(--gold); }
+button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim); }
+
+/* ---------- menu ---------- */
+#menu {
+  max-width: 720px; margin: 0 auto; padding: 32px 20px 60px; text-align: center;
+}
+#menu .burgee { font-size: 46px; letter-spacing: 1px; margin: 18px 0 0;
+  background: linear-gradient(180deg, #fff, var(--pink));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 24px #ff5fb266; }
+#menu .tag { color: var(--cyan); margin-bottom: 26px; font-style: italic; }
+#menu .cardfan { display: flex; justify-content: center; gap: 10px; margin: 18px 0 26px; }
+#menu .cardfan img { width: 110px; border-radius: 8px; box-shadow: 0 6px 24px #000a;
+  transform: rotate(-6deg); }
+#menu .cardfan img:nth-child(2) { transform: rotate(-1deg) translateY(-8px); }
+#menu .cardfan img:nth-child(3) { transform: rotate(4deg); }
+#menu .panel { background: var(--panel); border: 1px solid var(--panel-line);
+  border-radius: 14px; padding: 20px; margin: 14px 0; text-align: left; }
+#menu label { color: var(--dim); display: block; margin: 10px 0 4px; }
+#menu input[type=text], #menu select {
+  font: inherit; color: var(--text); background: #1c0940; border: 1px solid #6a4bb0;
+  border-radius: 6px; padding: 7px 10px; width: 100%;
+}
+#menu .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+#menu .row > div { flex: 1; min-width: 140px; }
+#menu .actions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+#menu .err { color: #ff8484; margin-top: 10px; min-height: 1.4em; }
+#menu a { color: var(--cyan); }
+
+/* ---------- table layout ---------- */
+#table { display: none; max-width: 1180px; margin: 0 auto; padding: 10px 14px 130px; }
+#topbar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 4px 2px 8px; }
+#topbar .script { font-size: 26px; color: var(--pink); }
+#topbar .round { color: var(--cyan); }
+#topbar .spacer { flex: 1; }
+#topbar .netcode { color: var(--gold); letter-spacing: 2px; }
+
+#oppRow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.opp {
+  background: var(--panel); border: 1px solid #4a2a86; border-radius: 10px;
+  padding: 8px 12px; min-width: 150px; flex: 1; max-width: 220px;
+}
+.opp.active { border-color: var(--gold); box-shadow: 0 0 14px #ffd16655; }
+.opp .nm { font-weight: 600; }
+.opp .nm .you { color: var(--cyan); font-weight: 400; }
+.opp .meta { color: var(--dim); font-size: 13px; }
+.opp .memberchips img { width: 26px; border-radius: 3px; margin-right: 3px; vertical-align: middle; }
+
+#centerRow { display: flex; gap: 16px; align-items: flex-start; margin: 10px 0; }
+#piles { display: flex; gap: 12px; }
+.pile { text-align: center; color: var(--dim); font-size: 12px; }
+.pile .stack { position: relative; width: var(--card-w); height: var(--card-h); }
+.pile img, .cardimg {
+  width: var(--card-w); height: var(--card-h); object-fit: cover;
+  border-radius: 7px; box-shadow: 0 3px 10px #000a; display: block;
+}
+.pile .stack img { position: absolute; inset: 0; }
+.pile.clickable .stack { cursor: pointer; }
+.pile.clickable .stack:hover img { outline: 2px solid var(--cyan); }
+.pile .count { position: absolute; right: -6px; top: -6px; background: var(--pink);
+  color: #2a0a52; font-weight: 700; border-radius: 10px; padding: 0 7px; font-size: 12px; }
+
+#melds { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; min-height: 150px;
+  background: #ffffff08; border: 1px dashed #6a4bb055; border-radius: 12px; padding: 10px; }
+.meld { display: flex; padding: 4px; border-radius: 8px; background: #00000033; }
+.meld .mc { width: 58px; height: 93px; margin-right: -20px; position: relative; }
+.meld .mc:last-child { margin-right: 0; }
+.meld .mc img { width: 58px; height: 93px; object-fit: cover; border-radius: 5px;
+  box-shadow: 0 2px 6px #000b; }
+.meld.extendable { outline: 2px solid var(--cyan); cursor: pointer; }
+.meld .mc .who { position: absolute; bottom: -4px; right: -2px; width: 10px; height: 10px;
+  border-radius: 50%; border: 1px solid #0008; }
+
+#log {
+  background: #00000055; border: 1px solid #4a2a86; border-radius: 10px;
+  padding: 8px 12px; height: 150px; overflow-y: auto; font-size: 13px; color: var(--dim);
+  width: 300px; flex-shrink: 0;
+}
+#log .me { color: var(--text); }
+
+/* ---------- my area ---------- */
+#myArea { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, transparent, #0e0322 26%);
+  padding: 26px 14px 10px; }
+#myBar { max-width: 1180px; margin: 0 auto; }
+#prompt { text-align: center; margin-bottom: 6px; min-height: 30px; }
+#prompt .msg { color: var(--gold); }
+#prompt button { margin-left: 8px; }
+#handRow { display: flex; justify-content: center; align-items: flex-end; gap: 6px; flex-wrap: wrap; }
+.hcard { position: relative; transition: transform 0.12s; cursor: pointer; }
+.hcard img { width: var(--card-w); height: var(--card-h); object-fit: cover; border-radius: 7px;
+  box-shadow: 0 3px 10px #000c; display: block; }
+.hcard:hover { transform: translateY(-12px); }
+.hcard.sel { transform: translateY(-20px); }
+.hcard.sel img { outline: 3px solid var(--gold); }
+.hcard.dim img { filter: brightness(0.45); }
+#myStatus { display: flex; justify-content: space-between; align-items: center;
+  max-width: 1180px; margin: 6px auto 0; color: var(--dim); font-size: 13px; flex-wrap: wrap; gap: 8px; }
+#myStatus .chips img { width: 30px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+
+/* ---------- modal ---------- */
+#modal { position: fixed; inset: 0; background: #0009; display: none;
+  align-items: center; justify-content: center; z-index: 40; }
+#modal.open { display: flex; }
+#modal .box { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 14px;
+  padding: 20px; max-width: 860px; max-height: 86vh; overflow-y: auto; text-align: center; }
+#modal h3 { color: var(--pink); font-size: 26px; margin-bottom: 8px; }
+#modal .sub { color: var(--dim); margin-bottom: 14px; }
+#modal .choices { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+#modal .choices .ch { cursor: pointer; border-radius: 8px; }
+#modal .choices .ch:hover { outline: 2px solid var(--cyan); }
+#modal .choices .ch img { width: 100px; border-radius: 8px; display: block; }
+#modal .choices button.big { padding: 14px 22px; font-size: 16px; }
+#modal .bigcard img { width: 220px; border-radius: 12px; margin: 6px auto; box-shadow: 0 8px 30px #000c; }
+#modal table { margin: 10px auto; border-collapse: collapse; }
+#modal td, #modal th { padding: 4px 12px; text-align: right; border-bottom: 1px solid #ffffff22; }
+#modal td:first-child, #modal th:first-child { text-align: left; }
+#modal .total { color: var(--gold); font-weight: 700; }
+
+.seatdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+#toast { position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--panel); border: 1px solid var(--gold); color: var(--gold);
+  border-radius: 10px; padding: 8px 18px; z-index: 50; display: none; }
+
+@media (max-width: 760px) {
+  :root { --card-w: 64px; --card-h: 102px; }
+  #log { display: none; }
+}

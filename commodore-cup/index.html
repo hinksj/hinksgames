@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commodore Cup — the 1980s yacht club card game</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="menu">
+  <h1 class="burgee">Commodore Cup</h1>
+  <div class="tag">melds &middot; martinis &middot; members — first to 50 points takes the burgee</div>
+  <div class="cardfan">
+    <img src="assets/cards/back-general.jpg" alt="">
+    <img src="assets/cards/member-champagne-charlotte.jpg" alt="Champagne Charlotte">
+    <img src="assets/cards/back-member.jpg" alt="">
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label for="mName">Your name</label>
+        <input type="text" id="mName" maxlength="16" value="Skipper">
+      </div>
+      <div>
+        <label for="mTarget">Race length</label>
+        <select id="mTarget">
+          <option value="25">Short cruise — to 25</option>
+          <option value="50" selected>Commodore Cup — to 50</option>
+          <option value="100">Around the world — to 100</option>
+        </select>
+      </div>
+      <div>
+        <label for="mBots">Club rivals (AI)</label>
+        <select id="mBots">
+          <option value="1">1 rival</option>
+          <option value="2" selected>2 rivals</option>
+          <option value="3">3 rivals</option>
+          <option value="5">5 rivals</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="gold" id="btnSolo">Play at the club (vs AI)</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label for="mRoom">Online — room code</label>
+        <input type="text" id="mRoom" maxlength="8" placeholder="e.g. TIKI" style="text-transform:uppercase">
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btnHost">Host a table</button>
+      <button id="btnJoin">Join a table</button>
+    </div>
+    <div class="err" id="mErr"></div>
+    <div style="color:var(--dim);font-size:13px">Host a table, share the room code, friends join from
+      anywhere. The host's browser runs the game; empty seats can be filled with AI rivals.
+      <a href="RULES.md" target="_blank">Read the full rules</a>.</div>
+  </div>
+</div>
+
+<div id="table">
+  <div id="topbar">
+    <span class="script">Commodore Cup</span>
+    <span class="round" id="tRound"></span>
+    <span class="spacer"></span>
+    <span class="netcode" id="tNet"></span>
+    <button class="ghost" id="btnRules">Rules</button>
+    <button class="ghost" id="btnQuit">Leave table</button>
+  </div>
+  <div id="oppRow"></div>
+  <div id="centerRow">
+    <div id="piles"></div>
+    <div id="melds"></div>
+    <div id="log"></div>
+  </div>
+  <div id="myArea">
+    <div id="myBar">
+      <div id="prompt"></div>
+      <div id="handRow"></div>
+      <div id="myStatus"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div class="box" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,433 @@
+// COMMODORE CUP — table renderer + interaction. Drives the engine locally
+// (solo/host) or mirrors a host's state (guest). window.CC.ui
+(function (G) {
+  'use strict';
+  var E = G.engine, data = G.data, CARDS = data.CARDS;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var SEAT_COLORS = ['#ffd166', '#5fd6ff', '#ff5fb2', '#8dff9e', '#c39bff', '#ffa25f'];
+
+  var ui = {
+    st: null,          // current state (authoritative if !isGuest)
+    mySeat: 0,
+    isGuest: false,
+    roomCode: '',
+    send: null,        // guest: fn(action) -> host
+    onLocalAction: null, // host: called after each apply to broadcast
+    sel: [],           // selected hand card ids
+    pumping: false,
+    logLen: 0
+  };
+
+  // ---------- entry ----------
+  ui.begin = function (st, mySeat, opts) {
+    ui.st = st; ui.mySeat = mySeat;
+    ui.isGuest = !!(opts && opts.guest);
+    ui.send = (opts && opts.send) || null;
+    ui.onLocalAction = (opts && opts.onLocalAction) || null;
+    ui.roomCode = (opts && opts.room) || '';
+    ui.sel = []; ui.logLen = 0;
+    $('menu').style.display = 'none';
+    $('table').style.display = 'block';
+    $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
+    render();
+    pump();
+  };
+
+  ui.setState = function (st) { // guest path: fresh state from host
+    ui.st = st;
+    ui.sel = ui.sel.filter(function (id) { return myHand().indexOf(id) >= 0; });
+    render();
+  };
+
+  // ---------- local action application ----------
+  function act(action) {
+    var st = ui.st;
+    if (ui.isGuest) { ui.send(action); return; }
+    try {
+      E.apply(st, action);
+    } catch (e) {
+      toast(e.message);
+      return;
+    }
+    ui.sel = ui.sel.filter(function (id) { return myHand().indexOf(id) >= 0; });
+    if (ui.onLocalAction) ui.onLocalAction();
+    render();
+    pump();
+  }
+  ui.act = act;
+
+  // host: accept an action from a network guest (validated there), then pump
+  ui.applyRemote = function (action) {
+    try { E.apply(ui.st, action); } catch (e) { return String(e.message); }
+    if (ui.onLocalAction) ui.onLocalAction();
+    render();
+    pump();
+    return null;
+  };
+
+  // ---------- AI pump ----------
+  function humanSeat(st, seat) { return !st.players[seat].isAI; }
+  function needsHuman(st) {
+    if (st.phase === 'roundEnd' || st.phase === 'gameEnd') return true;
+    var seat = E.actor(st);
+    if (st.pending && st.pending.type === 'passAll') {
+      // AI turns in passAll are handled by decide; human only when a human seat is unchosen
+      for (var i = 0; i < st.players.length; i++) {
+        if (st.pending.need[i] && st.pending.chosen[i] === undefined && !st.players[i].isAI) return true;
+      }
+      return false;
+    }
+    return humanSeat(st, seat);
+  }
+  function pump() {
+    if (ui.isGuest || ui.pumping) return;
+    var st = ui.st;
+    if (st.phase === 'gameEnd') { render(); return; }
+    if (needsHuman(st)) return;
+    ui.pumping = true;
+    setTimeout(function () {
+      ui.pumping = false;
+      var a = G.ai.decide(st);
+      if (a) act(a);
+    }, st.pending ? 350 : 550);
+  }
+
+  // ---------- rendering ----------
+  function myHand() { return ui.st.players[ui.mySeat].hand; }
+  function me() { return ui.st.players[ui.mySeat]; }
+  function isMyTurn() { return ui.st.turn === ui.mySeat && !ui.st.pending; }
+
+  function render() {
+    var st = ui.st;
+    $('tRound').textContent = 'round ' + st.round + ' · first to ' + st.target;
+    renderOpponents(st);
+    renderPiles(st);
+    renderMelds(st);
+    renderLog(st);
+    renderHand(st);
+    renderPrompt(st);
+    renderModal(st);
+  }
+
+  function renderOpponents(st) {
+    var row = $('oppRow');
+    row.innerHTML = '';
+    st.players.forEach(function (p) {
+      var d = document.createElement('div');
+      d.className = 'opp' + (st.turn === p.i && st.phase !== 'roundEnd' && st.phase !== 'gameEnd' ? ' active' : '');
+      var chips = p.members.map(function (id) {
+        return '<img src="' + CARDS[id].art + '" title="' + CARDS[id].name + ' (' +
+          (CARDS[id].pts >= 0 ? '+' : '') + CARDS[id].pts + ')">';
+      }).join('');
+      d.innerHTML =
+        '<div class="nm"><span class="seatdot" style="background:' + SEAT_COLORS[p.i % 6] + '"></span>' +
+        esc(p.name) + (p.i === ui.mySeat ? ' <span class="you">(you)</span>' : '') +
+        (p.skip ? ' 💤' : '') + '</div>' +
+        '<div class="meta">' + p.hand.length + ' cards · ' + p.score + ' pts · ⚓' +
+        p.supporters + '/' + st.membersToWin + '</div>' +
+        '<div class="memberchips">' + chips + '</div>';
+      row.appendChild(d);
+    });
+  }
+
+  function renderPiles(st) {
+    var el = $('piles');
+    el.innerHTML = '';
+    var canDraw = !ui.isGuestBlocked() && isMyTurn() && st.phase === 'draw';
+    // draw pile
+    el.appendChild(pile('Draw', data.BACK_GENERAL, st.drawPile.length, canDraw, function () {
+      act({ t: 'draw', from: 'pile' });
+    }));
+    // discard
+    var top = st.discard[st.discard.length - 1];
+    el.appendChild(pile('Discard', top ? CARDS[top].art : null, st.discard.length,
+      canDraw && !!top, function () { act({ t: 'draw', from: 'discard' }); }));
+    // members
+    el.appendChild(pile('Members', data.BACK_MEMBER, st.memberPile.length, false, null));
+  }
+  function pile(label, art, count, clickable, onclick) {
+    var d = document.createElement('div');
+    d.className = 'pile' + (clickable ? ' clickable' : '');
+    var img = art ? '<img src="' + art + '">' : '<div class="cardimg" style="background:#0006"></div>';
+    d.innerHTML = '<div class="stack">' + img + '<span class="count">' + count + '</span></div>' + label;
+    if (clickable && onclick) d.querySelector('.stack').addEventListener('click', onclick);
+    return d;
+  }
+
+  function renderMelds(st) {
+    var el = $('melds');
+    el.innerHTML = '';
+    var extendCard = ui.sel.length === 1 && CARDS[ui.sel[0]].kind === 'suit' ? ui.sel[0] : null;
+    var canAct = !ui.isGuestBlocked() && isMyTurn() && st.phase === 'main';
+    st.melds.forEach(function (m) {
+      var d = document.createElement('div');
+      var extendable = canAct && extendCard && E.canExtend(m, extendCard);
+      d.className = 'meld' + (extendable ? ' extendable' : '');
+      d.innerHTML = m.cards.map(function (e) {
+        return '<div class="mc"><img src="' + CARDS[e.card].art + '" title="' + esc(CARDS[e.card].name) + '">' +
+          '<span class="who" style="background:' + SEAT_COLORS[e.by % 6] + '"></span></div>';
+      }).join('');
+      if (extendable) {
+        d.title = 'Add ' + CARDS[extendCard].name + ' to this ' + m.type;
+        d.addEventListener('click', function () {
+          act({ t: 'extend', meldId: m.id, card: extendCard });
+          ui.sel = [];
+        });
+      }
+      el.appendChild(d);
+    });
+    if (!st.melds.length) {
+      el.innerHTML = '<div style="color:#6a4bb0;margin:auto">no melds on the table yet — ' +
+        'sets are 3-4 matching letters, runs are 3+ letters in a row in one suit</div>';
+    }
+  }
+
+  function renderLog(st) {
+    var el = $('log');
+    if (ui.logLen > st.log.length) { el.innerHTML = ''; ui.logLen = 0; }
+    for (var i = ui.logLen; i < st.log.length; i++) {
+      var d = document.createElement('div');
+      var line = st.log[i];
+      if (line.indexOf(me().name) === 0) d.className = 'me';
+      d.textContent = line;
+      el.appendChild(d);
+    }
+    ui.logLen = st.log.length;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function renderHand(st) {
+    var el = $('handRow');
+    el.innerHTML = '';
+    var hand = myHand();
+    var chooseMode = handChooseMode(st);
+    hand.forEach(function (id) {
+      var c = CARDS[id];
+      var d = document.createElement('div');
+      d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '');
+      d.innerHTML = '<img src="' + c.art + '" title="' + esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
+      d.addEventListener('click', function () { onHandClick(st, id, chooseMode); });
+      el.appendChild(d);
+    });
+    var p = me();
+    var chips = p.members.map(function (id) {
+      return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + ' (' +
+        (CARDS[id].pts >= 0 ? '+' : '') + CARDS[id].pts + ')">';
+    }).join('') + p.played.map(function (id) {
+      return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + ' (played, +2)">';
+    }).join('');
+    $('myStatus').innerHTML =
+      '<div>' + esc(p.name) + ' — ' + p.score + ' pts · ⚓' + p.supporters + '/' +
+      st.membersToWin + ' members backing you</div>' +
+      '<div class="chips">' + chips + '</div>';
+  }
+
+  // which inline hand-choose is active for me?
+  function handChooseMode(st) {
+    var pend = st.pending;
+    if (!pend) return null;
+    if (pend.type === 'chooseCard' && pend.by === ui.mySeat) return pend;
+    if (pend.type === 'passAll' && pend.need[ui.mySeat] && pend.chosen[ui.mySeat] === undefined) return pend;
+    return null;
+  }
+
+  function onHandClick(st, id, chooseMode) {
+    if (chooseMode) {
+      if (chooseMode.type === 'passAll') act({ t: 'resolve', player: ui.mySeat, card: id });
+      else act({ t: 'resolve', card: id });
+      return;
+    }
+    if (!isMyTurn() || st.phase !== 'main') return;
+    var i = ui.sel.indexOf(id);
+    if (i >= 0) ui.sel.splice(i, 1); else ui.sel.push(id);
+    render();
+  }
+
+  function renderPrompt(st) {
+    var el = $('prompt');
+    el.innerHTML = '';
+    var pend = st.pending;
+    var mode = handChooseMode(st);
+    if (mode) {
+      var what = mode.type === 'passAll'
+        ? 'Choose a card to pass ' + (mode.dir === 1 ? 'left' : 'right')
+        : (mode.mode === 'discard' ? 'Choose a card to discard' : 'Choose a card to give');
+      el.innerHTML = '<span class="msg">' + what + ' (' + esc(mode.source || '') + ') — click a card</span>';
+      return;
+    }
+    if (pend || st.phase === 'roundEnd' || st.phase === 'gameEnd') {
+      if (pend && pend.by !== ui.mySeat) {
+        el.innerHTML = '<span class="msg">Waiting on ' + esc(st.players[E.actor(st)].name) + '…</span>';
+      }
+      return;
+    }
+    if (!isMyTurn()) {
+      el.innerHTML = '<span class="msg">' + esc(st.players[st.turn].name) + ' has the helm…</span>';
+      return;
+    }
+    if (st.phase === 'draw') {
+      el.innerHTML = '<span class="msg">Your turn — draw from the pile or take the discard</span>';
+      return;
+    }
+    // main phase controls
+    var selType = E.meldType(ui.sel);
+    var one = ui.sel.length === 1 ? CARDS[ui.sel[0]] : null;
+    var b = [];
+    b.push(btn('Meld ' + (selType ? '(' + selType + ')' : ''), !!selType, function () {
+      var cards = ui.sel.slice(); ui.sel = [];
+      act({ t: 'meldNew', cards: cards });
+    }));
+    b.push(btn('Play special', !!(one && one.kind === 'special' && !st.specialUsed), function () {
+      var id = ui.sel[0]; ui.sel = [];
+      act({ t: 'playSpecial', card: id });
+    }));
+    b.push(btn('Court a member', st.newMeldThisTurn && !st.courted && st.memberPile.length > 0, function () {
+      act({ t: 'court' });
+    }, 'Meld a new set or run first, then press your luck with the member deck'));
+    b.push(btn('Discard & end turn', !!(one && one.id !== st.tookFromDiscard || (one && myHand().length === 1)), function () {
+      var id = ui.sel[0]; ui.sel = [];
+      act({ t: 'discard', card: id });
+    }));
+    b.push(btn('Hint', true, function () {
+      var ms = E.findMelds(myHand());
+      if (ms.length) { ui.sel = ms[0].slice(); render(); toast('A meld is ready — hit Meld!'); }
+      else {
+        var ext = null;
+        myHand().forEach(function (id) {
+          st.melds.forEach(function (m) { if (!ext && E.canExtend(m, id)) ext = id; });
+        });
+        if (ext) { ui.sel = [ext]; render(); toast('That card can extend a meld on the table — click the glowing meld.'); }
+        else toast('No meld yet — build sets (same letter) or runs (same suit, letters in a row).');
+      }
+    }));
+    b.forEach(function (x) { el.appendChild(x); });
+  }
+  function btn(label, enabled, fn, title) {
+    var x = document.createElement('button');
+    x.textContent = label;
+    x.disabled = !enabled;
+    if (title) x.title = title;
+    x.addEventListener('click', fn);
+    return x;
+  }
+
+  ui.isGuestBlocked = function () { return false; }; // both guest+host act through act()
+  ui.pumpNow = function () { render(); pump(); };
+
+  // ---------- modal ----------
+  function renderModal(st) {
+    var pend = st.pending;
+    var modal = $('modal'), box = $('modalBox');
+
+    if (st.phase === 'gameEnd') {
+      var w = st.players[st.winner];
+      box.innerHTML = '<h3>' + esc(w.name) + ' is Commodore! 🏆</h3>' +
+        '<div class="sub">the burgee is hoisted — ' + w.score + ' points, ' +
+        w.supporters + ' members in support</div>' +
+        scoreTable(st) +
+        '<button class="gold" onclick="location.reload()">Back to the clubhouse</button>';
+      modal.className = 'open';
+      return;
+    }
+    if (st.phase === 'roundEnd') {
+      box.innerHTML = '<h3>Round ' + st.round + ' — scores</h3>' + scoreTable(st) +
+        (ui.isGuest
+          ? '<div class="sub">waiting for the host to deal the next round…</div>'
+          : '<button class="gold" id="mNext">Deal the next round</button>');
+      modal.className = 'open';
+      if (!ui.isGuest) $('mNext').addEventListener('click', function () { act({ t: 'nextRound' }); });
+      return;
+    }
+    if (!pend || (pend.by !== ui.mySeat && pend.type !== 'passAll')) { modal.className = ''; return; }
+
+    if (pend.type === 'chooseTarget' && pend.by === ui.mySeat) {
+      var opts = st.players.filter(function (p) {
+        if (p.i === ui.mySeat && !pend.allowSelf) return false;
+        if (pend.needCards && pend.then !== 'peek' && !p.hand.length) return false;
+        return true;
+      });
+      box.innerHTML = '<h3>' + esc(pend.source) + '</h3><div class="sub">choose a player</div>' +
+        '<div class="choices" id="mCh"></div>';
+      var ch = box.querySelector('#mCh');
+      opts.forEach(function (p) {
+        var x = document.createElement('button');
+        x.className = 'big';
+        x.textContent = p.name + (p.i === ui.mySeat ? ' (you)' : '') + ' — ' + p.hand.length + ' cards';
+        x.addEventListener('click', function () { act({ t: 'resolve', target: p.i }); });
+        ch.appendChild(x);
+      });
+      modal.className = 'open';
+      return;
+    }
+    if (pend.type === 'pickDiscard' && pend.by === ui.mySeat) {
+      box.innerHTML = '<h3>' + esc(pend.source) + '</h3><div class="sub">take any card from the discard pile</div>' +
+        '<div class="choices" id="mCh"></div>';
+      cardChoices(box.querySelector('#mCh'), st.discard, function (id) {
+        act({ t: 'resolve', card: id });
+      });
+      modal.className = 'open';
+      return;
+    }
+    if (pend.type === 'gossip' && pend.by === ui.mySeat) {
+      box.innerHTML = '<h3>Dockside Gossip</h3><div class="sub">keep one — the others hit the discard pile</div>' +
+        '<div class="choices" id="mCh"></div>';
+      cardChoices(box.querySelector('#mCh'), pend.cards, function (id) {
+        act({ t: 'resolve', keep: id });
+      });
+      modal.className = 'open';
+      return;
+    }
+    if (pend.type === 'reveal' && pend.by === ui.mySeat) {
+      box.innerHTML = '<h3>' + esc(st.players[pend.target].name) + "'s hand</h3>" +
+        '<div class="choices">' + pend.cards.map(function (id) {
+          return '<img src="' + CARDS[id].art + '" style="width:100px;border-radius:8px" title="' + esc(CARDS[id].name) + '">';
+        }).join('') + '</div><br><button class="gold" id="mOk">Got it</button>';
+      modal.className = 'open';
+      $('mOk').addEventListener('click', function () { act({ t: 'resolve' }); });
+      return;
+    }
+    modal.className = ''; // e.g. passAll handled inline; others not mine
+  }
+
+  function cardChoices(el, ids, onPick) {
+    ids.forEach(function (id) {
+      var d = document.createElement('div');
+      d.className = 'ch';
+      d.innerHTML = '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + '">';
+      d.addEventListener('click', function () { onPick(id); });
+      el.appendChild(d);
+    });
+  }
+
+  function scoreTable(st) {
+    var rows = st.lastScores || E.scoreRound(st);
+    var html = '<table><tr><th>skipper</th><th>melds</th><th>specials</th><th>members</th>' +
+      '<th>toast</th><th>hand</th><th>round</th><th class="total">total</th><th>⚓ support</th></tr>';
+    rows.forEach(function (r) {
+      var p = st.players[r.player];
+      html += '<tr><td>' + esc(r.name) + '</td><td>' + r.melded + '</td><td>' + r.specials +
+        '</td><td>' + r.members + '</td><td>' + r.toast + '</td><td>' + r.hand +
+        '</td><td>' + r.total + '</td><td class="total">' + p.score + '</td><td>' +
+        p.supporters + '/' + st.membersToWin + '</td></tr>';
+    });
+    return html + '</table>';
+  }
+
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.style.display = 'none'; }, 2600);
+  }
+  ui.toast = toast;
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
+    });
+  }
+
+  G.ui = ui;
+}(window.CC = window.CC || {}));
