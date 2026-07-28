@@ -143,10 +143,15 @@
         return '<img src="' + CARDS[id].art + '" title="' + CARDS[id].name + ' (' +
           (CARDS[id].pts >= 0 ? '+' : '') + CARDS[id].pts + ')">';
       }).join('');
+      var nBacks = Math.min(p.hand.length, 12);
+      var fan = '';
+      for (var k = 0; k < nBacks; k++) fan += '<img src="' + data.BACK_GENERAL + '" alt="">';
+      if (p.hand.length > 12) fan += '<span class="more">+' + (p.hand.length - 12) + '</span>';
       d.innerHTML =
         '<div class="nm"><span class="seatdot" style="background:' + SEAT_COLORS[p.i % 6] + '"></span>' +
         esc(p.name) + (p.i === ui.mySeat ? ' <span class="you">(you)</span>' : '') +
         (p.skip ? ' 💤' : '') + '</div>' +
+        '<div class="backfan" title="' + p.hand.length + ' cards in hand">' + fan + '</div>' +
         '<div class="meta">' + p.hand.length + ' cards · ' + p.score + ' pts · ⚓' +
         p.supporters + '/' + st.membersToWin + '</div>' +
         '<div class="memberchips">' + chips + '</div>';
