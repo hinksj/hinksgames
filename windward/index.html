@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WINDWARD — Outrun the Maelstrom</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="hullwrap" title="Hull integrity — reach 0 and you sink">
+      <span class="lbl">HULL</span>
+      <div id="hullbar"><div id="hullfill"></div></div>
+      <span id="hulltext"></span>
+    </div>
+    <div id="gold" title="Doubloons"></div>
+    <div id="resources" title="Shells feed mortar-class guns; one provision is eaten every sail"></div>
+    <div id="sectorlabel"></div>
+    <button id="helpbtn" title="Captain's Glossary — every term explained">?</button>
+    <div id="pausehint">SPACE to pause</div>
+  </div>
+  <div id="mid">
+    <div id="crewpanel">
+      <h3>CREW</h3>
+      <div id="crewlist"></div>
+      <div class="paneltip">Click a sailor, then click a room to send them there.</div>
+    </div>
+    <div id="canvaswrap">
+      <canvas id="game" width="1000" height="460"></canvas>
+      <button id="escapebtn" class="hidden" title="Raise full sail and flee (no loot). Faster with more sail power.">RAISE FULL SAIL</button>
+      <div id="fleetui" class="hidden">
+        <button id="sigCloser">⚑ Engage more closely</button>
+        <button id="sigBreak">⚑ Discontinue the action</button>
+        <span id="sigCount"></span>
+      </div>
+    </div>
+  </div>
+  <div id="bottombar">
+    <div id="powerpanel"></div>
+    <div id="weaponpanel"></div>
+  </div>
+</div>
+<div id="modal-root" class="hidden"></div>
+<script src="js/util.js"></script>
+<script src="js/data.js"></script>
+<script src="js/model.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/fleet.js"></script>
+<script src="js/map.js"></script>
+<script src="js/events.js"></script>
+<script src="js/store.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

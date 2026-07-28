@@ -1,0 +1,7 @@
+Sprite assets are CC0 (public domain) from Kenney.nl:
+- Pirate Pack (cannon, cannonball, explosions, fire): https://kenney.nl/assets/pirate-pack
+- Particle Pack (smoke): https://kenney.nl/assets/particle-pack
+Thank you Kenney! Consider donating at kenney.nl.
+
+Font: IM Fell English (regular + italic), SIL Open Font License,
+by Igino Marini / the Fell Types revival — via Google Fonts.

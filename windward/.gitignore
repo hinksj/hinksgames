@@ -1,0 +1,5 @@
+# secrets — never commit
+.env
+
+# OS noise
+.DS_Store
