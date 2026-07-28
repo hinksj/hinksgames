@@ -15,6 +15,8 @@
     send: null,        // guest: fn(action) -> host
     onLocalAction: null, // host: called after each apply to broadcast
     sel: [],           // selected hand card ids
+    handOrder: [],     // local visual order of my hand (drag/sort; never sent anywhere)
+    drag: null,
     pumping: false,
     logLen: 0
   };
@@ -218,10 +220,31 @@
     el.scrollTop = el.scrollHeight;
   }
 
+  // my hand in local visual order: keep prior order, append new draws at the end
+  function orderedHand() {
+    var hand = myHand();
+    var order = ui.handOrder.filter(function (id) { return hand.indexOf(id) >= 0; });
+    hand.forEach(function (id) { if (order.indexOf(id) < 0) order.push(id); });
+    ui.handOrder = order;
+    return order;
+  }
+  var SUIT_ORDER = { party: 0, yacht: 1, cocktail: 2, cruise: 3 };
+  function sortHand(mode) {
+    ui.handOrder = orderedHand().slice().sort(function (a, b) {
+      var ca = CARDS[a], cb = CARDS[b];
+      if (ca.kind !== cb.kind) return ca.kind === 'special' ? 1 : -1; // specials to the right
+      if (ca.kind === 'special') return ca.name < cb.name ? -1 : 1;
+      return mode === 'letter'
+        ? (ca.rank - cb.rank) || (SUIT_ORDER[ca.suit] - SUIT_ORDER[cb.suit])
+        : (SUIT_ORDER[ca.suit] - SUIT_ORDER[cb.suit]) || (ca.rank - cb.rank);
+    });
+    render();
+  }
+
   function renderHand(st) {
     var el = $('handRow');
     el.innerHTML = '';
-    var hand = myHand();
+    var hand = orderedHand();
     var chooseMode = handChooseMode(st);
     hand.forEach(function (id) {
       var c = CARDS[id];
@@ -229,6 +252,21 @@
       d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '');
       d.innerHTML = '<img src="' + c.art + '" title="' + esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
       d.addEventListener('click', function () { onHandClick(st, id, chooseMode); });
+      d.draggable = true;
+      d.addEventListener('dragstart', function (e) {
+        ui.drag = id;
+        if (e.dataTransfer) e.dataTransfer.setData('text/plain', id);
+      });
+      d.addEventListener('dragover', function (e) { e.preventDefault(); });
+      d.addEventListener('drop', function (e) {
+        e.preventDefault();
+        if (!ui.drag || ui.drag === id) return;
+        var o = ui.handOrder;
+        o.splice(o.indexOf(ui.drag), 1);
+        o.splice(o.indexOf(id), 0, ui.drag);
+        ui.drag = null;
+        render();
+      });
       el.appendChild(d);
     });
     var p = me();
@@ -240,8 +278,13 @@
     }).join('');
     $('myStatus').innerHTML =
       '<div>' + esc(p.name) + ' — ' + p.score + ' pts · ⚓' + p.supporters + '/' +
-      st.membersToWin + ' members backing you</div>' +
+      st.membersToWin + ' members backing you · ' +
+      '<button class="ghost" id="sortSuit" title="Group by suit — spot runs">sort by suit</button> ' +
+      '<button class="ghost" id="sortAZ" title="Group by letter — spot sets">sort A–L</button>' +
+      '<span style="opacity:.6"> · drag cards to rearrange</span></div>' +
       '<div class="chips">' + chips + '</div>';
+    $('sortSuit').addEventListener('click', function () { sortHand('suit'); });
+    $('sortAZ').addEventListener('click', function () { sortHand('letter'); });
   }
 
   // which inline hand-choose is active for me?

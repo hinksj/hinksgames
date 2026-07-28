@@ -11,6 +11,8 @@ meld — press your luck courting the club's 25 Members, who bring +8 glory or a
 [`RULES.md`](RULES.md); how the design was recovered in
 [`docs/DESIGN-RECOVERY.md`](docs/DESIGN-RECOVERY.md).
 
+**Play it live:** https://hinksj.github.io/hinksgames/commodore-cup/
+
 ## Run it
 
 No build step, no dependencies (PeerJS loads from a CDN for online play only):
