@@ -30,9 +30,30 @@
     $('menu').style.display = 'none';
     $('table').style.display = 'block';
     $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
+    bindZoom();
     render();
     pump();
   };
+
+  // hover any card art to see it full size (the printed text is small at table scale)
+  function bindZoom() {
+    if (bindZoom.done) return;
+    bindZoom.done = true;
+    var z = document.createElement('div');
+    z.id = 'zoom';
+    document.body.appendChild(z);
+    document.addEventListener('mouseover', function (e) {
+      var t = e.target;
+      if (!t || t.tagName !== 'IMG') return;
+      var src = t.getAttribute('src') || '';
+      if (src.indexOf('assets/cards/') !== 0 || src.indexOf('back-') >= 0) return;
+      z.innerHTML = '<img src="' + src + '">';
+      z.className = 'show ' + (e.clientX > window.innerWidth / 2 ? 'left' : 'right');
+    });
+    document.addEventListener('mouseout', function (e) {
+      if (e.target && e.target.tagName === 'IMG') z.className = '';
+    });
+  }
 
   ui.setState = function (st) { // guest path: fresh state from host
     ui.st = st;

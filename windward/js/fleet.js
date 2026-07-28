@@ -83,7 +83,7 @@ W.Fleet = {
     this.round = 0; this.roundT = 0;
     this.log = [];
     this.signals = 2; this.pendingSignal = null; this.closerRounds = 0;
-    this.crisisUsed = false; this.pendingCrisis = false;
+    this.crisisUsed = false; this.pendingCrisis = false; this.crisisModalShown = false;
     this.result = null; this.summary = null;
     this.active = true;
     this.phase = 'muster';
@@ -306,6 +306,7 @@ W.Fleet = {
   // --- the crisis: fire aboard the flagship, handled by hand ---
   startCrisis() {
     this.pendingCrisis = false;
+    this.crisisModalShown = false;
     W.player = W.makePlayerShip();
     const rooms = [W.pick(W.player.rooms), W.pick(W.player.rooms)];
     rooms.forEach(r => { r.fire = Math.max(r.fire, 55); });

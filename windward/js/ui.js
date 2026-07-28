@@ -59,7 +59,7 @@ W.UI = {
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (W.state.mode === 'combat') W.paused = !W.paused;
+        if (['combat', 'crisis', 'fleet'].includes(W.state.mode)) W.paused = !W.paused;
       } else if (e.key === 'Escape') {
         this.sel.wep = null; this.sel.crew = null;
       } else if ('1234'.includes(e.key) && W.state.mode === 'combat') {
@@ -110,8 +110,19 @@ W.UI = {
   },
 
   update() {
+    const els = this.els;
+    if (els.fleetui) {
+      const showSig = W.state.mode === 'fleet' && W.Fleet.active && W.Fleet.phase === 'battle';
+      els.fleetui.classList.toggle('hidden', !showSig);
+      if (showSig) {
+        const spent = W.Fleet.signals <= 0 || !!W.Fleet.pendingSignal;
+        els.sigCloser.disabled = spent;
+        els.sigBreak.disabled = spent;
+        els.sigCount.textContent = `hoists left: ${W.Fleet.signals}`;
+      }
+    }
     if (!W.player) return;
-    const P = W.player, els = this.els;
+    const P = W.player;
 
     const frac = W.clamp(P.hull / P.hullMax, 0, 1);
     els.hullfill.style.width = (frac * 100) + '%';
@@ -131,16 +142,6 @@ W.UI = {
     }
 
     els.escape.classList.toggle('hidden', !(W.state.mode === 'combat' && W.Combat.active));
-    if (els.fleetui) {
-      const showSig = W.state.mode === 'fleet' && W.Fleet.active && W.Fleet.phase === 'battle';
-      els.fleetui.classList.toggle('hidden', !showSig);
-      if (showSig) {
-        const spent = W.Fleet.signals <= 0 || !!W.Fleet.pendingSignal;
-        els.sigCloser.disabled = spent;
-        els.sigBreak.disabled = spent;
-        els.sigCount.textContent = `hoists left: ${W.Fleet.signals}`;
-      }
-    }
     els.escape.classList.toggle('escaping', W.Combat.escaping);
     els.escape.textContent = W.Combat.escaping
       ? `FLEEING… ${Math.floor(W.Combat.escape * 100)}%` : 'RAISE FULL SAIL';

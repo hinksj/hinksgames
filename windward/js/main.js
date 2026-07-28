@@ -20,6 +20,29 @@ W.Main = {
         W.paused = false;
       } else if (test === 'glossary') {
         W.UI.openGlossary();
+      } else if (test === 'crisis') {
+        W.UI.closeModal();
+        W.Fleet.newSkirmish();
+        W.Fleet.applyPreset('close');
+        W.Fleet.begin();
+        W.Fleet.startCrisis();
+        // synthetic clicks through the REAL event path: select a sailor, then
+        // order them into a burning room — proves the input layer end to end
+        setTimeout(() => {
+          const c = W.player.crew[0];
+          const p = W.Render.crewPos(W.player, c);
+          const f = W.Render.fanOffset(W.player, c);
+          const r = W.UI.els.canvas.getBoundingClientRect();
+          const sx = r.width / W.UI.els.canvas.width;
+          W.UI.els.canvas.dispatchEvent(new MouseEvent('click', {
+            clientX: r.left + (p.x + f.dx) * sx, clientY: r.top + (p.y + f.dy) * sx }));
+          setTimeout(() => {
+            const burning = W.player.rooms.find(rm => rm.fire > 0) || W.player.rooms[0];
+            const rc = W.Render.roomCenter(W.player, burning.idx);
+            W.UI.els.canvas.dispatchEvent(new MouseEvent('click', {
+              clientX: r.left + rc.x * sx, clientY: r.top + rc.y * sx }));
+          }, 700);
+        }, 1500);
       } else if (test === 'fleet') {
         W.UI.closeModal();
         W.Fleet.newSkirmish();
@@ -287,8 +310,8 @@ W.Main = {
       if (W.state.mode === 'crisis' && !W.paused) {
         W.Fleet.crisisTick(dt);
       }
-      if (W.Fleet.pendingCrisis) {
-        W.Fleet.pendingCrisis = false;
+      if (W.Fleet.pendingCrisis && !W.Fleet.crisisModalShown) {
+        W.Fleet.crisisModalShown = true;
         W.UI.openCrisisIntro();
       }
       if (W.Fleet.active && W.Fleet.phase === 'done' && W.Fleet.summary && !W.Fleet.summaryShown) {
