@@ -130,7 +130,7 @@ W.Render = {
       return;
     }
     if (W.state.mode === 'crisis' && W.player) {
-      this.drawShip(W.player);
+      this.drawShip(W.player, dt);
       this.drawParts(dt);
       ctx.fillStyle = 'rgba(6,13,21,0.6)';
       ctx.fillRect(250, 6, 500, 42);
@@ -144,9 +144,9 @@ W.Render = {
       return;
     }
 
-    if (W.player) this.drawShip(W.player);
+    if (W.player) this.drawShip(W.player, dt);
     if (W.Combat.active && W.Combat.enemy) {
-      this.drawShip(W.Combat.enemy);
+      this.drawShip(W.Combat.enemy, dt);
       this.drawEnemyHeader(W.Combat.enemy);
       this.drawProjectiles();
     }
@@ -383,7 +383,8 @@ W.Render = {
     ctx.closePath();
   },
 
-  drawShip(ship) {
+  drawShip(ship, dt) {
+    dt = dt || 0.016;
     const ctx = this.ctx, o = this.shipOrigin(ship), L = ship.layout;
     const bw = L.w * W.TILE, bh = L.h * W.TILE;
     const dir = ship.isPlayer ? 1 : -1;

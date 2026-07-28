@@ -11,8 +11,8 @@
   --dim: #b9a8e0;
   --card-w: 106px;
   --card-h: 170px;
-  --hand-w: 154px;
-  --hand-h: 246px;
+  --hand-w: 188px;
+  --hand-h: 301px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
@@ -64,7 +64,7 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 #menu a { color: var(--cyan); }
 
 /* ---------- table layout ---------- */
-#table { display: none; max-width: 1180px; margin: 0 auto; padding: 10px 14px 320px; }
+#table { display: none; max-width: 1180px; margin: 0 auto; padding: 10px 14px 390px; }
 #topbar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 4px 2px 8px; }
 #topbar .script { font-size: 26px; color: var(--pink); }
 #topbar .round { color: var(--cyan); }
@@ -127,7 +127,7 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 #prompt .msg { color: var(--gold); }
 #prompt button { margin-left: 8px; }
 #handRow { display: flex; justify-content: center; align-items: flex-end; }
-.hcard { position: relative; transition: transform 0.12s; cursor: pointer; margin-left: -40px; }
+.hcard { position: relative; transition: transform 0.12s; cursor: pointer; margin-left: -52px; }
 .hcard:first-child { margin-left: 0; }
 .hcard img { width: var(--hand-w); height: var(--hand-h); object-fit: cover; border-radius: 9px;
   box-shadow: -4px 3px 14px #000c; display: block; }
@@ -167,8 +167,8 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 #zoom.show { display: block; }
 #zoom.show.right { right: 18px; }
 #zoom.show.left { left: 18px; }
-#zoom img { width: min(380px, 32vw); border-radius: 16px; box-shadow: 0 14px 56px #000e;
-  border: 1px solid #ffffff33; }
+#zoom img { width: min(480px, 36vw); max-height: 92vh; object-fit: contain;
+  border-radius: 16px; box-shadow: 0 14px 56px #000e; border: 1px solid #ffffff33; }
 #toast { position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
   background: var(--panel); border: 1px solid var(--gold); color: var(--gold);
   border-radius: 10px; padding: 8px 18px; z-index: 50; display: none; }

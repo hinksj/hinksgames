@@ -37,23 +37,29 @@
     pump();
   };
 
-  // hover any card art to see it full size (the printed text is small at table scale)
+  // hover or select any card to see it full size (the printed text is small at table scale)
+  var zoomEl = null;
+  function showZoom(src, side) {
+    if (!zoomEl) return;
+    zoomEl.innerHTML = '<img src="' + src + '">';
+    zoomEl.className = 'show ' + side;
+  }
+  function hideZoom() { if (zoomEl) zoomEl.className = ''; }
   function bindZoom() {
     if (bindZoom.done) return;
     bindZoom.done = true;
-    var z = document.createElement('div');
-    z.id = 'zoom';
-    document.body.appendChild(z);
+    zoomEl = document.createElement('div');
+    zoomEl.id = 'zoom';
+    document.body.appendChild(zoomEl);
     document.addEventListener('mouseover', function (e) {
       var t = e.target;
       if (!t || t.tagName !== 'IMG') return;
       var src = t.getAttribute('src') || '';
       if (src.indexOf('assets/cards/') !== 0 || src.indexOf('back-') >= 0) return;
-      z.innerHTML = '<img src="' + src + '">';
-      z.className = 'show ' + (e.clientX > window.innerWidth / 2 ? 'left' : 'right');
+      showZoom(src, e.clientX > window.innerWidth / 2 ? 'left' : 'right');
     });
     document.addEventListener('mouseout', function (e) {
-      if (e.target && e.target.tagName === 'IMG') z.className = '';
+      if (e.target && e.target.tagName === 'IMG') hideZoom();
     });
   }
 
@@ -309,7 +315,12 @@
     }
     if (!isMyTurn() || st.phase !== 'main') return;
     var i = ui.sel.indexOf(id);
-    if (i >= 0) ui.sel.splice(i, 1); else ui.sel.push(id);
+    if (i >= 0) { ui.sel.splice(i, 1); hideZoom(); }
+    else {
+      ui.sel.push(id);
+      // selecting pops the card up large (covers touch screens, where there's no hover)
+      showZoom(CARDS[id].art, 'right');
+    }
     render();
   }
 
