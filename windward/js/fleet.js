@@ -7,6 +7,7 @@
 
 W.Fleet = {
   active: false,
+  ROUND_S: 3.0,   // seconds per round — slow enough to read
   phase: null,          // 'muster' | 'battle' | 'crisis' | 'done'
   ships: [], enemy: [],
   planName: null, gauge: false,
@@ -137,7 +138,7 @@ W.Fleet = {
   tick(dt) {
     if (this.phase !== 'battle' || this.result || this.pendingCrisis) return;
     this.roundT += dt;
-    if (this.roundT >= 2.3) {
+    if (this.roundT >= this.ROUND_S) {
       this.roundT = 0;
       this.resolveRound();
     }
@@ -259,6 +260,7 @@ W.Fleet = {
     if (rake) {
       moraleHit += 22;
       this.say(`${a.name} cuts the line and rakes ${b.name} stem to stern!`);
+      this.floatAt(b, 'RAKED!', '#a02418');
     }
     if (aIsMine && tac === 'range') moraleHit += 4; // harried without reply
     b.morale -= moraleHit;
@@ -278,6 +280,7 @@ W.Fleet = {
       } else {
         b.struck = true;
         this.say(`${b.name} strikes her colors!`);
+        this.floatAt(b, 'STRUCK', '#5a4020');
       }
     }
   },
@@ -288,8 +291,15 @@ W.Fleet = {
       if (s.morale <= 25 && W.chance(0.4)) {
         s.struck = true;
         this.say(`${s.name}'s crew has had enough — she strikes!`);
+        this.floatAt(s, 'STRUCK', '#5a4020');
       }
     }
+  },
+
+  floatAt(ship, text, color) {
+    if (!W.Render || !W.Render.fleetPos) return;
+    const p = W.Render.fleetPos(ship);
+    if (p) W.addFx(p.x, p.y - 22, text, color);
   },
 
   fxAt(ship, kind) {

@@ -43,6 +43,11 @@ W.Main = {
               clientX: r.left + rc.x * sx, clientY: r.top + rc.y * sx }));
           }, 700);
         }, 1500);
+      } else if (test === 'muster') {
+        W.UI.closeModal();
+        W.Fleet.newSkirmish();
+        W.Fleet.applyPreset('breakline');
+        W.UI.openMuster();
       } else if (test === 'fleet') {
         W.UI.closeModal();
         W.Fleet.newSkirmish();

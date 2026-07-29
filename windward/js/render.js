@@ -908,7 +908,7 @@ W.Render = {
   fleetProgress() {
     const F = W.Fleet;
     if (F.phase !== 'battle' && F.phase !== 'done' && F.phase !== 'crisis') return 0;
-    return F.round + W.clamp(F.roundT / 2.3, 0, 1);
+    return F.round + W.clamp(F.roundT / F.ROUND_S, 0, 1);
   },
 
   bez(pts, t) {
@@ -1119,6 +1119,40 @@ W.Render = {
         ctx.fillRect(bx, p.y + 6, 44 * W.clamp(s.morale / 70, 0, 1), 2);
       }
     }
+
+    // who fights whom: a thin line from each of your ships to her target
+    if (F.phase === 'battle') {
+      ctx.strokeStyle = 'rgba(160,36,24,0.22)';
+      ctx.lineWidth = 1;
+      for (const s of F.alive(F.ships)) {
+        const b = F.targetOf(s);
+        if (!b) continue;
+        const pa = this.fleetPos(s), pb = this.fleetPos(b);
+        if (!pa || !pb) continue;
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.stroke();
+      }
+    }
+
+    // floating words on the plan (RAKED!, STRUCK, and the rest)
+    for (const f of W.fx) {
+      f.t += dt;
+      ctx.globalAlpha = W.clamp(1 - f.t / 1.6, 0, 1);
+      ctx.fillStyle = f.color;
+      ctx.font = 'bold 15px "IM Fell English", Georgia';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.text, f.x, f.y - 18 * f.t);
+    }
+    ctx.globalAlpha = 1;
+    W.fx = W.fx.filter(f => f.t < 1.6);
+
+    // legend, so the plan explains itself
+    ctx.textAlign = 'right';
+    ctx.font = 'italic 11.5px "IM Fell English", Georgia';
+    ctx.fillStyle = 'rgba(74,53,23,0.75)';
+    ctx.fillText('red bar: hull · gold bar: fighting spirit · dashed: planned course · thin red line: her target', 985, 448);
 
     // header + the running log, in the log-keeper's hand
     ctx.textAlign = 'center';

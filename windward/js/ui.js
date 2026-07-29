@@ -452,6 +452,12 @@ W.UI = {
         <div class="gterm"><b>"Ensign"</b> — the flag that says who you are. Upside-down, it says <i>help</i>.</div>
         <div class="gterm"><b>"Bosun" / "purser"</b> — the officer who runs the deck; the one who runs the stores and the money.</div>
         <div class="gterm"><b>"Run aground"</b> — stuck on a sandbar or reef. Winching her off by her own anchor is called kedging, and nobody enjoys it.</div></div>
+        <div class="gsec"><h4>THE FLEET ACTION (Line of Battle)</h4>
+        <div class="gterm"><b>Orders</b> — every ship gets a target and a tactic in the muster; each order is drawn as a dashed course on the plan, and the battle then fights itself in rounds.</div>
+        <div class="gterm"><b>Fighting spirit</b> — the gold bar. Broadsides, rakes, and a fallen captain break it; a ship whose spirit breaks <b>strikes her colors</b> (surrenders). Struck enemies are prizes.</div>
+        <div class="gterm"><b>The weather gauge</b> — the upwind position, rolled as battle joins. Holding it makes everything you do bite a little harder.</div>
+        <div class="gterm"><b>Signal hoists</b> — your only voice mid-battle, two per action: ENGAGE MORE CLOSELY (three fierce rounds) and DISCONTINUE THE ACTION (withdraw in good order — no prizes, no rout).</div>
+        <div class="gterm"><b>The crisis</b> — if the flagship is badly hurt, you take command below decks: the full ship interior, fires and flooding, your own hands on it.</div></div>
         <div class="gsec"><h4>THE LONG GAME</h4>
         <div class="gterm"><b>⚜ Doubloons</b> — money, from prizes and events. Spent at free ports.</div>
         <div class="gterm"><b>Provisions</b> — one is eaten every sail. At zero the crew starves and <b>mutiny</b> brews.</div>
@@ -811,17 +817,54 @@ W.UI = {
   },
 
   // --- Line of Battle (fleet prototype) ---
+  // a live miniature of the plan, drawn from the same geometry as the battle
+  musterSketch() {
+    const F = W.Fleet, R = W.Render;
+    const sx = 0.3, sy = 0.3;
+    let out = '';
+    for (let i = 0; i < 3; i++) {
+      const a = R.enemyAnchor(i);
+      out += `<circle cx="${a.x * sx}" cy="${a.y * sy}" r="7" fill="none" stroke="#a02418" stroke-width="1.5"/>` +
+        `<text x="${a.x * sx}" y="${a.y * sy + 3.5}" font-size="9" text-anchor="middle" fill="#a02418">${i + 1}</text>`;
+    }
+    F.ships.forEach((s, i) => {
+      const r = R.routeFor(i);
+      let d = '';
+      for (let k = 0; k <= 20; k++) {
+        const p = R.bez(r.pts, k / 20);
+        d += (k ? ' L ' : 'M ') + (p.x * sx).toFixed(1) + ' ' + (p.y * sy).toFixed(1);
+      }
+      out += `<path d="${d}" fill="none" stroke="#3a2a17" stroke-width="1.4" stroke-dasharray="4 3"/>` +
+        `<circle cx="${r.pts[0].x * sx}" cy="${r.pts[0].y * sy}" r="3.5" fill="#3a2a17"/>` +
+        `<text x="${r.pts[0].x * sx - 6}" y="${r.pts[0].y * sy + 3}" font-size="8.5" text-anchor="end" fill="#3a2a17">${i + 1}</text>`;
+    });
+    return `<svg viewBox="0 0 300 138" width="300" height="138" ` +
+      `style="background:#eadcb4;border:1px solid #8a6a42;border-radius:4px">${out}</svg>`;
+  },
+
   openMuster() {
     const F = W.Fleet;
     let body = `<p>The enemy's topsails are on the horizon:
       <b>${F.enemy.map((s, i) => `${i + 1}. ${s.name} (${F.CLASSES[s.cls].name})`).join(' · ')}</b>.
-      Give each of your captains a target and a tactic — the plan is drawn on the chart as you
-      set it. Once the guns speak you have two signal hoists, and no more voice than that.</p>
+      Give each of your captains a target and a tactic — the sketch below redraws as you
+      change the orders.</p>
+      <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:6px">
+        <div>${this.musterSketch()}
+          <div class="gcap">Your plan, as it will be fought — the enemy line ①②③ in red,
+          your ships ①②③ setting out from the left.</div></div>
+        <div class="gterm" style="flex:1"><b>How an action works:</b> you give the orders, then
+        the battle fights itself in rounds — once the guns speak your only voice is
+        <b>two signal hoists</b> (top-right of the battle). Ships surrender — <i>strike</i> —
+        when their <b>fighting spirit</b> (the gold bar) breaks, not only when their hull gives;
+        struck enemies are your prizes. The <b>weather gauge</b> — the upwind position, rolled
+        as battle joins — puts a thumb on the scale for whoever holds it. If the flagship gets
+        into trouble, you'll be called below decks to fight the fire yourself.</div>
+      </div>
       <h4>YOUR LINE AND ORDERS (van to rear)</h4>`;
     const tacOpts = (sel) => Object.entries(F.TACTICS)
       .map(([id, tc]) => `<option value="${id}"${id === sel ? ' selected' : ''}>${tc.name}</option>`).join('');
     const tgtOpts = (sel) => F.enemy
-      .map((s, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${s.name}</option>`).join('');
+      .map((s, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${i + 1}. ${s.name} (${F.CLASSES[s.cls].name})</option>`).join('');
     F.ships.forEach((s, i) => {
       const t = F.TRAITS[s.captain.trait];
       body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
@@ -858,12 +901,14 @@ W.UI = {
       sel.addEventListener('change', () => {
         F.ships[+sel.dataset.tgt].order.target = +sel.value;
         F.planName = 'Your Own Plan';
+        this.openMuster();
       });
     });
     m.querySelectorAll('select[data-tac]').forEach(sel => {
       sel.addEventListener('change', () => {
         F.ships[+sel.dataset.tac].order.tactic = sel.value;
         F.planName = 'Your Own Plan';
+        this.openMuster();
       });
     });
   },
