@@ -877,13 +877,13 @@ W.UI = {
       const mu = F.matchup(s);
       const handsPct = Math.round(100 * s.hands / s.complement);
       body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
-        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, hull ${s.hull}/${s.hullMax},
+        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, hull ${Math.ceil(s.hull)}/${s.hullMax},
         crew ${handsPct}%${handsPct < 60 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
         · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
         <label>Target <select data-tgt="${i}">${tgtOpts(s.order.target)}</select></label>
         <label style="margin-left:8px">Tactic <select data-tac="${i}">${tacOpts(s.order.tactic)}</select></label>
-        ${mu ? `<br><i class="wchips">She throws ${mu.hers.toFixed(1)} weight to your ${mu.mine.toFixed(1)} —
-        ${mu.verdict}.${mu.hint ? ' ' + mu.hint : ''}</i>` : ''}</span>
+        ${mu ? `<br><i class="wchips">She throws ~${Math.round(mu.hers * 24)} lb of metal to your
+        ~${Math.round(mu.mine * 24)} — ${mu.verdict}.${mu.hint ? ' ' + mu.hint : ''}</i>` : ''}</span>
         ${i > 0 ? `<button data-swap="${i}">move up</button>` : ''}</div>`;
     });
     body += `<div class="gcap" style="margin:4px 0 8px">${Object.entries(F.TACTICS)
@@ -1010,7 +1010,7 @@ W.UI = {
         `<option${n === sh.captain.name ? ' selected' : ''}>${n}</option>`).join('');
       body += `<div class="storerow"><b>${sh.name}</b>
         <span class="sdesc">${F.CLASSES[sh.cls].name} ·
-          hull ${sh.hull}/${sh.hullMax} ·
+          hull ${Math.ceil(sh.hull)}/${sh.hullMax} ·
           hands ${sh.hands}/${sh.complement}${sh.hands < sh.complement * 0.6 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
           · Capt. <select data-capt="${i}">${capOpts}</select>
           ${sh.captain.alive ? '' : ' †'}</span>
