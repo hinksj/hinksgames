@@ -511,7 +511,7 @@
       if (!ui.isGuest) $('mNext').addEventListener('click', function () { act({ t: 'nextRound' }); });
       return;
     }
-    if (ui.serveChoice && isMyTurn()) {
+    if (ui.serveChoice && (st.mode === 'draft' || isMyTurn())) {
       var rec = CARDS[ui.serveChoice];
       box.innerHTML = '<h3>Serve the ' + esc(rec.name) + '?</h3>' +
         '<div class="bigcard"><img style="width:200px;border-radius:12px" src="' + rec.art + '"></div>' +

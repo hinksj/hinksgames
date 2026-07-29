@@ -43,6 +43,17 @@ W.Main = {
               clientX: r.left + rc.x * sx, clientY: r.top + rc.y * sx }));
           }, 700);
         }, 1500);
+      } else if (test === 'refit') {
+        W.UI.closeModal();
+        W.Fleet.newSkirmish();
+        W.Fleet.applyPreset('close');
+        W.Fleet.begin();
+        W.Fleet.enemy.forEach(e => { e.struck = true; });
+        W.Fleet.ships[1].hull = 9;
+        W.Fleet.ships[1].guns -= 2;
+        W.Fleet.finishBattle();
+        W.Fleet.summaryShown = true;
+        W.UI.openRefit();
       } else if (test === 'muster') {
         W.UI.closeModal();
         W.Fleet.newSkirmish();
