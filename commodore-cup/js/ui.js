@@ -52,6 +52,7 @@
     zoomEl.id = 'zoom';
     document.body.appendChild(zoomEl);
     document.addEventListener('mouseover', function (e) {
+      if (ui.drag) return; // no popup while rearranging the hand
       var t = e.target;
       if (!t || t.tagName !== 'IMG') return;
       var src = t.getAttribute('src') || '';
@@ -139,7 +140,7 @@
     renderPiles(st);
     renderMelds(st);
     renderLog(st);
-    renderHand(st);
+    if (!ui.drag) renderHand(st); // don't yank the hand out from under a drag
     renderPrompt(st);
     renderModal(st);
   }
@@ -203,8 +204,11 @@
       var d = document.createElement('div');
       var extendable = canAct && extendCard && E.canExtend(m, extendCard);
       d.className = 'meld' + (extendable ? ' extendable' : '');
-      d.innerHTML = m.cards.map(function (e) {
-        return '<div class="mc"><img src="' + CARDS[e.card].art + '" title="' + esc(CARDS[e.card].name) + '">' +
+      d.innerHTML = m.cards.map(function (e, idx) {
+        // z-order decreases left→right: each card tucks UNDER its neighbor,
+        // keeping every upper-right corner letter visible
+        return '<div class="mc" style="z-index:' + (99 - idx) + '">' +
+          '<img src="' + CARDS[e.card].art + '" title="' + esc(CARDS[e.card].name) + '">' +
           '<span class="who" style="background:' + SEAT_COLORS[e.by % 6] + '"></span></div>';
       }).join('');
       if (extendable) {
@@ -268,17 +272,21 @@
     el.innerHTML = '';
     var hand = orderedHand();
     var chooseMode = handChooseMode(st);
-    hand.forEach(function (id) {
+    hand.forEach(function (id, idx) {
       var c = CARDS[id];
       var d = document.createElement('div');
       d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '');
-      d.innerHTML = '<img src="' + c.art + '" title="' + esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
+      d.style.zIndex = String(200 - idx); // tuck rightward: corner letters stay visible
+      d.innerHTML = '<img draggable="false" src="' + c.art + '" title="' +
+        esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
       d.addEventListener('click', function () { onHandClick(st, id, chooseMode); });
       d.draggable = true;
       d.addEventListener('dragstart', function (e) {
         ui.drag = id;
+        hideZoom();
         if (e.dataTransfer) e.dataTransfer.setData('text/plain', id);
       });
+      d.addEventListener('dragend', function () { ui.drag = null; render(); });
       d.addEventListener('dragover', function (e) { e.preventDefault(); });
       d.addEventListener('drop', function (e) {
         e.preventDefault();
