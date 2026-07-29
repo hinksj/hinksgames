@@ -185,7 +185,7 @@
       }
     }
 
-    if (st.newMeldThisTurn && !st.courted && st.memberPile.length) {
+    if (st.meldedThisTurn && !st.courted && st.memberPile.length) {
       // you can't win without the members: court until the votes are in,
       // then keep pushing the luck only while trailing
       if (me.supporters < st.membersToWin) return { t: 'court' };

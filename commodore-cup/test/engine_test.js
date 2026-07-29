@@ -73,6 +73,30 @@ function conserved(st) {
   ok(st.players[0].hand.indexOf(gave[0]) < 0, 'A no longer holds the card passed away');
 }());
 
+// ---- persistent members: kept across rounds, deck never refills ----
+(function () {
+  var st = E.newGame({
+    seed: 9, target: 50,
+    names: [{ name: 'A', isAI: true }, { name: 'B', isAI: true }, { name: 'C', isAI: true }]
+  });
+  ok(st.membersToWin === 5, '3 players need 5 backers');
+  st.turn = 0; st.phase = 'main'; st.meldedThisTurn = true; st.courted = false;
+  var pileBefore = st.memberPile.length;
+  E.apply(st, { t: 'court' });
+  var guard = 0;
+  while (st.pending && guard++ < 20) E.apply(st, ai.decide(st));
+  ok(st.players[0].members.length === 1, 'member courted');
+  st.phase = 'roundEnd'; st.outBy = 0;
+  E.apply(st, { t: 'nextRound' });
+  ok(st.players[0].members.length === 1, 'members persist into the next round');
+  ok(st.players[0].membersRound.length === 0, 'round scoring slate is clean');
+  ok(st.memberPile.length === pileBefore - 1, 'member deck does not refill');
+  // extension arms the Membership Drive
+  ok(E.newGame({ seed: 1, names: [{ name: 'x', isAI: true }, { name: 'y', isAI: true },
+    { name: 'z', isAI: true }, { name: 'w', isAI: true }, { name: 'v', isAI: true },
+    { name: 'u', isAI: true }] }).membersToWin === 4, '6 players need only 4 backers');
+}());
+
 // ---- full games ----
 function playGame(nPlayers, seed) {
   var st = E.newGame({
@@ -99,7 +123,7 @@ function playGame(nPlayers, seed) {
   }
   ok(st.winner >= 0, 'winner declared');
   ok(st.players[st.winner].score >= 50, 'winner reached target');
-  ok(st.players[st.winner].supporters >= data.MEMBERS_TO_WIN, 'winner has club support');
+  ok(st.players[st.winner].supporters >= st.membersToWin, 'winner has club support');
   return { steps: steps, rounds: st.round, winner: st.winner,
     scores: st.players.map(function (p) { return p.score; }) };
 }

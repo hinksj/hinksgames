@@ -34,6 +34,12 @@ button {
 button:hover:not(:disabled) { filter: brightness(1.25); }
 button:disabled { opacity: 0.4; cursor: default; }
 button.gold { background: linear-gradient(180deg, #d99a1f, #a86a00); border-color: var(--gold); }
+button.court-ready { background: linear-gradient(180deg, #d99a1f, #a86a00); border-color: var(--gold);
+  animation: courtPulse 1.2s ease-in-out infinite alternate; }
+@keyframes courtPulse {
+  from { box-shadow: 0 0 4px #ffd16644; }
+  to { box-shadow: 0 0 18px var(--gold); }
+}
 button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim); }
 
 /* ---------- menu ---------- */
@@ -101,9 +107,12 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 .pile .count { position: absolute; right: -6px; top: -6px; background: var(--pink);
   color: #2a0a52; font-weight: 700; border-radius: 10px; padding: 0 7px; font-size: 12px; }
 
+#piles { isolation: isolate; }
 #melds { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; min-height: 150px;
-  background: #ffffff08; border: 1px dashed #6a4bb055; border-radius: 12px; padding: 10px; }
-.meld { display: flex; padding: 4px; border-radius: 8px; background: #00000033; }
+  background: #ffffff08; border: 1px dashed #6a4bb055; border-radius: 12px; padding: 10px;
+  isolation: isolate; }
+.meld { display: flex; padding: 4px; border-radius: 8px; background: #00000033;
+  isolation: isolate; }
 .meld .mc { width: 66px; height: 106px; margin-right: -22px; position: relative; }
 .meld .mc:last-child { margin-right: 0; }
 .meld .mc img { width: 66px; height: 106px; object-fit: cover; border-radius: 5px;
@@ -121,12 +130,12 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 
 /* ---------- my area ---------- */
 #myArea { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, transparent, #0e0322 26%);
-  padding: 26px 14px 10px; }
+  padding: 26px 14px 10px; z-index: 20; }
 #myBar { max-width: 1180px; margin: 0 auto; }
 #prompt { text-align: center; margin-bottom: 6px; min-height: 30px; }
 #prompt .msg { color: var(--gold); }
 #prompt button { margin-left: 8px; }
-#handRow { display: flex; justify-content: center; align-items: flex-end; }
+#handRow { display: flex; justify-content: center; align-items: flex-end; isolation: isolate; }
 .hcard { position: relative; transition: transform 0.12s; cursor: pointer; margin-left: -52px; }
 .hcard:first-child { margin-left: 0; }
 .hcard img { width: var(--hand-w); height: var(--hand-h); object-fit: cover; border-radius: 9px;
@@ -147,7 +156,7 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 
 /* ---------- modal ---------- */
 #modal { position: fixed; inset: 0; background: #0009; display: none;
-  align-items: center; justify-content: center; z-index: 40; }
+  align-items: center; justify-content: center; z-index: 1000; }
 #modal.open { display: flex; }
 #modal .box { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 14px;
   padding: 20px; max-width: 860px; max-height: 86vh; overflow-y: auto; text-align: center; }
@@ -167,7 +176,7 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 .seatdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
 
 /* hover magnifier — readable card preview, anchored top so it never covers the hand */
-#zoom { position: fixed; top: 12px; z-index: 60; display: none; pointer-events: none; }
+#zoom { position: fixed; top: 12px; z-index: 900; display: none; pointer-events: none; }
 #zoom.show { display: block; }
 #zoom.show.right { right: 14px; }
 #zoom.show.left { left: 14px; }
@@ -176,7 +185,7 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
   border-radius: 14px; box-shadow: 0 14px 56px #000e; border: 1px solid #ffffff33; }
 #toast { position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
   background: var(--panel); border: 1px solid var(--gold); color: var(--gold);
-  border-radius: 10px; padding: 8px 18px; z-index: 50; display: none; }
+  border-radius: 10px; padding: 8px 18px; z-index: 1100; display: none; }
 
 @media (max-width: 760px) {
   :root { --card-w: 64px; --card-h: 102px; --hand-w: 96px; --hand-h: 154px; }

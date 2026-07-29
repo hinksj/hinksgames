@@ -29,7 +29,8 @@
 
 **The Member Deck (25 cards, club-photo card back)** — the club's colorful
 membership, kept as a separate face-down pile. Members carry point bonuses or
-penalties plus a one-time effect.
+penalties plus a one-time effect. Shuffle it **once**: the same pile serves the
+entire game and is never reshuffled — when the membership runs out, it runs out.
 
 ---
 
@@ -78,22 +79,23 @@ Lay down from your hand, face up in front of you:
   it extends — or online, the game tracks it for you.)
 
 ### 4. Membership Drive *(optional, push your luck)*
-If you laid down at least one **new set or run** this turn (extensions don't
-count), you **may** draw the top card of the Member Deck:
+If you melded anything this turn — a **new set or run**, or a card **added to
+any meld on the table** — you **may** draw the top card of the Member Deck:
 
 - Reveal it and place it face up in your **member row**. Its points (from **+8**
-  down to **−6**) count toward your score at round end — good luck at the bar.
+  down to **−6**) count toward your score at the end of *this* round — good
+  luck at the bar.
 - Resolve its effect text **immediately** (draws, discards, peeks, skips,
   swaps). Effects are mandatory.
 - Maximum **one** member draw per turn.
-- Win or lose on points, every member you court joins your **Club Support** —
-  a running tally that carries over from round to round (track it on the score
-  pad; the cards themselves reshuffle each round). Even Seasick Susie's vote
-  counts: she costs you 6 points, but she *will* second your nomination.
+- **Members are for keeps.** The card stays in front of you for the rest of the
+  game — your **Club Support**. Nothing can take a member from you, and even
+  Seasick Susie's vote counts: she costs you 6 points the round you court her,
+  but she *will* second your nomination.
 
 Roughly 60% of the membership helps you; the rest are, well, *characters*.
-You can't become Commodore without 5 supporters, so everyone must brave the
-member deck eventually — the question is when.
+You can't become Commodore without the members' support, and there are only 25
+of them for the whole game — brave the deck too late and the votes may be gone.
 
 ### 5. Discard
 End your turn by placing **one card** from your hand on the discard pile.
@@ -173,7 +175,7 @@ When someone goes out, everyone scores:
 |---|---|
 | Each suit card you melded (sets, runs, extensions) | **+1** |
 | Each Special Action card you played | **+2** |
-| Each member in your row | **its printed value** (+8 … −6) |
+| Each member courted **this round** | **its printed value** (+8 … −6) |
 | Commodore's Toast (you went out) | **+5** |
 | Each card left in your hand — suit card | **−1** |
 | Each card left in your hand — Special Action card | **−2** |
@@ -187,6 +189,8 @@ Add round scores to a running total (totals can go negative — see: bar tab).
 At the end of a round, any player with **50+ points** *and* **5+ members of
 Club Support** qualifies for the Commodore's chair; the qualified player with
 the most points takes it (ties broken by supporters, then a sail-off round).
+At a **six-player** table 25 members can't back everyone, so the bar drops to
+**4 supporters** — the membership becomes a race.
 
 Points without support get you nothing but a bar bill — if you cross 50 with
 fewer than 5 supporters, the election is postponed and play continues until
@@ -220,6 +224,10 @@ incomplete. This ruleset finalizes them:
    10–20, so 50 lands the advertised 30–45 minutes.
 8. **The membership elects you** — a 2024 design goal ("to become Commodore
    you should need not only points but the support of members") that the
-   drafts never wired up. Club Support (career count of members courted,
-   minimum 5 to win) makes the member deck mandatory but *when* to brave it
-   strategic — and means the negative members are votes too.
+   drafts never wired up. Club Support (members courted, minimum 5 to win)
+   makes the member deck mandatory but *when* to brave it strategic — and
+   means the negative members are votes too.
+9. **Members are collected, not reshuffled** (playtest, July 2026): courted
+   members stay on the table all game and the 25-card deck depletes, so the
+   membership is a visible, contested resource. Extending a meld also arms
+   the Membership Drive — late-round turns still earn courting rights.

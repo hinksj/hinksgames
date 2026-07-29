@@ -434,9 +434,13 @@
       var id = ui.sel[0]; ui.sel = [];
       act({ t: 'playSpecial', card: id });
     }));
-    b.push(btn('Court a member', st.newMeldThisTurn && !st.courted && st.memberPile.length > 0, function () {
+    var canCourt = st.meldedThisTurn && !st.courted && st.memberPile.length > 0;
+    var courtBtn = btn('Court a member ⚓', canCourt, function () {
       act({ t: 'court' });
-    }, 'Meld a new set or run first, then press your luck with the member deck'));
+    }, canCourt ? 'You melded this turn — press your luck with the member deck (before you discard!)'
+       : 'Meld or extend first, then press your luck with the member deck');
+    if (canCourt) courtBtn.className = 'court-ready';
+    b.push(courtBtn);
     b.push(btn('Discard & end turn', !!(one && one.id !== st.tookFromDiscard || (one && myHand().length === 1)), function () {
       var id = ui.sel[0]; ui.sel = [];
       act({ t: 'discard', card: id });

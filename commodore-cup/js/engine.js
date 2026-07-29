@@ -30,14 +30,17 @@
       seed: opts.seed || Math.floor(Math.random() * 1e9),
       target: opts.target || data.TARGET_DEFAULT,
       round: 0,
-      membersToWin: opts.membersToWin != null ? opts.membersToWin : data.MEMBERS_TO_WIN,
+      // the 25-card member deck serves the whole game; at big tables not
+      // everyone can reach 5 backers, so the bar drops (6 players -> 4)
+      membersToWin: opts.membersToWin != null ? opts.membersToWin
+        : Math.min(data.MEMBERS_TO_WIN, Math.floor(data.MEMBER_DECK.length / names.length)),
       players: names.map(function (p, i) {
         return { i: i, name: p.name, isAI: !!p.isAI, netId: p.netId || null,
-          hand: [], played: [], members: [], supporters: 0, skip: false,
+          hand: [], played: [], members: [], membersRound: [], supporters: 0, skip: false,
           score: 0, roundScore: 0, toast: false };
       }),
       melds: [], drawPile: [], discard: [], memberPile: [],
-      turn: 0, phase: 'draw', specialUsed: false, newMeldThisTurn: false,
+      turn: 0, phase: 'draw', specialUsed: false, meldedThisTurn: false,
       courted: false, pending: null, outBy: -1, winner: -1, log: [],
       _rndCalls: 0
     };
@@ -64,10 +67,11 @@
     st.pending = null;
     st.outBy = -1;
     st.drawPile = shuffleSt(st, data.CLUB_DECK.slice());
-    st.memberPile = shuffleSt(st, data.MEMBER_DECK.slice());
+    // members are for keeps: one shuffle for the whole game, no refill
+    if (st.round === 1) st.memberPile = shuffleSt(st, data.MEMBER_DECK.slice());
     st.discard = [];
     st.players.forEach(function (p) {
-      p.hand = []; p.played = []; p.members = []; p.skip = false;
+      p.hand = []; p.played = []; p.membersRound = []; p.skip = false;
       p.roundScore = 0; p.toast = false;
     });
     st.players.forEach(function (p) {
@@ -80,7 +84,7 @@
       st.drawPile.unshift(c);
     }
     st.turn = firstPlayer % st.players.length;
-    st.phase = 'draw'; st.specialUsed = false; st.newMeldThisTurn = false; st.courted = false;
+    st.phase = 'draw'; st.specialUsed = false; st.meldedThisTurn = false; st.courted = false;
     st.refills = 0; st.turnsThisRound = 0; st.tookFromDiscard = null;
     log(st, '— Round ' + st.round + ' — ' + st.players[st.turn].name + ' leads off');
   }
@@ -248,7 +252,8 @@
       st.melds.forEach(function (m) {
         m.cards.forEach(function (e) { if (e.by === p.i) melded++; });
       });
-      var memberPts = p.members.reduce(function (n, id) { return n + CARDS[id].pts; }, 0);
+      // members score their points once, in the round they were courted
+      var memberPts = p.membersRound.reduce(function (n, id) { return n + CARDS[id].pts; }, 0);
       var handPenalty = p.hand.reduce(function (n, id) {
         return n - (CARDS[id].kind === 'special' ? 2 : 1);
       }, 0);
@@ -424,7 +429,7 @@
         cards: a.cards.slice().sort(function (x, y) { return CARDS[x].rank - CARDS[y].rank; })
           .map(function (id) { return { card: id, by: p.i }; })
       });
-      st.newMeldThisTurn = true;
+      st.meldedThisTurn = true;
       log(st, p.name + ' melds a ' + type + ': ' +
         a.cards.map(function (id) { return CARDS[id].letter + '·' + CARDS[id].name; }).join(', '));
       checkOut(st);
@@ -437,6 +442,7 @@
       if (!m) throw new Error('no such meld');
       if (!canExtend(m, a.card)) throw new Error('cannot extend');
       removeFromHand(p, a.card);
+      st.meldedThisTurn = true; // extending a meld also earns a Membership Drive
       m.cards.push({ card: a.card, by: p.i });
       m.cards.sort(function (x, y) { return CARDS[x.card].rank - CARDS[y.card].rank; });
       log(st, p.name + ' adds ' + CARDS[a.card].name + ' to a ' + m.type);
@@ -445,13 +451,14 @@
 
     court: function (st) {
       requirePhase(st, 'main');
-      if (!st.newMeldThisTurn) throw new Error('meld a new set or run first');
+      if (!st.meldedThisTurn) throw new Error('meld a new set or run first');
       if (st.courted) throw new Error('one member per turn');
       if (!st.memberPile.length) throw new Error('member deck empty');
       var p = cur(st);
       st.courted = true;
       var id = st.memberPile.pop();
       p.members.push(id);
+      p.membersRound.push(id);
       p.supporters++;
       var c = CARDS[id];
       log(st, p.name + ' courts ' + c.name + ' (' + (c.pts >= 0 ? '+' : '') + c.pts +
@@ -607,7 +614,7 @@
       return;
     }
     st.turn = leftOf(st, st.turn);
-    st.phase = 'draw'; st.specialUsed = false; st.newMeldThisTurn = false; st.courted = false;
+    st.phase = 'draw'; st.specialUsed = false; st.meldedThisTurn = false; st.courted = false;
     st.tookFromDiscard = null;
     var p = cur(st);
     if (p.skip) {
