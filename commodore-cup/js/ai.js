@@ -107,9 +107,10 @@
         return { t: 'resolve', keep: keep };
       }
       case 'passAll': {
-        // find my seat needing a choice
+        // pick for the first seat still owing a card (the UI only asks the
+        // brain when the choice is an AI's; headless drivers use it for any seat)
         for (var i = 0; i < st.players.length; i++) {
-          if (p.need[i] && p.chosen[i] === undefined && st.players[i].isAI) {
+          if (p.need[i] && p.chosen[i] === undefined) {
             return { t: 'resolve', player: i, card: worstCard(st, st.players[i].hand) };
           }
         }

@@ -481,8 +481,8 @@
     resolve: function (st, a) {
       var pend = st.pending;
       if (!pend) throw new Error('nothing pending');
-      resolvers[pend.type](st, pend, a);
-      if (st.pending === pend) st.pending = null;
+      var keep = resolvers[pend.type](st, pend, a); // truthy = still collecting input
+      if (!keep && st.pending === pend) st.pending = null;
       checkOut(st);
     }
   };
@@ -573,7 +573,7 @@
       var waiting = st.players.some(function (pl) {
         return pend.need[pl.i] && pend.chosen[pl.i] === undefined;
       });
-      if (waiting) { st.pending = pend; return; }
+      if (waiting) return true; // keep pending until every player has chosen
       st.players.forEach(function (pl) {
         var id = pend.chosen[pl.i];
         if (id !== undefined) removeFromHand(pl, id);

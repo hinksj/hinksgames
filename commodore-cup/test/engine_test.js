@@ -41,6 +41,38 @@ function conserved(st) {
   return club === 59 && mem === 25;
 }
 
+// ---- passAll regression: every player must choose, then cards rotate ----
+(function () {
+  var st = E.newGame({
+    seed: 42, target: 50,
+    names: [{ name: 'A', isAI: true }, { name: 'B', isAI: true }, { name: 'C', isAI: true }]
+  });
+  // put Private Party ("all pass one card to their left") in player 0's hand
+  var pp = 'sp-private-party';
+  st.players.forEach(function (p) {
+    var i = p.hand.indexOf(pp);
+    if (i >= 0) { p.hand.splice(i, 1); p.hand.push(st.drawPile.pop()); }
+  });
+  var di = st.drawPile.indexOf(pp);
+  if (di >= 0) st.drawPile.splice(di, 1); else st.discard = st.discard.filter(function (c) { return c !== pp; });
+  st.players[0].hand[0] = pp;
+  st.turn = 0; st.phase = 'main'; st.specialUsed = false; st.pending = null;
+  E.apply(st, { t: 'playSpecial', card: pp });
+  ok(st.pending && st.pending.type === 'passAll', 'passAll pending opens');
+  var gave = [];
+  for (var pi = 0; pi < 3; pi++) {
+    gave[pi] = st.players[pi].hand[0];
+    E.apply(st, { t: 'resolve', player: pi, card: gave[pi] });
+    if (pi < 2) ok(st.pending, 'pending persists until all have chosen (after player ' + pi + ')');
+  }
+  ok(!st.pending, 'passAll completes after last choice');
+  // pass left: player i's card goes to player i+1
+  ok(st.players[1].hand.indexOf(gave[0]) >= 0, "B received A's card");
+  ok(st.players[2].hand.indexOf(gave[1]) >= 0, "C received B's card");
+  ok(st.players[0].hand.indexOf(gave[2]) >= 0, "A received C's card");
+  ok(st.players[0].hand.indexOf(gave[0]) < 0, 'A no longer holds the card passed away');
+}());
+
 // ---- full games ----
 function playGame(nPlayers, seed) {
   var st = E.newGame({

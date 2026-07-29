@@ -218,6 +218,25 @@
           ui.sel = [];
         });
       }
+      // dragging a card from your hand onto a meld also plays it there
+      d.addEventListener('dragover', function (e) {
+        if (ui.drag && canAct && E.canExtend(m, ui.drag)) {
+          e.preventDefault();
+          d.classList.add('extendable');
+        }
+      });
+      d.addEventListener('dragleave', function () {
+        if (!extendable) d.classList.remove('extendable');
+      });
+      d.addEventListener('drop', function (e) {
+        e.preventDefault();
+        if (ui.drag && canAct && E.canExtend(m, ui.drag)) {
+          var c2 = ui.drag;
+          ui.drag = null;
+          ui.sel = [];
+          act({ t: 'extend', meldId: m.id, card: c2 });
+        }
+      });
       el.appendChild(d);
     });
     if (!st.melds.length) {
