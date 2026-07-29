@@ -920,13 +920,23 @@ W.Render = {
     };
   },
 
-  enemyAnchor(i) { return { x: 640 + i * 22, y: 92 + i * 122 }; },
+  enemyAnchor(i) {
+    const n = (W.Fleet.enemy || []).length || 3;
+    const gap = n > 3 ? 96 : 122;
+    return { x: 640 + i * 22, y: 226 - ((n - 1) / 2) * gap + i * gap };
+  },
+
+  playerStart(i) {
+    const n = (W.Fleet.ships || []).length || 3;
+    const gap = n > 3 ? 92 : 100;
+    return { x: 105, y: 218 - ((n - 1) / 2) * gap + i * gap };
+  },
 
   // every ship's ORDER draws her own route on the plan
   routeFor(i) {
     const F = W.Fleet;
     const s = F.ships[i];
-    const start = { x: 105, y: 115 + i * 100 };
+    const start = this.playerStart(i);
     const o = (s && s.order) || { tactic: 'engage', target: Math.min(i, 2) };
     const tgt = this.enemyAnchor(W.clamp(o.target | 0, 0, 2));
     switch (o.tactic) {
@@ -937,9 +947,9 @@ W.Render = {
           { x: tgt.x - 46, y: tgt.y + 4 }] };
       case 'range':
         return { dur: 3, pts: [start,
-          { x: 220, y: start.y + 10 },
-          { x: 300, y: start.y + 24 },
-          { x: 330, y: 110 + i * 108 }] };
+          { x: 220, y: start.y + 6 },
+          { x: 300, y: start.y + 14 },
+          { x: 330, y: start.y + 18 }] };
       case 'board':
         return { dur: 3, pts: [start,
           { x: 330, y: start.y },
@@ -972,7 +982,7 @@ W.Render = {
     const i = F.ships.indexOf(ship);
     if (i < 0) return null;
     if (F.phase === 'muster') {
-      const s = { x: 105, y: 115 + i * 100 };
+      const s = this.playerStart(i);
       return { x: s.x, y: s.y, h: 0 };
     }
     const r = this.routeFor(i);

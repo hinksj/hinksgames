@@ -19,6 +19,8 @@ const W = ctx.W;
 let crises = 0;
 function runBattle(setup) {
   W.Fleet.newSkirmish();
+  W.Fleet.campaign.stage = 3;  // measure doctrine spread on the mid-cruise line
+  W.Fleet.setupAction();
   setup();
   W.Fleet.begin();
   let t = 0;
@@ -87,4 +89,51 @@ console.log('mixed orders: OK');
 assert.ok(tally.victory > 0 && tally.defeat > 0, 'battles should be winnable AND losable');
 assert.ok(crises > 0, 'the flagship crisis never triggered');
 console.log(`total: ${tally.victory}W/${tally.defeat}L/${tally.withdraw}D across 42 actions, ${crises} crises`);
+
+// --- full cruises: prizes, refits, captains, hands, escalation ---
+const cruises = { made: 0, flagLost: 0 };
+let prizesTaken = 0, maxSquadron = 3;
+for (let run = 0; run < 8; run++) {
+  W.Fleet.startCampaign();
+  let guard = 0;
+  while (guard++ < 12) {
+    W.Fleet.applyPreset(W.pick(Object.keys(W.Fleet.PRESETS)));
+    W.Fleet.begin();
+    let t = 0;
+    while (!W.Fleet.result && t < 600) {
+      W.Fleet.tick(0.1);
+      if (W.Fleet.pendingCrisis) {
+        W.Fleet.startCrisis();
+        W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; });
+        W.Fleet.crisisTick(0.1);
+      }
+      t += 0.1;
+    }
+    const s = W.Fleet.summary;
+    assert.ok(s, 'cruise action had no summary');
+    if (s.flagLost) { cruises.flagLost++; break; }
+    if (s.win && s.finalStage) { cruises.made++; break; }
+    // a sensible commodore's refit, automated
+    W.Fleet.settleAction();
+    const c = W.Fleet.campaign;
+    while (s.prizeShips.length) {
+      const cls = s.prizeShips.shift();
+      if (W.Fleet.ships.length < 4 && c.captains.length && W.Fleet.takePrize(cls)) prizesTaken++;
+      else W.Fleet.sellPrize(cls);
+    }
+    maxSquadron = Math.max(maxSquadron, W.Fleet.ships.length);
+    if (c.lieutenantOffer && c.gold >= 60) W.Fleet.hireLieutenant();
+    while (c.gold >= 30 && c.hands < 60) W.Fleet.hireHands(10);
+    for (const sh of W.Fleet.ships) {
+      while (c.gold >= 10 && sh.hull < sh.hullMax) { if (!W.Fleet.repairShip(sh, 5)) break; }
+      while (c.hands > 0 && sh.hands < sh.complement) { if (!W.Fleet.moveHands(sh, 10)) break; }
+    }
+    W.Fleet.nextStage();
+  }
+  W.Fleet.close();
+}
+assert.ok(cruises.made + cruises.flagLost === 8, 'every cruise must end');
+assert.ok(prizesTaken > 0, 'no prize was ever taken into service');
+console.log(`cruises: ${cruises.made} made / ${cruises.flagLost} flag lost; ` +
+  `${prizesTaken} prizes taken into service; biggest squadron ${maxSquadron}`);
 console.log('\nFLEET SMOKE TEST PASSED');

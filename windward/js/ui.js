@@ -328,7 +328,7 @@ W.UI = {
       label: '⚓ Continue Voyage', fn: () => { this.closeModal(); W.Main.load(); },
     });
     buttons.push({
-      label: '⚔ Line of Battle — fleet skirmish (prototype)',
+      label: '⚔ Line of Battle — a commodore\'s cruise (prototype)',
       fn: () => { this.closeModal(); W.Fleet.newSkirmish(); this.openMuster(); },
     });
     buttons.push({ label: 'How to Play', fn: () => this.openHowto(() => this.openTitle()) });
@@ -822,7 +822,7 @@ W.UI = {
     const F = W.Fleet, R = W.Render;
     const sx = 0.3, sy = 0.3;
     let out = '';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < F.enemy.length; i++) {
       const a = R.enemyAnchor(i);
       out += `<circle cx="${a.x * sx}" cy="${a.y * sy}" r="7" fill="none" stroke="#a02418" stroke-width="1.5"/>` +
         `<text x="${a.x * sx}" y="${a.y * sy + 3.5}" font-size="9" text-anchor="middle" fill="#a02418">${i + 1}</text>`;
@@ -883,7 +883,7 @@ W.UI = {
       </div>`;
     const m = this.modal({
       wide: true,
-      title: '⚔ Line of Battle — Muster',
+      title: `⚔ Muster — Action ${W.Fleet.campaign ? W.Fleet.campaign.stage : 1} of ${W.Fleet.STAGES.length}`,
       body,
       buttons: [
         { label: '⚑ Engage the enemy', fn: () => { this.closeModal(); F.begin(); } },
@@ -925,6 +925,32 @@ W.UI = {
 
   openFleetEnd() {
     const s = W.Fleet.summary;
+    if (s.flagLost) {
+      this.modal({
+        title: 'The Squadron Is Lost',
+        body: `<p>The last of your ships is taken or gone under, at action ${s.stage} of
+          ${W.Fleet.STAGES.length}. The Admiralty will write letters. The sea will not read them.</p>`,
+        buttons: [
+          { label: 'Begin a new cruise', fn: () => { this.closeModal(); W.Fleet.startCampaign(); this.openMuster(); } },
+          { label: 'Back to the title', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
+        ],
+      });
+      return;
+    }
+    if (s.win && s.finalStage) {
+      this.modal({
+        title: '⚑ The Cruise Is Made',
+        body: `<p>Five actions, and the last of them against a ship of the line — beaten.
+          You bring ${s.remaining} ship${s.remaining === 1 ? '' : 's'} home with prize-flags
+          flying, and the Gazette will make a legend of it.</p>
+          <p class="goldnote">Final purse: ⚜ ${W.Fleet.campaign.gold + s.gold}</p>`,
+        buttons: [
+          { label: 'Begin a new cruise', fn: () => { this.closeModal(); W.Fleet.startCampaign(); this.openMuster(); } },
+          { label: 'Back to the title', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
+        ],
+      });
+      return;
+    }
     this.modal({
       title: s.win ? '⚑ The Enemy Line Is Broken'
         : (s.withdraw ? 'Off in Good Order' : 'The Action Is Lost'),
@@ -938,13 +964,107 @@ W.UI = {
           : `After ${s.rounds} rounds, the action is lost. You bring ${s.remaining}
              ship${s.remaining === 1 ? '' : 's'} out of it.`)}</p>
         ${s.win ? `<p class="goldnote">Prize money: ⚜ ${s.gold} (not yet banked — prototype)</p>` : ''}
-        <p class="sub">Line of Battle is a prototype: doctrine, line order, captains, morale,
-        strikes, prizes, and one crisis. The campaign wrapper comes next.</p>`,
+        <p>${s.casualties ? `The butcher's bill: ${s.casualties} hands.` : ''}</p>`,
       buttons: [
-        { label: 'Fight another action', fn: () => { this.closeModal(); W.Fleet.newSkirmish(); this.openMuster(); } },
-        { label: 'Back to the title', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
+        { label: 'To the refit', fn: () => this.openRefit() },
       ],
     });
+  },
+
+  // between actions: repairs, prize decisions, captains, and the muster of hands
+  openRefit() {
+    const F = W.Fleet, c = F.campaign, s = F.summary;
+    if (s && !s.settled) F.settleAction();
+    const capNames = () => c.captains.map(x => x.name).join(', ') || 'none';
+    let body = `<p class="goldnote">⚜ ${c.gold} in the purse · ${c.hands} hands in the pool ·
+      captains ashore: ${capNames()}</p>`;
+    if (s && s.prizeShips && s.prizeShips.length) {
+      body += '<h4>PRIZES TAKEN</h4>';
+      s.prizeShips.forEach((cls, i) => {
+        const canTake = F.ships.length < 4 && c.captains.length > 0;
+        body += `<div class="storerow"><b>${F.CLASSES[cls].name}</b>
+          <span class="sdesc">Take her into service (needs a captain ashore and a prize crew from
+          the pool) or send her in for ⚜ ${F.PRIZE_VALUE[cls]}.</span>
+          <button data-take="${i}" ${canTake ? '' : 'disabled'}>Take into service</button>
+          <button data-sell="${i}">Send her in</button></div>`;
+      });
+    }
+    body += '<h4>THE SQUADRON</h4>';
+    F.ships.forEach((sh, i) => {
+      const allCapts = [sh.captain.name]
+        .concat(F.ships.filter(x => x !== sh).map(x => x.captain.name))
+        .concat(c.captains.map(x => x.name));
+      const capOpts = allCapts.map(n =>
+        `<option${n === sh.captain.name ? ' selected' : ''}>${n}</option>`).join('');
+      body += `<div class="storerow"><b>${sh.name}</b>
+        <span class="sdesc">${F.CLASSES[sh.cls].name} ·
+          hull ${sh.hull}/${sh.hullMax} ·
+          hands ${sh.hands}/${sh.complement}${sh.hands < sh.complement * 0.6 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
+          · Capt. <select data-capt="${i}">${capOpts}</select>
+          ${sh.captain.alive ? '' : ' †'}</span>
+        <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>repair +5 (⚜10)</button>
+        ${i > 0 ? `<button data-flag="${i}" title="Shift your flag — this ship becomes the flagship (and the one whose crises you fight by hand)">hoist flag here</button>` : ''}
+        <button data-hplus="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+10 hands</button>
+        <button data-hminus="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−10 hands</button></div>`;
+    });
+    body += `<h4>RECRUITING</h4>
+      <div class="storerow"><b>Muster hands</b><span class="sdesc">Volunteers and the press: ⚜3 a head.</span>
+        <button data-hire="10" ${c.gold < 30 ? 'disabled' : ''}>+10 hands (⚜30)</button></div>`;
+    if (c.lieutenantOffer) {
+      body += `<div class="storerow"><b>A passed-over lieutenant</b><span class="sdesc">Seeks a command.
+        Competent, hungry, ⚜60.</span>
+        <button data-lt="1" ${c.gold < 60 ? 'disabled' : ''}>Give him his step (⚜60)</button></div>`;
+    }
+    const m = this.modal({
+      wide: true,
+      title: `⚓ Refit — after Action ${c.stage} of ${F.STAGES.length}`,
+      sub: 'Ships, hands, and captains persist for the whole cruise. Spend well.',
+      body,
+      buttons: [
+        { label: `⚑ Put to sea — Action ${c.stage + 1}`, fn: () => { this.closeModal(); F.nextStage(); this.openMuster(); } },
+        { label: 'Abandon the cruise', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
+      ],
+      row: true,
+    });
+    m.querySelectorAll('[data-take]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.take;
+      if (F.takePrize(s.prizeShips[i])) s.prizeShips.splice(i, 1);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.sell;
+      F.sellPrize(s.prizeShips[i]);
+      s.prizeShips.splice(i, 1);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-rep]').forEach(b => b.addEventListener('click', () => {
+      F.repairShip(F.ships[+b.dataset.rep], 5);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-hplus]').forEach(b => b.addEventListener('click', () => {
+      F.moveHands(F.ships[+b.dataset.hplus], 10);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-hminus]').forEach(b => b.addEventListener('click', () => {
+      F.moveHands(F.ships[+b.dataset.hminus], -10);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-hire]').forEach(b => b.addEventListener('click', () => {
+      F.hireHands(+b.dataset.hire);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-lt]').forEach(b => b.addEventListener('click', () => {
+      F.hireLieutenant();
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-flag]').forEach(b => b.addEventListener('click', () => {
+      W.Fleet.hoistFlag(+b.dataset.flag);
+      this.openRefit();
+    }));
+    m.querySelectorAll('select[data-capt]').forEach(sel => sel.addEventListener('change', () => {
+      F.swapCaptain(+sel.dataset.capt, sel.value);
+      this.openRefit();
+    }));
   },
 
   openSurrender() {

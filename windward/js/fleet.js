@@ -17,11 +17,24 @@ W.Fleet = {
   result: null, summary: null,
 
   CLASSES: {
-    cutter:  { name: 'Cutter',  hull: 16, guns: 5,  art: 'cutter' },
-    sloop:   { name: 'Sloop',   hull: 22, guns: 7,  art: 'sloop' },
-    brig:    { name: 'Brig',    hull: 28, guns: 9,  art: 'brig' },
-    frigate: { name: 'Frigate', hull: 36, guns: 13, art: 'frigate' },
+    cutter:     { name: 'Cutter',        hull: 16, guns: 5,  art: 'cutter' },
+    sloop:      { name: 'Sloop',         hull: 22, guns: 7,  art: 'sloop' },
+    brig:       { name: 'Brig',          hull: 28, guns: 9,  art: 'brig' },
+    frigate:    { name: 'Frigate',       hull: 36, guns: 13, art: 'frigate' },
+    shipofline: { name: 'Ship of the Line', hull: 48, guns: 18, art: 'leviathan' },
   },
+
+  // the cruise: five actions, refit between each, prizes and losses persist
+  STAGES: [
+    ['cutter', 'cutter', 'brig'],
+    ['cutter', 'brig', 'brig'],
+    ['cutter', 'brig', 'frigate'],
+    ['brig', 'frigate', 'frigate'],
+    ['frigate', 'frigate', 'shipofline'],
+  ],
+  ENEMY_NAMES: ['Alarm', 'Vulture', 'Basilisk', 'Harpy', 'Cerberus', 'Gorgon',
+    'Spite', 'Tisiphone', 'Redoubt', 'Growler'],
+  campaign: null,
 
   TRAITS: {
     gunnery:   { name: 'Gunnery Master', desc: '+20% broadside weight.' },
@@ -55,11 +68,16 @@ W.Fleet = {
     },
   },
 
+  COMPLEMENTS: { cutter: 60, sloop: 80, brig: 110, frigate: 150, shipofline: 200 },
+  PRIZE_VALUE: { cutter: 40, sloop: 60, brig: 80, frigate: 120, shipofline: 200 },
+
   makeShip(cls, name, captName, trait, side) {
     const c = this.CLASSES[cls];
+    const comp = this.COMPLEMENTS[cls] || 100;
     return {
       cls, name, side,
       hull: c.hull, hullMax: c.hull, guns: c.guns,
+      complement: comp, hands: comp,
       morale: side === 'player' ? 70 : 64,
       struck: false, sunk: false, rakeDone: false,
       order: { tactic: 'engage', target: 0 },
@@ -67,24 +85,43 @@ W.Fleet = {
     };
   },
 
-  newSkirmish() {
+  newSkirmish() { this.startCampaign(); },
+
+  startCampaign() {
+    this.campaign = {
+      stage: 1, gold: 40, hands: 30,
+      // your first lieutenant waits ashore, ready to command the first prize
+      captains: [{ name: W.nameFor(), trait: W.pick(Object.keys(this.TRAITS)), alive: true }],
+      lieutenantOffer: false,
+    };
     this.ships = [
       this.makeShip('sloop', 'The Petrel (flag)', 'You', 'gunnery', 'player'),
       this.makeShip('brig', 'Salt Haven', W.nameFor(), 'ironsides', 'player'),
       this.makeShip('cutter', 'Wren', W.nameFor(), 'boarder', 'player'),
     ];
+    this.setupAction();
+  },
+
+  setupAction() {
+    const c = this.campaign;
     const traits = Object.keys(this.TRAITS);
-    this.enemy = [
-      this.makeShip('cutter', 'Alarm', W.nameFor(), W.pick(traits), 'enemy'),
-      this.makeShip('brig', 'Vulture', W.nameFor(), W.pick(traits), 'enemy'),
-      this.makeShip('frigate', 'Basilisk', W.nameFor(), W.pick(traits), 'enemy'),
-    ];
-    this.ships.forEach((s, i) => { s.order = { tactic: 'engage', target: Math.min(i, 2) }; });
+    const line = this.STAGES[Math.min(c.stage, this.STAGES.length) - 1];
+    let n = 0;
+    this.enemy = line.map(cls =>
+      this.makeShip(cls, this.ENEMY_NAMES[(c.stage * 3 + n++) % this.ENEMY_NAMES.length],
+        W.nameFor(), W.pick(traits), 'enemy'));
+    this.ships.forEach((s, i) => {
+      s.order = { tactic: 'engage', target: Math.min(i, this.enemy.length - 1) };
+      s.struck = false; s.sunk = false; s.rakeDone = false;
+      // spirit rises with a full, rested complement — and sags with a thin one
+      s.morale = Math.round(50 + 22 * (s.hands / s.complement));
+    });
     this.planName = null;
     this.round = 0; this.roundT = 0;
     this.log = [];
     this.signals = 2; this.pendingSignal = null; this.closerRounds = 0;
     this.crisisUsed = false; this.pendingCrisis = false; this.crisisModalShown = false;
+    this.flagShifted = false;
     this.result = null; this.summary = null;
     this.active = true;
     this.phase = 'muster';
@@ -220,9 +257,14 @@ W.Fleet = {
       return;
     }
 
-    if (!this.alive(this.ships).length || !this.alive(this.enemy).length ||
-        flag.struck || flag.sunk) {
+    // the action ends only when a whole line is out of it — if the flag falls
+    // and others still fly colors, the fight (and the cruise) goes on
+    if (!this.alive(this.ships).length || !this.alive(this.enemy).length) {
       this.finishBattle();
+    } else if ((flag.struck || flag.sunk) && !this.flagShifted) {
+      this.flagShifted = true;
+      const heir = this.alive(this.ships)[0];
+      this.say(`The flag comes down with the ${flag.name} — and rises again aboard ${heir.name}.`);
     }
   },
 
@@ -232,7 +274,10 @@ W.Fleet = {
     const victimTac = b.side === 'player' ? b.order.tactic : 'engage';
 
     let dmg = a.guns * W.rand(0.75, 1.25) * 0.42;
-    if (aIsMine) dmg *= 1.16; // drill tells
+    if (aIsMine) {
+      dmg *= 1.16; // drill tells
+      dmg *= 0.55 + 0.45 * W.clamp(a.hands / a.complement, 0, 1); // short-handed guns fire slow
+    }
     if (a.captain.trait === 'gunnery' && a.captain.alive) dmg *= 1.2;
     if (aIsMine && this.closerRounds > 0) dmg *= 1.18;
     if (this.gauge) dmg *= aIsMine ? 1.1 : 0.92;
@@ -360,23 +405,142 @@ W.Fleet = {
 
   finishBattle(kind) {
     if (this.result) return;
-    const flag = this.ships[0];
     const myAlive = this.alive(this.ships).length;
     const theirAlive = this.alive(this.enemy).length;
     const prizes = this.enemy.filter(s => s.struck).length;
-    const win = kind !== 'withdraw' && theirAlive === 0 && !flag.struck && !flag.sunk;
+    const win = kind !== 'withdraw' && theirAlive === 0 && myAlive > 0;
     this.result = win ? 'victory' : (kind === 'withdraw' ? 'withdraw' : 'defeat');
+    // the butcher's bill: surviving ships lose hands with the damage they took
+    let casualties = 0;
+    for (const s of this.ships) {
+      if (s.struck || s.sunk) continue;
+      const lost = Math.max(0, Math.round(s.complement * (1 - s.hull / s.hullMax) * 0.15 * W.rand(0.6, 1.2)));
+      const applied = Math.min(Math.max(0, s.hands - 10), lost);
+      casualties += applied;
+      s.hands -= applied;
+    }
     this.summary = {
       win, withdraw: kind === 'withdraw',
       rounds: this.round, prizes,
       lost: this.ships.filter(s => s.struck || s.sunk).length,
       remaining: myAlive,
-      gold: win ? 30 + prizes * 25 : 0,
+      casualties,
+      flagLost: myAlive === 0,
+      stage: this.campaign ? this.campaign.stage : 1,
+      finalStage: this.campaign ? this.campaign.stage >= this.STAGES.length : true,
+      prizeShips: win ? this.enemy.filter(s => s.struck).map(s => s.cls) : [],
+      gold: win ? 30 + prizes * 20 : 0,
     };
     this.say(win ? `The enemy line is broken. ${prizes} prize${prizes === 1 ? '' : 's'} taken.`
       : (kind === 'withdraw' ? 'You bring the squadron off intact enough to fight again.'
         : 'The action is lost.'));
     this.phase = 'done';
+  },
+
+  // called once from the refit screen after every action the flagship survives
+  settleAction() {
+    const c = this.campaign;
+    c.gold += this.summary.gold;
+    for (const s of this.ships) {
+      if (s.sunk && s.captain.alive && W.chance(0.4)) {
+        c.captains.push(s.captain);
+      }
+    }
+    const oldFlag = this.ships[0];
+    this.ships = this.ships.filter(s => !s.struck && !s.sunk);
+    if (this.ships.length && this.ships[0] !== oldFlag) {
+      this.say(`Your flag now flies aboard ${this.ships[0].name}.`);
+    }
+    c.lieutenantOffer = W.chance(0.45);
+    this.summary.settled = true;
+  },
+
+  takePrize(cls) {
+    const c = this.campaign;
+    if (this.ships.length >= 4 || !c.captains.length) return false;
+    const capt = c.captains.shift();
+    const ship = this.makeShip(cls, `Prize ${this.CLASSES[cls].name}`,
+      capt.name, capt.trait, 'player');
+    ship.captain = capt;
+    ship.hull = Math.round(ship.hullMax * 0.45);
+    ship.hands = 0; // she sails when you give her a prize crew
+    this.ships.push(ship);
+    return true;
+  },
+
+  sellPrize(cls) {
+    this.campaign.gold += this.PRIZE_VALUE[cls] || 50;
+  },
+
+  hireLieutenant() {
+    const c = this.campaign;
+    if (!c.lieutenantOffer || c.gold < 60) return false;
+    c.gold -= 60;
+    c.lieutenantOffer = false;
+    c.captains.push({ name: W.nameFor(), trait: W.pick(Object.keys(this.TRAITS)), alive: true });
+    return true;
+  },
+
+  repairShip(s, pts) {
+    const c = this.campaign;
+    pts = Math.min(pts, s.hullMax - s.hull, Math.floor(c.gold / 2));
+    if (pts <= 0) return false;
+    c.gold -= pts * 2;
+    s.hull += pts;
+    return true;
+  },
+
+  hireHands(n) {
+    const c = this.campaign;
+    const cost = n * 3;
+    if (c.gold < cost) return false;
+    c.gold -= cost;
+    c.hands += n;
+    return true;
+  },
+
+  moveHands(s, n) {
+    const c = this.campaign;
+    if (n > 0) {
+      n = Math.min(n, c.hands, s.complement - s.hands);
+      if (n <= 0) return false;
+      c.hands -= n; s.hands += n;
+    } else {
+      n = Math.min(-n, s.hands);
+      if (n <= 0) return false;
+      s.hands -= n; c.hands += n;
+    }
+    return true;
+  },
+
+  swapCaptain(shipIdx, captName) {
+    const c = this.campaign;
+    const ship = this.ships[shipIdx];
+    if (!ship) return;
+    const poolIdx = c.captains.findIndex(x => x.name === captName);
+    if (poolIdx >= 0) {
+      const incoming = c.captains.splice(poolIdx, 1)[0];
+      if (ship.captain && ship.captain.alive) c.captains.push(ship.captain);
+      ship.captain = incoming;
+      return;
+    }
+    const other = this.ships.find(s => s !== ship && s.captain.name === captName);
+    if (other) {
+      const tmp = ship.captain;
+      ship.captain = other.captain;
+      other.captain = tmp;
+    }
+  },
+
+  hoistFlag(i) {
+    if (i > 0 && this.ships[i]) {
+      [this.ships[0], this.ships[i]] = [this.ships[i], this.ships[0]];
+    }
+  },
+
+  nextStage() {
+    this.campaign.stage++;
+    this.setupAction();
   },
 
   close() {
