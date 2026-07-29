@@ -123,9 +123,11 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
   background: linear-gradient(180deg, transparent, #140a04 24%);
   padding: 22px 14px 10px; z-index: 20; }
 #myBar { max-width: 1220px; margin: 0 auto; }
-#prompt { text-align: center; margin-bottom: 6px; min-height: 30px; }
-#prompt .msg { color: var(--gold); }
-#prompt button { margin-left: 8px; }
+#prompt { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 8px; width: fit-content; max-width: 100%; margin: 0 auto 8px; min-height: 30px; }
+#prompt:not(:empty) { background: var(--panel); border: 1px solid var(--panel-line);
+  border-radius: 12px; padding: 8px 16px; box-shadow: 0 6px 24px #000c; }
+#prompt .msg { color: var(--gold); font-size: 16px; }
 #barRow { display: flex; align-items: center; gap: 6px; justify-content: center;
   min-height: 66px; margin-bottom: 4px; flex-wrap: wrap; }
 #barRow .barLabel { color: var(--dim); font-size: 13px; }

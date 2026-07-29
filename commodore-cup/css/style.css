@@ -132,9 +132,11 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 #myArea { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, transparent, #0e0322 26%);
   padding: 26px 14px 10px; z-index: 20; }
 #myBar { max-width: 1180px; margin: 0 auto; }
-#prompt { text-align: center; margin-bottom: 6px; min-height: 30px; }
-#prompt .msg { color: var(--gold); }
-#prompt button { margin-left: 8px; }
+#prompt { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 8px; width: fit-content; max-width: 100%; margin: 0 auto 8px; min-height: 30px; }
+#prompt:not(:empty) { background: var(--panel); border: 1px solid var(--panel-line);
+  border-radius: 12px; padding: 8px 16px; box-shadow: 0 6px 24px #000c; }
+#prompt .msg { color: var(--gold); font-size: 16px; }
 #handRow { display: flex; justify-content: center; align-items: flex-end; isolation: isolate; }
 .hcard { position: relative; transition: transform 0.12s; cursor: pointer; margin-left: -52px; }
 .hcard:first-child { margin-left: 0; }
