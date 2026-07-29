@@ -1,0 +1,155 @@
+// TIKI TEMPEST — menu, lobby and mode wiring.
+(function (G) {
+  'use strict';
+  var E = G.engine, ui = G.ui, net = G.net;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var BOT_NAMES = ['Kona Kai', 'Trader Vic', 'Hula Lou', 'Don the Beachcomber',
+    'Mai Tai Mabel', 'Coco Loco'];
+  function botNames(n) {
+    var pool = BOT_NAMES.slice(), out = [];
+    for (var i = 0; i < n; i++) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    return out;
+  }
+  function myName() { return ($('mName').value || 'Bartender').trim().slice(0, 16); }
+  function err(msg) { $('mErr').textContent = msg || ''; }
+
+  $('btnSolo').addEventListener('click', function () {
+    var bots = parseInt($('mBots').value, 10);
+    var names = [{ name: myName(), isAI: false }].concat(
+      botNames(bots).map(function (n) { return { name: n, isAI: true }; }));
+    var st = E.newGame({ names: names, rounds: parseInt($('mRounds').value, 10) });
+    ui.begin(st, 0, {});
+  });
+
+  // ---------- host ----------
+  var lobby = { guests: [] };
+  $('btnHost').addEventListener('click', function () {
+    err('');
+    var room = net.cleanRoom($('mRoom').value) || net.randomRoom();
+    $('btnHost').disabled = true;
+    net.host(room, function (e) {
+      $('btnHost').disabled = false;
+      if (e) { err(e); return; }
+      openLobby(room);
+    });
+  });
+
+  function openLobby(room) {
+    var modal = $('modal'), box = $('modalBox');
+    lobby.guests = [];
+    function draw() {
+      var list = '<li>' + escName(myName()) + ' (host)</li>' + lobby.guests.map(function (g) {
+        return '<li>' + escName(g.name) + '</li>';
+      }).join('');
+      box.innerHTML = '<h3>Bar ' + room + '</h3>' +
+        '<div class="sub">friends open this page and join with code <b style="color:var(--gold)">' +
+        room + '</b><br>(' + (1 + lobby.guests.length) + '/5 stools taken)</div>' +
+        '<ul style="list-style:none;line-height:1.9">' + list + '</ul>' +
+        '<label style="color:var(--dim)">Fill empty stools with AI rivals: ' +
+        '<select id="lBots"><option>0</option><option selected>1</option><option>2</option><option>3</option></select>' +
+        '</label><br><br>' +
+        '<button class="gold" id="lStart">Open the bar</button> ' +
+        '<button class="ghost" onclick="location.reload()">Cancel</button>';
+      $('lStart').addEventListener('click', function () { startHosted(room); });
+      modal.className = 'open';
+    }
+    net.onEvent = function (kind, conn, msg) {
+      if (kind === 'data' && msg && msg.type === 'hello') {
+        if (lobby.started || lobby.guests.length >= 4) { net.sendTo(conn, { type: 'full' }); return; }
+        lobby.guests.push({ conn: conn, name: String(msg.name || 'Guest').slice(0, 16) });
+        net.sendTo(conn, { type: 'hello-wait' });
+        draw();
+      } else if (kind === 'leave') {
+        if (!lobby.started) {
+          lobby.guests = lobby.guests.filter(function (g) { return g.conn !== conn; });
+          draw();
+        } else {
+          var seat = net.seatOf.get(conn);
+          if (seat !== undefined && ui.st && !ui.st.players[seat].isAI) {
+            ui.st.players[seat].isAI = true;
+            ui.st.log.push(ui.st.players[seat].name + ' wanders off — an AI takes the shaker.');
+            broadcast();
+            ui.pumpNow();
+          }
+        }
+      } else if (kind === 'data' && msg && msg.type === 'action') {
+        var seat2 = net.seatOf.get(conn);
+        if (seat2 === undefined || !validFrom(seat2, msg.action)) return;
+        var e2 = ui.applyRemote(msg.action);
+        if (e2) net.sendTo(conn, { type: 'err', msg: e2 });
+        else broadcast();
+      }
+    };
+    draw();
+  }
+
+  function validFrom(seat, action) {
+    var st = ui.st;
+    if (!st || !action) return false;
+    if (action.t === 'nextRound') return false;
+    if (st.pending && st.pending.type === 'passAll') {
+      return action.t === 'resolve' && action.player === seat;
+    }
+    return E.actor(st) === seat;
+  }
+
+  function startHosted(room) {
+    lobby.started = true;
+    var nBots = Math.min(parseInt($('lBots').value, 10), 5 - 1 - lobby.guests.length);
+    var names = [{ name: myName(), isAI: false }];
+    lobby.guests.forEach(function (g) { names.push({ name: g.name, isAI: false }); });
+    botNames(Math.max(0, nBots)).forEach(function (n) { names.push({ name: n, isAI: true }); });
+    if (names.length < 2) { ui.toast('Need at least one guest or AI rival.'); lobby.started = false; return; }
+    var st = E.newGame({ names: names, rounds: parseInt($('mRounds').value, 10) });
+    lobby.guests.forEach(function (g, i) {
+      net.seatOf.set(g.conn, i + 1);
+      net.sendTo(g.conn, { type: 'start', seat: i + 1, room: room, state: st });
+    });
+    $('modal').className = '';
+    ui.begin(st, 0, { room: room, onLocalAction: broadcast });
+  }
+  function broadcast() { net.broadcast({ type: 'state', state: ui.st }); }
+
+  // ---------- join ----------
+  $('btnJoin').addEventListener('click', function () {
+    err('');
+    var room = net.cleanRoom($('mRoom').value);
+    if (!room) { err('Enter the room code the host gave you.'); return; }
+    $('btnJoin').disabled = true;
+    err('Paddling out…');
+    net.join(room, myName(), {
+      error: function (m) { $('btnJoin').disabled = false; err(m); },
+      data: function (msg) {
+        if (msg.type === 'start') {
+          err('');
+          ui.begin(msg.state, msg.seat, {
+            guest: true, room: msg.room,
+            send: function (action) { net.send({ type: 'action', action: action }); }
+          });
+        } else if (msg.type === 'state') {
+          if (G.ui.st) ui.setState(msg.state);
+        } else if (msg.type === 'err') {
+          ui.toast(msg.msg);
+        } else if (msg.type === 'full') {
+          $('btnJoin').disabled = false; err('That bar is full or already pouring.');
+        } else if (msg.type === 'hello-wait') {
+          err('On a stool — waiting for the host to open the bar…');
+        }
+      }
+    });
+  });
+
+  // ---------- misc ----------
+  function drawSoundBtn() {
+    $('btnSound').textContent = (G.sound && G.sound.isMuted()) ? '🔇' : '🔊';
+  }
+  $('btnSound').addEventListener('click', function () {
+    if (G.sound) G.sound.toggle();
+    drawSoundBtn();
+  });
+  drawSoundBtn();
+  $('btnRules').addEventListener('click', function () { window.open('RULES.md', '_blank'); });
+  $('btnQuit').addEventListener('click', function () { location.reload(); });
+  function escName(s) { return String(s).replace(/[<>&]/g, ''); }
+}(window.TT = window.TT || {}));

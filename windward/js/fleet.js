@@ -78,7 +78,8 @@ W.Fleet = {
       cls, name, side,
       hull: c.hull, hullMax: c.hull, guns: c.guns,
       complement: comp, hands: comp,
-      morale: side === 'player' ? 70 : 64,
+      morale: side === 'player' ? 70
+        : ({ cutter: 56, sloop: 60, brig: 63, frigate: 68, shipofline: 72 }[cls] || 64),
       struck: false, sunk: false, rakeDone: false,
       order: { tactic: 'engage', target: 0 },
       captain: { name: captName, trait, alive: true },
@@ -179,6 +180,40 @@ W.Fleet = {
       this.roundT = 0;
       this.resolveRound();
     }
+  },
+
+  // steady-state broadside estimate — the number the muster reasons with
+  throwWeight(ship, tactic) {
+    let w = ship.guns * 0.42;
+    if (ship.side === 'player') {
+      w *= 1.16 * (0.55 + 0.45 * W.clamp(ship.hands / ship.complement, 0, 1));
+    }
+    if (ship.captain && ship.captain.trait === 'gunnery' && ship.captain.alive) w *= 1.2;
+    const out = { engage: 1, cut: 1.05, range: 0.6, board: 1.1, screen: 0.7 };
+    if (tactic && ship.side === 'player') w *= out[tactic] || 1;
+    return w;
+  },
+
+  matchup(myShip) {
+    const foe = this.enemy[myShip.order.target];
+    if (!foe) return null;
+    const mine = this.throwWeight(myShip, myShip.order.tactic);
+    const hers = this.throwWeight(foe, 'engage');
+    const r = mine / Math.max(0.01, hers);
+    let verdict;
+    if (r >= 1.35) verdict = 'you have her badly outgunned';
+    else if (r >= 1.0) verdict = 'a fair match of weight';
+    else if (r >= 0.72) verdict = 'she outguns you';
+    else verdict = 'she outguns you badly — do not trade broadsides';
+    const hints = {
+      engage: '',
+      cut: 'Two rounds of fire on the way in, then the rake. Best against the heavy and slow.',
+      range: 'Safe early — but she will have closed the distance by the fifth round.',
+      board: foe.morale <= 60 ? 'Her crew is green; a boarding may carry her early.'
+        : 'Her crew is steady; boarding will be bloody work.',
+      screen: 'She gives up her own gunnery to take fire meant for the flag.',
+    };
+    return { mine, hers, verdict, hint: hints[myShip.order.tactic] || '' };
   },
 
   // a live target for a ship whose ordered opponent is already out of it

@@ -1,0 +1,540 @@
+// TIKI TEMPEST — table renderer + interaction. Same architecture as
+// commodore-cup: drives the engine locally (solo/host) or mirrors a host (guest).
+(function (G) {
+  'use strict';
+  var E = G.engine, data = G.data, CARDS = data.CARDS;
+  var $ = function (id) { return document.getElementById(id); };
+  var SEAT_COLORS = ['#ffcf5c', '#4fd8c4', '#ff8c42', '#8dff9e', '#c39bff', '#ff6b6b'];
+
+  var ui = {
+    st: null, mySeat: 0, isGuest: false, roomCode: '',
+    send: null, onLocalAction: null,
+    sel: null, handOrder: [], drag: null, pinned: null,
+    serveChoice: null,
+    pumping: false, logLen: 0
+  };
+
+  ui.begin = function (st, mySeat, opts) {
+    ui.st = st; ui.mySeat = mySeat;
+    ui.isGuest = !!(opts && opts.guest);
+    ui.send = (opts && opts.send) || null;
+    ui.onLocalAction = (opts && opts.onLocalAction) || null;
+    ui.roomCode = (opts && opts.room) || '';
+    ui.sel = null; ui.logLen = 0; ui.handOrder = [];
+    $('menu').style.display = 'none';
+    $('table').style.display = 'block';
+    $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
+    bindZoom();
+    render();
+    pump();
+  };
+  ui.setState = function (st) {
+    ui.st = st;
+    if (ui.sel && myHand().indexOf(ui.sel) < 0) ui.sel = null;
+    render();
+  };
+
+  // ---------- zoom ----------
+  var zoomEl = null;
+  function showZoom(src, side) {
+    if (!zoomEl) return;
+    zoomEl.innerHTML = '<img src="' + src + '">';
+    zoomEl.className = 'show ' + side;
+  }
+  function hideZoom() { if (zoomEl) zoomEl.className = ''; }
+  function bindZoom() {
+    if (bindZoom.done) return;
+    bindZoom.done = true;
+    zoomEl = document.createElement('div');
+    zoomEl.id = 'zoom';
+    document.body.appendChild(zoomEl);
+    document.addEventListener('mouseover', function (e) {
+      if (ui.drag) return;
+      var t = e.target;
+      if (!t || t.tagName !== 'IMG') return;
+      var src = t.getAttribute('src') || '';
+      if (src.indexOf('assets/cards/') !== 0 || src.indexOf('back-') >= 0) return;
+      showZoom(src, e.clientX > window.innerWidth / 2 ? 'left' : 'right');
+    });
+    document.addEventListener('mouseout', function (e) {
+      if (e.target && e.target.tagName === 'IMG') {
+        if (ui.pinned) showZoom(ui.pinned, 'right'); else hideZoom();
+      }
+    });
+  }
+
+  // ---------- act / pump ----------
+  function act(action) {
+    if (ui.isGuest) { ui.send(action); return; }
+    try {
+      E.apply(ui.st, action);
+    } catch (e) { toast(e.message); return; }
+    if (ui.sel && myHand().indexOf(ui.sel) < 0) { ui.sel = null; ui.pinned = null; hideZoom(); }
+    if (ui.onLocalAction) ui.onLocalAction();
+    render();
+    pump();
+  }
+  ui.act = act;
+  ui.applyRemote = function (action) {
+    try { E.apply(ui.st, action); } catch (e) { return String(e.message); }
+    if (ui.onLocalAction) ui.onLocalAction();
+    render();
+    pump();
+    return null;
+  };
+  function needsHuman(st) {
+    if (st.phase === 'roundEnd' || st.phase === 'gameEnd') return true;
+    if (st.pending && st.pending.type === 'passAll') {
+      for (var i = 0; i < st.players.length; i++) {
+        if (st.pending.need[i] && st.pending.chosen[i] === undefined && !st.players[i].isAI) return true;
+      }
+      return false;
+    }
+    return !st.players[E.actor(st)].isAI;
+  }
+  function pump() {
+    if (ui.isGuest || ui.pumping) return;
+    var st = ui.st;
+    if (st.phase === 'gameEnd') { render(); return; }
+    if (needsHuman(st)) return;
+    ui.pumping = true;
+    setTimeout(function () {
+      ui.pumping = false;
+      var a = G.ai.decide(st);
+      if (a) act(a);
+    }, st.pending ? 350 : 550);
+  }
+  ui.pumpNow = function () { render(); pump(); };
+
+  // ---------- helpers ----------
+  function myHand() { return ui.st.players[ui.mySeat].hand; }
+  function me() { return ui.st.players[ui.mySeat]; }
+  function isMyTurn() { return ui.st.turn === ui.mySeat && !ui.st.pending; }
+  function sfx(name) { if (G.sound) G.sound.play(name); }
+
+  // ---------- render ----------
+  function render() {
+    var st = ui.st;
+    if (st.turn === ui.mySeat && st.phase === 'draw' && ui.lastTurnKey !== st.round + ':' + st.turnsThisRound) {
+      ui.lastTurnKey = st.round + ':' + st.turnsThisRound;
+      sfx('turn');
+    }
+    var turnsLeft = Math.max(0, data.TURNS_PER_ROUND * st.players.length - st.turnsThisRound);
+    $('tRound').textContent = 'round ' + st.round + '/' + (st.finalRound ? st.round : st.rounds) +
+      ' · ' + turnsLeft + ' turns till closing' + (st.finalRound ? ' · LAST CALL' : '');
+    renderOpponents(st);
+    renderPiles(st);
+    renderMenu(st);
+    renderLog(st);
+    if (!ui.drag) renderHand(st);
+    renderPrompt(st);
+    renderModal(st);
+  }
+
+  function renderOpponents(st) {
+    var row = $('oppRow');
+    row.innerHTML = '';
+    var seagullMine = st.pending && st.pending.type === 'seagull' && st.pending.by === ui.mySeat;
+    st.players.forEach(function (p) {
+      var d = document.createElement('div');
+      d.className = 'opp' + (st.turn === p.i && st.phase !== 'roundEnd' && st.phase !== 'gameEnd' ? ' active' : '');
+      var fan = '';
+      for (var k = 0; k < Math.min(p.hand.length, 12); k++) fan += '<img src="' + data.BACK_MAIN + '" alt="">';
+      var barImgs = p.bar.map(function (id) {
+        var stealable = seagullMine && !p.umbrella;
+        return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + '"' +
+          (stealable ? ' class="steal" data-p="' + p.i + '" data-c="' + id + '"' : '') + '>';
+      }).join('');
+      var servedImgs = p.served.map(function (e) {
+        return '<img src="' + CARDS[e.card].art + '" title="' + esc(CARDS[e.card].name + ' — ' + e.pts + ' pts') + '">';
+      }).join('');
+      d.innerHTML =
+        '<div class="nm"><span class="seatdot" style="background:' + SEAT_COLORS[p.i % 6] + '"></span>' +
+        esc(p.name) + (p.i === ui.mySeat ? ' <span class="you">(you)</span>' : '') +
+        (p.umbrella ? ' <span class="umb" title="Bar protected by Paper Umbrella">☂️</span>' : '') + '</div>' +
+        '<div class="backfan" title="' + p.hand.length + ' cards in hand">' + fan + '</div>' +
+        '<div class="meta">' + p.score + ' pts · 🍺' + p.beers.length + ' · ' + p.servedTotal + ' served</div>' +
+        '<div class="zone"><span class="zlabel">bar</span>' + (barImgs || '—') + '</div>' +
+        '<div class="zone"><span class="zlabel">served</span>' + (servedImgs || '—') + '</div>';
+      row.appendChild(d);
+    });
+    if (seagullMine) {
+      row.querySelectorAll('img.steal').forEach(function (img) {
+        img.addEventListener('click', function () {
+          act({ t: 'resolve', player: parseInt(img.dataset.p, 10), card: img.dataset.c });
+        });
+      });
+    }
+  }
+
+  function renderPiles(st) {
+    var el = $('piles');
+    el.innerHTML = '';
+    var canDraw = isMyTurn() && st.phase === 'draw';
+    el.appendChild(pile('Draw 2', data.BACK_MAIN, st.deck.length, canDraw, function () {
+      act({ t: 'draw' });
+    }));
+    var top = st.discard[st.discard.length - 1];
+    el.appendChild(pile('Discard', top ? CARDS[top].art : null, st.discard.length, false, null));
+    el.appendChild(pile('Recipes', data.BACK_RECIPE, st.recipeDeck.length, false, null));
+  }
+  function pile(label, art, count, clickable, onclick) {
+    var d = document.createElement('div');
+    d.className = 'pile' + (clickable ? ' clickable' : '');
+    var img = art ? '<img src="' + art + '">' : '<div class="cardimg" style="background:#0006"></div>';
+    d.innerHTML = '<div class="stack">' + img + '<span class="count">' + count + '</span></div>' + label;
+    if (clickable && onclick) d.querySelector('.stack').addEventListener('click', onclick);
+    return d;
+  }
+
+  function renderMenu(st) {
+    var el = $('menuCards');
+    el.innerHTML = '';
+    var canAct = isMyTurn() && st.phase === 'main';
+    st.menu.forEach(function (recId) {
+      var d = document.createElement('div');
+      var servable = canAct && E.canServe(st, me(), recId);
+      d.className = 'mrec' + (servable ? ' servable' : '');
+      d.innerHTML = '<img src="' + CARDS[recId].art + '" title="' +
+        esc(CARDS[recId].name + ' — ' + CARDS[recId].pts + ' pts') + '">';
+      if (servable) {
+        d.title = 'Serve ' + CARDS[recId].name + '!';
+        d.addEventListener('click', function () { wantServe(recId); });
+      }
+      el.appendChild(d);
+    });
+    if (!st.menu.length) el.innerHTML = '<div style="color:#8a5a34;margin:auto">the menu is drunk dry</div>';
+  }
+
+  function wantServe(recId) {
+    var hasDouble = myHand().some(function (id) { return CARDS[id].fx === 'double'; });
+    if (!hasDouble) { act({ t: 'serve', recipe: recId }); return; }
+    ui.serveChoice = recId;
+    render();
+  }
+
+  function renderLog(st) {
+    var el = $('log');
+    if (ui.logLen > st.log.length) { el.innerHTML = ''; ui.logLen = 0; }
+    for (var i = ui.logLen; i < st.log.length; i++) {
+      var d = document.createElement('div');
+      var line = st.log[i];
+      if (line.indexOf(me().name) === 0) d.className = 'me';
+      d.textContent = line;
+      el.appendChild(d);
+      if (line.indexOf(me().name) >= 0 && st.turn !== ui.mySeat && line.indexOf('— Round') !== 0) {
+        toast('⚠️ ' + line, 5000);
+        sfx('alert');
+      } else {
+        var s = soundForLine(line);
+        if (s) sfx(s);
+      }
+    }
+    ui.logLen = st.log.length;
+    el.scrollTop = el.scrollHeight;
+  }
+  function soundForLine(line) {
+    if (line.indexOf('Master Mixologist') >= 0) return 'fanfare';
+    if (line.indexOf('STORM SURGE') >= 0) return 'bad';
+    if (line.indexOf('LAST CALL') >= 0) return 'round';
+    if (line.indexOf('— Round') === 0) return 'round';
+    if (line.indexOf(' serves a ') >= 0) return 'good';
+    if (line.indexOf(' plays ') >= 0) return 'special';
+    if (line.indexOf(' shelves a beer') >= 0) return 'discard';
+    if (line.indexOf(' stocks ') >= 0) return 'pluck';
+    if (line.indexOf(' draws ') >= 0 || line.indexOf('draws 2') >= 0) return 'draw';
+    return null;
+  }
+
+  // ---------- hand ----------
+  function orderedHand() {
+    var hand = myHand();
+    var order = ui.handOrder.filter(function (id) { return hand.indexOf(id) >= 0; });
+    hand.forEach(function (id) { if (order.indexOf(id) < 0) order.push(id); });
+    ui.handOrder = order;
+    return order;
+  }
+  var KIND_ORDER = { ing: 0, beer: 1, special: 2 };
+  function sortHand() {
+    ui.handOrder = orderedHand().slice().sort(function (a, b) {
+      var ca = CARDS[a], cb = CARDS[b];
+      if (ca.kind !== cb.kind) return KIND_ORDER[ca.kind] - KIND_ORDER[cb.kind];
+      return ca.name < cb.name ? -1 : 1;
+    });
+    render();
+  }
+
+  function handChooseMode(st) {
+    var pend = st.pending;
+    if (pend && pend.type === 'passAll' && pend.need[ui.mySeat] && pend.chosen[ui.mySeat] === undefined) return pend;
+    return null;
+  }
+
+  function renderHand(st) {
+    var el = $('handRow');
+    el.innerHTML = '';
+    var hand = orderedHand();
+    var chooseMode = handChooseMode(st);
+    var now = Date.now();
+    ui.newCards = ui.newCards || {};
+    if (ui.knownHand) {
+      hand.forEach(function (id) { if (ui.knownHand.indexOf(id) < 0) ui.newCards[id] = now; });
+    }
+    ui.knownHand = hand.slice();
+    hand.forEach(function (id, idx) {
+      var c = CARDS[id];
+      var d = document.createElement('div');
+      var fresh = ui.newCards[id] && now - ui.newCards[id] < 3500;
+      d.className = 'hcard' + (ui.sel === id ? ' sel' : '') + (fresh ? ' fresh' : '');
+      d.style.zIndex = String(200 - idx);
+      d.innerHTML = '<img draggable="false" src="' + c.art + '" title="' +
+        esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
+      d.addEventListener('click', function () { onHandClick(st, id, chooseMode); });
+      d.draggable = true;
+      d.addEventListener('dragstart', function (e) {
+        ui.drag = id; hideZoom();
+        if (e.dataTransfer) e.dataTransfer.setData('text/plain', id);
+      });
+      d.addEventListener('dragend', function () { ui.drag = null; render(); });
+      d.addEventListener('dragover', function (e) { e.preventDefault(); });
+      d.addEventListener('drop', function (e) {
+        e.preventDefault();
+        if (!ui.drag || ui.drag === id) return;
+        var o = ui.handOrder;
+        o.splice(o.indexOf(ui.drag), 1);
+        o.splice(o.indexOf(id), 0, ui.drag);
+        ui.drag = null;
+        render();
+      });
+      el.appendChild(d);
+    });
+    // my bar
+    var p = me();
+    $('barCards').innerHTML = (p.umbrella ? '<span class="umbBadge" title="Paper Umbrella protects your bar">☂️</span>' : '') +
+      p.bar.map(function (id) {
+        return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + '">';
+      }).join('') + (p.bar.length ? '' : '<span style="color:#8a5a34"> empty — stock ingredients here</span>');
+    $('myStatus').innerHTML =
+      '<div>' + esc(p.name) + ' — ' + p.score + ' pts · 🍺' + p.beers.length + ' beers · ' +
+      p.servedTotal + ' drinks served · ' +
+      '<button class="ghost" id="sortBtn">sort hand</button>' +
+      '<span style="opacity:.6"> · drag to rearrange</span></div>' +
+      '<div>' + p.served.map(function (e) {
+        return '<img style="width:30px;border-radius:3px;margin-left:3px;vertical-align:middle" src="' +
+          CARDS[e.card].art + '" title="' + esc(CARDS[e.card].name + ' — ' + e.pts + ' pts') + '">';
+      }).join('') + '</div>';
+    $('sortBtn').addEventListener('click', sortHand);
+  }
+
+  function onHandClick(st, id, chooseMode) {
+    if (chooseMode) { act({ t: 'resolve', player: ui.mySeat, card: id }); return; }
+    if (!isMyTurn() || st.phase !== 'main') return;
+    if (ui.sel === id) { ui.sel = null; ui.pinned = null; hideZoom(); }
+    else {
+      ui.sel = id;
+      ui.pinned = CARDS[id].art;
+      showZoom(ui.pinned, 'right');
+    }
+    render();
+  }
+
+  // ---------- prompt ----------
+  function renderPrompt(st) {
+    var el = $('prompt');
+    el.innerHTML = '';
+    var mode = handChooseMode(st);
+    if (mode) {
+      el.innerHTML = '<span class="msg">Tidal Handover — click a card to pass right</span>';
+      return;
+    }
+    var pend = st.pending;
+    if (pend && pend.type === 'seagull' && pend.by === ui.mySeat) {
+      el.innerHTML = '<span class="msg">🕊 Your seagull is circling — click an ingredient on any unprotected bar above</span>';
+      return;
+    }
+    if (pend || st.phase === 'roundEnd' || st.phase === 'gameEnd') {
+      if (pend && pend.by !== ui.mySeat) {
+        el.innerHTML = '<span class="msg">Waiting on ' + esc(st.players[E.actor(st)].name) + '…</span>';
+      }
+      return;
+    }
+    if (!isMyTurn()) {
+      el.innerHTML = '<span class="msg">' + esc(st.players[st.turn].name) + ' is mixing…</span>';
+      return;
+    }
+    if (st.phase === 'draw') {
+      el.innerHTML = '<span class="msg">Your turn — click the deck to draw 2</span>';
+      return;
+    }
+    var c = ui.sel ? CARDS[ui.sel] : null;
+    var plays = st.playsLeft;
+    var b = [];
+    b.push(btn('Stock bar', !!(c && c.kind === 'ing' && plays > 0), function () {
+      var id = ui.sel; ui.sel = null; ui.pinned = null; hideZoom();
+      act({ t: 'stock', card: id });
+    }));
+    b.push(btn('Shelve beer', !!(c && c.kind === 'beer' && plays > 0), function () {
+      var id = ui.sel; ui.sel = null; ui.pinned = null; hideZoom();
+      act({ t: 'beer', card: id });
+    }));
+    b.push(btn('Play special', !!(c && c.kind === 'special' && c.fx !== 'double' && plays > 0), function () {
+      var id = ui.sel; ui.sel = null; ui.pinned = null; hideZoom();
+      act({ t: 'special', card: id });
+    }, c && c.fx === 'double' ? 'Make It a Double is played by serving a cocktail from the menu' : ''));
+    b.push(btn('End turn', true, function () {
+      ui.sel = null; ui.pinned = null; hideZoom();
+      act({ t: 'endTurn' });
+    }));
+    var span = document.createElement('span');
+    span.className = 'msg';
+    span.textContent = plays + ' play' + (plays === 1 ? '' : 's') + ' left · glowing menu drinks are servable free';
+    el.appendChild(span);
+    b.forEach(function (x) { el.appendChild(x); });
+  }
+  function btn(label, enabled, fn, title) {
+    var x = document.createElement('button');
+    x.textContent = label;
+    x.disabled = !enabled;
+    if (title) x.title = title;
+    x.addEventListener('click', fn);
+    return x;
+  }
+
+  // ---------- modal ----------
+  function renderModal(st) {
+    var modal = $('modal'), box = $('modalBox');
+    var pend = st.pending;
+
+    if (st.phase === 'gameEnd') {
+      var w = st.players[st.winner];
+      box.innerHTML = '<h3>' + esc(w.name) + ' is Master Mixologist! 🏆</h3>' +
+        '<div class="sub">' + w.score + ' points after the beer count</div>' +
+        scoreTable(st, true) +
+        '<button class="gold" onclick="location.reload()">Back to the beach</button>';
+      modal.className = 'open';
+      return;
+    }
+    if (st.phase === 'roundEnd') {
+      box.innerHTML = '<h3>Round ' + st.round + ' — the till</h3>' + scoreTable(st, false) +
+        (ui.isGuest ? '<div class="sub">waiting for the host to open the next round…</div>'
+          : '<button class="gold" id="mNext">Open the next round</button>');
+      modal.className = 'open';
+      if (!ui.isGuest) $('mNext').addEventListener('click', function () { act({ t: 'nextRound' }); });
+      return;
+    }
+    if (ui.serveChoice && isMyTurn()) {
+      var rec = CARDS[ui.serveChoice];
+      box.innerHTML = '<h3>Serve the ' + esc(rec.name) + '?</h3>' +
+        '<div class="bigcard"><img style="width:200px;border-radius:12px" src="' + rec.art + '"></div>' +
+        '<div class="choices">' +
+        '<button class="big" id="mServe">Serve — ' + rec.pts + ' pts</button>' +
+        '<button class="big gold" id="mServeD">Make It a Double — ' + (rec.pts * 2) + ' pts</button>' +
+        '<button class="ghost" id="mCancel">Not yet</button></div>';
+      modal.className = 'open';
+      $('mServe').addEventListener('click', function () {
+        var r = ui.serveChoice; ui.serveChoice = null;
+        act({ t: 'serve', recipe: r });
+      });
+      $('mServeD').addEventListener('click', function () {
+        var r = ui.serveChoice; ui.serveChoice = null;
+        act({ t: 'serve', recipe: r, double: true });
+      });
+      $('mCancel').addEventListener('click', function () { ui.serveChoice = null; render(); });
+      return;
+    }
+    if (!pend || pend.by !== ui.mySeat || pend.type === 'seagull' || pend.type === 'passAll') {
+      modal.className = '';
+      return;
+    }
+    if (pend.type === 'chooseTarget') {
+      box.innerHTML = '<h3>Pirate Plunder</h3><div class="sub">steal a random card from whom?</div>' +
+        '<div class="choices" id="mCh"></div>';
+      var ch = box.querySelector('#mCh');
+      st.players.forEach(function (p) {
+        if (p.i === ui.mySeat || !p.hand.length) return;
+        var x = document.createElement('button');
+        x.className = 'big';
+        x.textContent = p.name + ' — ' + p.hand.length + ' cards';
+        x.addEventListener('click', function () { act({ t: 'resolve', target: p.i }); });
+        ch.appendChild(x);
+      });
+      modal.className = 'open';
+      return;
+    }
+    if (pend.type === 'demand') {
+      var html = '<h3>Guest Bartender</h3><div class="sub">demand which ingredient, from whom?</div>' +
+        '<div class="choices" id="mIng"></div><div class="sub" id="mPicked" style="margin-top:10px"></div>' +
+        '<div class="choices" id="mWho"></div>';
+      box.innerHTML = html;
+      var ingEl = box.querySelector('#mIng'), whoEl = box.querySelector('#mWho');
+      var pickedIng = null;
+      data.INGREDIENTS.forEach(function (ing) {
+        var d = document.createElement('div');
+        d.className = 'ch';
+        d.innerHTML = '<img src="assets/cards/ing-' + ing.id + '.jpg" title="' + esc(ing.name) + '">';
+        d.addEventListener('click', function () {
+          pickedIng = ing.id;
+          box.querySelector('#mPicked').textContent = 'Demanding: ' + ing.name + ' — now pick a player';
+        });
+        ingEl.appendChild(d);
+      });
+      st.players.forEach(function (p) {
+        if (p.i === ui.mySeat) return;
+        var x = document.createElement('button');
+        x.textContent = p.name + ' — ' + p.hand.length + ' cards';
+        x.addEventListener('click', function () {
+          if (!pickedIng) { toast('Pick an ingredient first'); return; }
+          act({ t: 'resolve', target: p.i, ing: pickedIng });
+        });
+        whoEl.appendChild(x);
+      });
+      modal.className = 'open';
+      return;
+    }
+    if (pend.type === 'torch') {
+      box.innerHTML = '<h3>Tiki Torchlight</h3><div class="sub">keep one — the rest hit the discard</div>' +
+        '<div class="choices" id="mCh"></div>';
+      var tch = box.querySelector('#mCh');
+      pend.cards.forEach(function (id) {
+        var d = document.createElement('div');
+        d.className = 'ch';
+        d.innerHTML = '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + '">';
+        d.addEventListener('click', function () { act({ t: 'resolve', keep: id }); });
+        tch.appendChild(d);
+      });
+      modal.className = 'open';
+      return;
+    }
+    modal.className = '';
+  }
+
+  function scoreTable(st, final) {
+    var bonus = final && st.beerBonuses ? st.beerBonuses : null;
+    var html = '<table><tr><th>bartender</th><th>drinks this round</th><th>round pts</th>' +
+      '<th>🍺 beers</th>' + (bonus ? '<th>beer bonus</th>' : '') + '<th class="total">total</th></tr>';
+    st.players.forEach(function (p) {
+      html += '<tr><td>' + esc(p.name) + '</td><td>' +
+        (p.served.map(function (e) { return esc(CARDS[e.card].name); }).join(', ') || '—') +
+        '</td><td>' + p.roundScore + '</td><td>' + p.beers.length + '</td>' +
+        (bonus ? '<td>' + (bonus[p.i] >= 0 ? '+' : '') + bonus[p.i] + '</td>' : '') +
+        '<td class="total">' + p.score + '</td></tr>';
+    });
+    return html + '</table>';
+  }
+
+  function toast(msg, ms) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.style.display = 'none'; }, ms || 2600);
+  }
+  ui.toast = toast;
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
+    });
+  }
+
+  G.ui = ui;
+}(window.TT = window.TT || {}));

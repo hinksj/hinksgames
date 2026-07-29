@@ -844,10 +844,17 @@ W.UI = {
 
   openMuster() {
     const F = W.Fleet;
-    let body = `<p>The enemy's topsails are on the horizon:
-      <b>${F.enemy.map((s, i) => `${i + 1}. ${s.name} (${F.CLASSES[s.cls].name})`).join(' · ')}</b>.
-      Give each of your captains a target and a tactic — the sketch below redraws as you
-      change the orders.</p>
+    const spiritWord = (m) => m >= 68 ? 'steady' : (m >= 61 ? 'seasoned' : 'green');
+    let body = `<p>The enemy's topsails are on the horizon. Give each of your captains a target
+      and a tactic — the sketch and the matchup lines redraw as you change the orders.</p>
+      <h4>THE ENEMY LINE — what the glass shows</h4>`;
+    F.enemy.forEach((s, i) => {
+      const t = F.TRAITS[s.captain.trait];
+      body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
+        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, ${s.hullMax} hull,
+        ${spiritWord(s.morale)} crew · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}</span></div>`;
+    });
+    body += `
       <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:6px">
         <div>${this.musterSketch()}
           <div class="gcap">Your plan, as it will be fought — the enemy line ①②③ in red,
@@ -867,11 +874,16 @@ W.UI = {
       .map((s, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${i + 1}. ${s.name} (${F.CLASSES[s.cls].name})</option>`).join('');
     F.ships.forEach((s, i) => {
       const t = F.TRAITS[s.captain.trait];
+      const mu = F.matchup(s);
+      const handsPct = Math.round(100 * s.hands / s.complement);
       body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
-        <span class="sdesc">${F.CLASSES[s.cls].name}, ${s.guns} guns — Capt. ${s.captain.name}
-        (<i>${t.name}</i>)<br>
+        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, hull ${s.hull}/${s.hullMax},
+        crew ${handsPct}%${handsPct < 60 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
+        · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
         <label>Target <select data-tgt="${i}">${tgtOpts(s.order.target)}</select></label>
-        <label style="margin-left:8px">Tactic <select data-tac="${i}">${tacOpts(s.order.tactic)}</select></label></span>
+        <label style="margin-left:8px">Tactic <select data-tac="${i}">${tacOpts(s.order.tactic)}</select></label>
+        ${mu ? `<br><i class="wchips">She throws ${mu.hers.toFixed(1)} weight to your ${mu.mine.toFixed(1)} —
+        ${mu.verdict}.${mu.hint ? ' ' + mu.hint : ''}</i>` : ''}</span>
         ${i > 0 ? `<button data-swap="${i}">move up</button>` : ''}</div>`;
     });
     body += `<div class="gcap" style="margin:4px 0 8px">${Object.entries(F.TACTICS)
