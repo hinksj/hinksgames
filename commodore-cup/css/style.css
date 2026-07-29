@@ -135,6 +135,11 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 .hcard.sel { transform: translateY(-26px); z-index: 490 !important; }
 .hcard.sel img { outline: 3px solid var(--gold); }
 .hcard.dim img { filter: brightness(0.45); }
+.hcard.fresh img { outline: 3px solid var(--cyan); animation: freshPulse 3s ease-out; }
+@keyframes freshPulse {
+  0% { box-shadow: 0 0 42px var(--cyan); }
+  100% { box-shadow: 0 3px 14px #000c; }
+}
 #myStatus { display: flex; justify-content: space-between; align-items: center;
   max-width: 1180px; margin: 6px auto 0; color: var(--dim); font-size: 13px; flex-wrap: wrap; gap: 8px; }
 #myStatus .chips img { width: 30px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }

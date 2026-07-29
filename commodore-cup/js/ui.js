@@ -135,6 +135,10 @@
 
   function render() {
     var st = ui.st;
+    if (st.turn === ui.mySeat && st.phase === 'draw' && ui.lastTurnKey !== st.round + ':' + st.turnsThisRound) {
+      ui.lastTurnKey = st.round + ':' + st.turnsThisRound;
+      sfx('turn');
+    }
     $('tRound').textContent = 'round ' + st.round + ' · first to ' + st.target;
     renderOpponents(st);
     renderPiles(st);
@@ -245,6 +249,20 @@
     }
   }
 
+  function sfx(name) { if (G.sound) G.sound.play(name); }
+  function soundForLine(line) {
+    if (line.indexOf('COMMODORE') >= 0) return 'fanfare';
+    if (line.indexOf('— Round') === 0) return 'round';
+    if (line.indexOf(' courts ') >= 0) return line.indexOf('(+') >= 0 ? 'good' : 'bad';
+    if (line.indexOf(' melds a ') >= 0) return 'meld';
+    if (line.indexOf(' adds ') >= 0) return 'pluck';
+    if (line.indexOf(' plays ') >= 0) return 'special';
+    if (line.indexOf('sit') >= 0 && line.indexOf('out') >= 0) return 'skip';
+    if (line.indexOf(' discards ') >= 0) return 'discard';
+    if (line.indexOf(' draws ') >= 0 || line.indexOf(' takes ') >= 0) return 'draw';
+    return null;
+  }
+
   function renderLog(st) {
     var el = $('log');
     if (ui.logLen > st.log.length) { el.innerHTML = ''; ui.logLen = 0; }
@@ -259,6 +277,13 @@
       if (line.indexOf(me().name) >= 0 && st.turn !== ui.mySeat &&
           line.indexOf('— Round') !== 0) {
         toast('⚠️ ' + line, 5000);
+        sfx('alert');
+      } else if (line.indexOf('Cards slide') === 0) {
+        toast('🔁 ' + line + ' — your new card is glowing', 4200);
+        sfx('special');
+      } else {
+        var s = soundForLine(line);
+        if (s) sfx(s);
       }
     }
     ui.logLen = st.log.length;
@@ -291,10 +316,20 @@
     el.innerHTML = '';
     var hand = orderedHand();
     var chooseMode = handChooseMode(st);
+    // cards that just arrived (draws, passes, steals-back) pulse for a moment
+    var now = Date.now();
+    ui.newCards = ui.newCards || {};
+    if (ui.knownHand) {
+      hand.forEach(function (id) {
+        if (ui.knownHand.indexOf(id) < 0) ui.newCards[id] = now;
+      });
+    }
+    ui.knownHand = hand.slice();
     hand.forEach(function (id, idx) {
       var c = CARDS[id];
       var d = document.createElement('div');
-      d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '');
+      var fresh = ui.newCards[id] && now - ui.newCards[id] < 3500;
+      d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '') + (fresh ? ' fresh' : '');
       d.style.zIndex = String(200 - idx); // tuck rightward: corner letters stay visible
       d.innerHTML = '<img draggable="false" src="' + c.art + '" title="' +
         esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';

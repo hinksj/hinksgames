@@ -146,6 +146,14 @@
   });
 
   // ---------- misc ----------
+  function drawSoundBtn() {
+    $('btnSound').textContent = (G.sound && G.sound.isMuted()) ? '🔇' : '🔊';
+  }
+  $('btnSound').addEventListener('click', function () {
+    if (G.sound) G.sound.toggle();
+    drawSoundBtn();
+  });
+  drawSoundBtn();
   $('btnRules').addEventListener('click', function () { window.open('RULES.md', '_blank'); });
   $('btnQuit').addEventListener('click', function () { location.reload(); });
   function escName(s) { return String(s).replace(/[<>&]/g, ''); }
