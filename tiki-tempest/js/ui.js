@@ -127,15 +127,20 @@
   // ---------- render ----------
   function render() {
     var st = ui.st;
-    if (st.turn === ui.mySeat && st.phase === 'draw' && ui.lastTurnKey !== st.round + ':' + st.turnsThisRound) {
+    if (st.mode === 'draft') {
+      if (st.phase === 'pick' && st.picks[ui.mySeat] === undefined && me().hand.length) {
+        var bellKey = 'd' + st.round + ':' + me().hand.length;
+        if (ui.lastTurnKey !== bellKey) { ui.lastTurnKey = bellKey; sfx('turn'); }
+      }
+    } else if (st.turn === ui.mySeat && st.phase === 'draw' && ui.lastTurnKey !== st.round + ':' + st.turnsThisRound) {
       ui.lastTurnKey = st.round + ':' + st.turnsThisRound;
       sfx('turn');
     }
     if (st.mode === 'draft') {
-      var handN = Math.max.apply(null, st.players.map(function (p) { return p.hand.length; }));
       $('tRound').textContent = 'round ' + st.round + '/' + (st.finalRound ? st.round : st.rounds) +
-        ' · passing ' + (st.dir === 1 ? '⟵ left' : 'right ⟶') + ' · ' + handN +
-        ' cards a hand' + (st.finalRound ? ' · LAST CALL' : '');
+        ' · pick ' + Math.min(data.PASSES_PER_ROUND, (st.passCount || 0) + 1) + '/' + data.PASSES_PER_ROUND +
+        ' · passing ' + (st.dir === 1 ? '⟵ left' : 'right ⟶') +
+        (st.finalRound ? ' · LAST CALL' : '');
     } else {
       var turnsLeft = Math.max(0, data.TURNS_PER_ROUND * st.players.length - st.turnsThisRound);
       $('tRound').textContent = 'round ' + st.round + '/' + (st.finalRound ? st.round : st.rounds) +
@@ -258,7 +263,12 @@
       if (line.indexOf(me().name) === 0) d.className = 'me';
       d.textContent = line;
       el.appendChild(d);
-      if (line.indexOf(me().name) >= 0 && st.turn !== ui.mySeat && line.indexOf('— Round') !== 0) {
+      var idx = line.indexOf(me().name);
+      var tableWide = ['👐', '—', '🌴', '🌊', '🔔', '⛈', '🏆'].indexOf(line.charAt(0)) >= 0 ||
+        line.indexOf('Round ') === 0;
+      var personal = idx > 0 && !tableWide &&
+        (st.mode === 'draft' || st.turn !== ui.mySeat);
+      if (personal) {
         toast('⚠️ ' + line, 5000);
         sfx('alert');
       } else {
@@ -280,6 +290,13 @@
     if (line.indexOf(' stocks ') >= 0) return 'pluck';
     if (line.indexOf('👐') === 0) return 'pluck';
     if (line.indexOf('🌊') === 0 || line.indexOf('🌴') === 0) return 'special';
+    if (line.indexOf('seagull swipes') >= 0) return 'special';
+    if (line.indexOf(' plunders ') >= 0) return 'special';
+    if (line.indexOf(' demands ') >= 0) return 'special';
+    if (line.indexOf('torchlight') >= 0) return 'draw';
+    if (line.indexOf(' sets aside ') >= 0) return 'pluck';
+    if (line.indexOf('paper umbrella') >= 0) return 'pluck';
+    if (line.indexOf(' ends (') >= 0) return 'round';
     if (line.indexOf(' draws ') >= 0 || line.indexOf('draws 2') >= 0) return 'draw';
     return null;
   }

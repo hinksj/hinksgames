@@ -60,7 +60,10 @@ stays as a face-down stock.
 
 **Each pass:** all players simultaneously choose **one card to keep**, reveal
 together, then pass the rest of their hand on — **left** in round 1, **right**
-in round 2, alternating. Kept cards resolve immediately:
+in round 2, alternating — and **everyone draws one card from the stock** into
+their new hand (pass *plus* draw: hands stay full, every pick is a real
+choice). A round is **10 picks**; the stock reshuffles from the discard pile
+whenever it runs dry. Kept cards resolve immediately:
 
 - **Ingredient** → face up onto your **Bar**.
 - **Beer** → your beer shelf (scores at game end, most +10 / fewest −5).
@@ -83,10 +86,10 @@ itself goes **into that hand** as you pass it on, off to help someone else.
 | Tiki Torchlight | Reveal 3 from the stock, keep one (resolved like a pick). |
 | Pirate Plunder | Take a random card from an opponent's passing hand and keep it; they draw a replacement from the stock. |
 | Tidal Handover | Everyone secretly picks a card from their passing hand; all pass right. |
-| Storm Surge | Lurks in the **stock** — if it surfaces (a Breeze, Torch, or Plunder draw), the round ends instantly. |
+| Storm Surge | Lurks in the **stock** — if it surfaces on any draw (the pass-draw, a Breeze, Torch, or Plunder), the round ends instantly. |
 | Last Call | Picking it rings the bell: this round is the game's last. |
 
-**Round end:** when the hands are drunk dry (or a Storm Surge). Score served
+**Round end:** after the 10th pick (or a Storm Surge). Score served
 drinks; bars, hands and set-asides wash back into the deck; beers persist.
 After the final round, add the beer bonus — highest total is **Master
 Mixologist**.

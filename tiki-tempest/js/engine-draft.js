@@ -82,6 +82,7 @@
       }
     });
     st.phase = 'pick'; st.picks = {}; st.fxQueue = []; st.pending = null;
+    st.passCount = 0;
     log(st, '— Round ' + st.round + ' — hands pass to the ' + (st.dir === 1 ? 'left' : 'right') +
       (st.finalRound ? ' (LAST CALL)' : ''));
     autoPicks(st);
@@ -93,8 +94,15 @@
     arr.splice(i, 1);
   }
 
+  function refill(st) {
+    if (st.deck.length || !st.discard.length) return;
+    st.deck = shuffleSt(st, st.discard);
+    st.discard = [];
+    log(st, 'The discard pile is shuffled back into the stock.');
+  }
   // draw from the leftover deck into `dest`; a surge strikes the round
   function drawFromDeck(st, dest, who) {
+    if (!st.deck.length) refill(st);
     if (!st.deck.length) return false;
     var id = st.deck.pop();
     if (CARDS[id].fx === 'surge') {
@@ -270,12 +278,23 @@
   }
 
   function passHands(st) {
+    st.passCount++;
+    if (st.passCount >= data.PASSES_PER_ROUND) {
+      endRound(st, 'closing time');
+      return;
+    }
     var hands = st.players.map(function (p) { return p.hand; });
     st.players.forEach(function (p) {
       // receive from the neighbor opposite the passing direction
       var src = (p.i - st.dir + st.players.length) % st.players.length;
       p.hand = hands[src];
     });
+    // pass PLUS draw: every hand tops up by one from the stock, so picks
+    // always offer a real choice (and Storm Surge can surface any pass)
+    for (var i = 0; i < st.players.length; i++) {
+      var r = drawFromDeck(st, st.players[i].hand, st.players[i].name);
+      if (r === null) return; // surge struck
+    }
     st.phase = 'pick';
     st.picks = {};
     autoPicks(st);

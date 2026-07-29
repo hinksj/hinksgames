@@ -260,6 +260,10 @@
     if (line.indexOf('sit') >= 0 && line.indexOf('out') >= 0) return 'skip';
     if (line.indexOf(' discards ') >= 0) return 'discard';
     if (line.indexOf(' draws ') >= 0 || line.indexOf(' takes ') >= 0) return 'draw';
+    if (line.indexOf(' steals ') >= 0 || line.indexOf(' swaps hands ') >= 0 ||
+        line.indexOf(' hands a card ') >= 0) return 'special';
+    if (line.indexOf(' retrieves ') >= 0 || line.indexOf(' whisper') >= 0) return 'special';
+    if (line.indexOf(' ends ') >= 0 || line.indexOf('stock is spent') >= 0) return 'round';
     return null;
   }
 
