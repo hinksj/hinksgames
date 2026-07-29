@@ -32,10 +32,68 @@ bar — closes them down. In the spirit of Sushi Go!, with a storm rolling in.*
   Tiki Torchlight ×3, Pirate Plunder ×3, Tidal Handover ×3, Island Breeze ×3,
   Make It a Double ×3, Last Call ×1, Storm Surge ×1
 
+## Two Ways to Play
+
+- **Draft** *(default — closest to the game's Sushi Go! inspiration)*: everyone
+  picks one card from their hand simultaneously and passes the rest. Rules
+  below in **Draft Mode**; best over **3 rounds**.
+- **Classic**: bartender turns — draw 2, play up to 2. Rules in **Classic
+  Mode**; best over **2 rounds**.
+
+Both modes share the Drink Menu, serving, beers, and the special cards; either
+can be played with the full **printed deck (135)** or the **well-stocked bar**
+variant (117 — fewer beers and surplus commons, so rum flows more freely).
+
 ## Object
 
-Score the most points across **two rounds** of happy hour by serving cocktails.
-(Quick pour: 1 round. Full luau: 3 rounds.)
+Score the most points across the session's rounds by serving cocktails off the
+shared menu.
+
+---
+
+## Draft Mode
+
+**Setup:** Menu of 4 recipes face up. Deal hands from the Main Deck — **10
+cards at 2 players, 9 at 3, 8 at 4, 7 at 5**. (Storm Surge dealt into an
+opening hand is reshuffled into the deck, as printed.) The rest of the deck
+stays as a face-down stock.
+
+**Each pass:** all players simultaneously choose **one card to keep**, reveal
+together, then pass the rest of their hand on — **left** in round 1, **right**
+in round 2, alternating. Kept cards resolve immediately:
+
+- **Ingredient** → face up onto your **Bar**.
+- **Beer** → your beer shelf (scores at game end, most +10 / fewest −5).
+- **Special** → resolves at once (see table), except **Make It a Double** and
+  **Guest Bartender**, which are **set aside** for later.
+
+**Serving is free, any time:** when your Bar covers a Menu recipe, serve it —
+pay the ingredients, take the card, refill the Menu. A set-aside Double can be
+spent as you serve. An umbrella'd bar garnishes the drink (+1) as usual.
+
+**Guest Bartender** (set aside) works like an extra pair of hands: on a later
+pick you may keep **two** cards from the passing hand — and the Bartender card
+itself goes **into that hand** as you pass it on, off to help someone else.
+
+**Draft rewordings of the printed effects** (everything else plays as printed):
+
+| Card | In draft mode |
+|---|---|
+| Island Breeze | Every player's current hand grows by 2 from the stock. |
+| Tiki Torchlight | Reveal 3 from the stock, keep one (resolved like a pick). |
+| Pirate Plunder | Take a random card from an opponent's passing hand and keep it; they draw a replacement from the stock. |
+| Tidal Handover | Everyone secretly picks a card from their passing hand; all pass right. |
+| Storm Surge | Lurks in the **stock** — if it surfaces (a Breeze, Torch, or Plunder draw), the round ends instantly. |
+| Last Call | Picking it rings the bell: this round is the game's last. |
+
+**Round end:** when the hands are drunk dry (or a Storm Surge). Score served
+drinks; bars, hands and set-asides wash back into the deck; beers persist.
+After the final round, add the beer bonus — highest total is **Master
+Mixologist**.
+
+---
+
+## Classic Mode
 
 ## Setup
 

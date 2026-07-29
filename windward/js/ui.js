@@ -1011,10 +1011,12 @@ W.UI = {
       body += `<div class="storerow"><b>${sh.name}</b>
         <span class="sdesc">${F.CLASSES[sh.cls].name} ·
           hull ${Math.ceil(sh.hull)}/${sh.hullMax} ·
+          guns ${sh.guns}/${sh.gunsMax}${sh.guns < sh.gunsMax ? ' <b style="color:#a02418">(dismounted)</b>' : ''} ·
           hands ${sh.hands}/${sh.complement}${sh.hands < sh.complement * 0.6 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
           · Capt. <select data-capt="${i}">${capOpts}</select>
           ${sh.captain.alive ? '' : ' †'}</span>
         <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>repair +5 (⚜10)</button>
+        ${sh.guns < sh.gunsMax ? `<button data-gun="${i}" ${c.gold < 8 ? 'disabled' : ''}>remount gun (⚜8)</button>` : ''}
         ${i > 0 ? `<button data-flag="${i}" title="Shift your flag — this ship becomes the flagship (and the one whose crises you fight by hand)">hoist flag here</button>` : ''}
         <button data-hplus="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+10 hands</button>
         <button data-hminus="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−10 hands</button></div>`;
@@ -1027,17 +1029,34 @@ W.UI = {
         Competent, hungry, ⚜60.</span>
         <button data-lt="1" ${c.gold < 60 ? 'disabled' : ''}>Give him his step (⚜60)</button></div>`;
     }
+    if (c.lastPassage) {
+      body = `<p><i>${c.lastPassage}</i></p>` + body;
+      c.lastPassage = null;
+    }
+    body += '<h4>NEXT ORDERS — choose your assignment</h4>';
+    (c.actionOptions || []).forEach((o, i) => {
+      body += `<div class="storerow"><b>${o.name}</b><span class="sdesc">${o.desc}</span>
+        <button data-go="${i}">⚑ Make it so</button></div>`;
+    });
     const m = this.modal({
       wide: true,
       title: `⚓ Refit — after Action ${c.stage} of ${F.STAGES.length}`,
-      sub: 'Ships, hands, and captains persist for the whole cruise. Spend well.',
+      sub: 'Ships, hands, and captains persist for the whole cruise. Spend well, choose well.',
       body,
       buttons: [
-        { label: `⚑ Put to sea — Action ${c.stage + 1}`, fn: () => { this.closeModal(); F.nextStage(); this.openMuster(); } },
         { label: 'Abandon the cruise', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
       ],
       row: true,
     });
+    m.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
+      const outcome = F.chooseAction(+b.dataset.go);
+      if (outcome === 'battle') { this.closeModal(); this.openMuster(); }
+      else this.openRefit();
+    }));
+    m.querySelectorAll('[data-gun]').forEach(b => b.addEventListener('click', () => {
+      F.remountGun(F.ships[+b.dataset.gun]);
+      this.openRefit();
+    }));
     m.querySelectorAll('[data-take]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.take;
       if (F.takePrize(s.prizeShips[i])) s.prizeShips.splice(i, 1);

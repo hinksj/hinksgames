@@ -6,7 +6,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['data.js', 'sound.js', 'engine.js', 'ai.js', 'net.js', 'ui.js', 'main.js'];
+const FILES = ['data.js', 'sound.js', 'engine-classic.js', 'engine-draft.js', 'ai-classic.js', 'ai-draft.js', 'net.js', 'ui.js', 'main.js'];
 
 function makeEl() {
   const el = {
@@ -52,22 +52,31 @@ function drainTimers(limit) {
   return n;
 }
 
-function playSoloGame(seed, bots) {
+function playSoloGame(seed, bots, mode) {
   const names = [{ name: 'Human', isAI: false }];
   for (let i = 0; i < bots; i++) names.push({ name: 'Bot' + i, isAI: true });
-  const st = TT.engine.newGame({ names, rounds: 2, seed });
+  const eng = mode === 'draft' ? TT.engineDraft : TT.engineClassic;
+  const st = eng.newGame({ names, rounds: 2, seed });
   TT.ui.begin(st, 0, {});
+  const brain = mode === 'draft' ? TT.aiDraft : TT.aiClassic;
   let steps = 0;
   while (st.phase !== 'gameEnd' && steps < 60000) {
     drainTimers(50);
     if (st.phase === 'gameEnd') break;
-    const seat = TT.engine.actor(st);
+    const eng2 = mode === 'draft' ? TT.engineDraft : TT.engineClassic;
+    const seat = eng2.actor(st);
     const isHumanTurn =
       (st.phase === 'roundEnd') || (!st.players[seat].isAI) ||
+      (mode === 'draft' && st.phase === 'pick' && st.players[0].hand.length &&
+        st.picks[0] === undefined) ||
       (st.pending && st.pending.type === 'passAll' &&
         st.pending.need[0] && st.pending.chosen[0] === undefined);
     if (isHumanTurn) {
-      const a = TT.ai.decide(st);
+      let a = brain.decide(st);
+      if (mode === 'draft' && st.phase === 'pick' && !st.pending &&
+          st.players[0].hand.length && st.picks[0] === undefined) {
+        a = { t: 'pick', seat: 0, card: st.players[0].hand[0] };
+      }
       ok(a, `human-seat action exists (seed ${seed} phase ${st.phase})`);
       if (!a) return null;
       TT.ui.act(a);
@@ -79,8 +88,9 @@ function playSoloGame(seed, bots) {
   return st;
 }
 
-for (let seed = 1; seed <= 8; seed++) {
-  playSoloGame(seed * 77, 1 + (seed % 3) + 1);
+for (let seed = 1; seed <= 5; seed++) {
+  playSoloGame(seed * 77, 1 + (seed % 3) + 1, 'draft');
+  playSoloGame(seed * 79, 1 + (seed % 3) + 1, 'classic');
 }
 
 documentStub.getElementById('mName').value = 'Tester';

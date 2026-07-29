@@ -1,7 +1,12 @@
 // TIKI TEMPEST — menu, lobby and mode wiring.
 (function (G) {
   'use strict';
-  var E = G.engine, ui = G.ui, net = G.net;
+  var ui = G.ui, net = G.net;
+  function chosenEngine() { return $('mMode').value === 'classic' ? G.engineClassic : G.engineDraft; }
+  function gameOpts(names) {
+    return { names: names, rounds: parseInt($('mRounds').value, 10),
+      deckIds: G.data.DECKS[$('mDeck').value] || G.data.MAIN_DECK };
+  }
   var $ = function (id) { return document.getElementById(id); };
 
   var BOT_NAMES = ['Kona Kai', 'Trader Vic', 'Hula Lou', 'Don the Beachcomber',
@@ -12,13 +17,18 @@
     return out;
   }
   function myName() { return ($('mName').value || 'Bartender').trim().slice(0, 16); }
+  // draft plays best at 3 rounds (Sushi Go structure); classic at 2
+  $('mMode').addEventListener('change', function () {
+    $('mRounds').value = $('mMode').value === 'draft' ? '3' : '2';
+  });
+  $('mRounds').value = '3'; // draft is the default mode
   function err(msg) { $('mErr').textContent = msg || ''; }
 
   $('btnSolo').addEventListener('click', function () {
     var bots = parseInt($('mBots').value, 10);
     var names = [{ name: myName(), isAI: false }].concat(
       botNames(bots).map(function (n) { return { name: n, isAI: true }; }));
-    var st = E.newGame({ names: names, rounds: parseInt($('mRounds').value, 10) });
+    var st = chosenEngine().newGame(gameOpts(names));
     ui.begin(st, 0, {});
   });
 
@@ -85,13 +95,18 @@
   }
 
   function validFrom(seat, action) {
-    var st = ui.st;
-    if (!st || !action) return false;
+    var st = ui.st, eng = ui.eng();
+    if (!st || !action || !eng) return false;
     if (action.t === 'nextRound') return false;
     if (st.pending && st.pending.type === 'passAll') {
       return action.t === 'resolve' && action.player === seat;
     }
-    return E.actor(st) === seat;
+    if (st.mode === 'draft') {
+      if (action.t === 'pick' || action.t === 'serve') return action.seat === seat;
+      return eng.actor(st) === seat; // resolve of pendings
+    }
+    if (action.t === 'serve') return st.turn === seat;
+    return eng.actor(st) === seat;
   }
 
   function startHosted(room) {
@@ -101,7 +116,7 @@
     lobby.guests.forEach(function (g) { names.push({ name: g.name, isAI: false }); });
     botNames(Math.max(0, nBots)).forEach(function (n) { names.push({ name: n, isAI: true }); });
     if (names.length < 2) { ui.toast('Need at least one guest or AI rival.'); lobby.started = false; return; }
-    var st = E.newGame({ names: names, rounds: parseInt($('mRounds').value, 10) });
+    var st = chosenEngine().newGame(gameOpts(names));
     lobby.guests.forEach(function (g, i) {
       net.seatOf.set(g.conn, i + 1);
       net.sendTo(g.conn, { type: 'start', seat: i + 1, room: room, state: st });

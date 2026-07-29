@@ -126,9 +126,13 @@ for (let run = 0; run < 8; run++) {
     while (c.gold >= 30 && c.hands < 60) W.Fleet.hireHands(10);
     for (const sh of W.Fleet.ships) {
       while (c.gold >= 10 && sh.hull < sh.hullMax) { if (!W.Fleet.repairShip(sh, 5)) break; }
+      while (c.gold >= 8 && sh.guns < sh.gunsMax) { if (!W.Fleet.remountGun(sh)) break; }
       while (c.hands > 0 && sh.hands < sh.complement) { if (!W.Fleet.moveHands(sh, 10)) break; }
     }
-    W.Fleet.nextStage();
+    assert.ok(c.actionOptions && c.actionOptions.length >= 1, 'no assignments offered');
+    const battleIdx = c.actionOptions.findIndex(o => o.type === 'battle');
+    assert.ok(battleIdx >= 0, 'no battle assignment offered');
+    assert.strictEqual(W.Fleet.chooseAction(battleIdx), 'battle');
   }
   W.Fleet.close();
 }

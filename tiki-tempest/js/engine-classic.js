@@ -31,6 +31,8 @@
 
   function newGame(opts) {
     var st = {
+      mode: 'classic',
+      deckIds: opts.deckIds || data.MAIN_DECK,
       seed: opts.seed || Math.floor(Math.random() * 1e9),
       rounds: opts.rounds || data.ROUNDS_DEFAULT,
       round: 0, finalRound: false, surgeStruck: false,
@@ -62,7 +64,7 @@
       p.hand = []; p.bar = []; p.served = []; p.umbrella = null;
       p.roundScore = 0;
     });
-    st.deck = shuffleSt(st, data.MAIN_DECK.filter(function (id) { return !out[id]; }));
+    st.deck = shuffleSt(st, st.deckIds.filter(function (id) { return !out[id]; }));
     st.discard = [];
     st.players.forEach(function (p) {
       for (var i = 0; i < data.HAND_SIZE; i++) p.hand.push(st.deck.pop());
@@ -456,7 +458,7 @@
     return st.turn;
   }
 
-  G.engine = {
+  G.engineClassic = {
     newGame: newGame, apply: apply, actor: actor,
     canServe: canServe, beerBonus: beerBonus, CARDS: CARDS
   };

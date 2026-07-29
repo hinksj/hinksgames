@@ -2,7 +2,7 @@
 // cocktail, shelve beers opportunistically, use specials when they help.
 (function (G) {
   'use strict';
-  var E = G.engine, data = G.data, CARDS;
+  var E = G.engineClassic, data = G.data, CARDS;
 
   // how much closer does bar+hand get to each menu recipe; value ingredients
   // by how many menu recipes still miss them
@@ -169,5 +169,5 @@
     return { t: 'endTurn' };
   }
 
-  G.ai = { decide: decide };
-}(typeof window !== 'undefined' ? (window.TT = window.TT || {}) : (module.exports = require('./engine.js'))));
+  G.aiClassic = { decide: decide };
+}(typeof window !== 'undefined' ? (window.TT = window.TT || {}) : (module.exports = require('./engine-classic.js'))));

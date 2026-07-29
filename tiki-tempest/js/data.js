@@ -99,8 +99,22 @@
     }
   });
 
+  // Deck variants — "we can alter the number of cards used". The stocked bar
+  // trims beers and surplus commons so rum density rises (helps classic mode).
+  var STOCKED_CUTS = { beer: 10, pineapple: 14, 'coconut-cream': 12, lime: 12 };
+  var DECKS = {
+    printed: MAIN_DECK.slice(),
+    stocked: MAIN_DECK.filter(function (id) {
+      var c = CARDS[id];
+      var n = parseInt(id.slice(id.lastIndexOf('-') + 1), 10);
+      if (c.kind === 'beer') return n <= STOCKED_CUTS.beer;
+      if (c.kind === 'ing' && STOCKED_CUTS[c.ing]) return n <= STOCKED_CUTS[c.ing];
+      return true;
+    })
+  };
+
   G.data = {
-    INGREDIENTS: INGREDIENTS, RECIPES: RECIPES, SPECIALS: SPECIALS,
+    INGREDIENTS: INGREDIENTS, RECIPES: RECIPES, SPECIALS: SPECIALS, DECKS: DECKS,
     CARDS: CARDS, MAIN_DECK: MAIN_DECK, RECIPE_DECK: RECIPE_DECK,
     BACK_MAIN: 'assets/cards/back-main.jpg',
     BACK_RECIPE: 'assets/cards/back-recipe.jpg',

@@ -76,7 +76,7 @@ W.Fleet = {
     const comp = this.COMPLEMENTS[cls] || 100;
     return {
       cls, name, side,
-      hull: c.hull, hullMax: c.hull, guns: c.guns,
+      hull: c.hull, hullMax: c.hull, guns: c.guns, gunsMax: c.guns,
       complement: comp, hands: comp,
       morale: side === 'player' ? 70
         : ({ cutter: 56, sloop: 60, brig: 63, frigate: 68, shipofline: 72 }[cls] || 64),
@@ -106,11 +106,15 @@ W.Fleet = {
   setupAction() {
     const c = this.campaign;
     const traits = Object.keys(this.TRAITS);
-    const line = this.STAGES[Math.min(c.stage, this.STAGES.length) - 1];
+    let line = this.STAGES[Math.min(c.stage, this.STAGES.length) - 1].slice();
+    this.mod = this.pendingMod || 'patrol';
+    this.pendingMod = null;
+    if (this.mod === 'escort' && line.length > 2) line = line.slice(0, -1);
     let n = 0;
     this.enemy = line.map(cls =>
       this.makeShip(cls, this.ENEMY_NAMES[(c.stage * 3 + n++) % this.ENEMY_NAMES.length],
         W.nameFor(), W.pick(traits), 'enemy'));
+    if (this.mod === 'hunt') this.enemy.forEach(e => { e.morale = Math.min(78, e.morale + 5); });
     this.ships.forEach((s, i) => {
       s.order = { tactic: 'engage', target: Math.min(i, this.enemy.length - 1) };
       s.struck = false; s.sunk = false; s.rakeDone = false;
@@ -351,6 +355,10 @@ W.Fleet = {
       b.morale -= 18;
       this.say(`${b.name}'s captain is down!`);
     }
+    if (dmg >= 2.6 && b.guns > 2 && W.chance(0.22)) {
+      b.guns--;
+      this.say(`A gun is dismounted aboard ${b.name}.`);
+    }
     this.fxAt(b, 'hit');
     if (b.hull <= 0) {
       if (W.chance(0.3)) {
@@ -464,7 +472,9 @@ W.Fleet = {
       stage: this.campaign ? this.campaign.stage : 1,
       finalStage: this.campaign ? this.campaign.stage >= this.STAGES.length : true,
       prizeShips: win ? this.enemy.filter(s => s.struck).map(s => s.cls) : [],
-      gold: win ? 30 + prizes * 20 : 0,
+      gold: win
+        ? Math.round((30 + prizes * 20) * (this.mod === 'hunt' ? 1.5 : 1)) + (this.mod === 'escort' ? 30 : 0)
+        : 0,
     };
     this.say(win ? `The enemy line is broken. ${prizes} prize${prizes === 1 ? '' : 's'} taken.`
       : (kind === 'withdraw' ? 'You bring the squadron off intact enough to fight again.'
@@ -473,6 +483,52 @@ W.Fleet = {
   },
 
   // called once from the refit screen after every action the flagship survives
+  ASSIGNMENTS: {
+    patrol: { name: 'The patrol, as ordered', type: 'battle',
+      desc: 'Meet the enemy line the Admiralty expects you to meet. No surprises either way.' },
+    escort: { name: 'Convoy escort', type: 'battle',
+      desc: 'The merchants pay ⚜30 for protection, and the enemy comes lighter by one ship — but there is less to take.' },
+    hunt: { name: 'The commodore\'s hunt', type: 'battle',
+      desc: 'Chase down a prize-rich line. Half again the prize money — against crews with their blood up.' },
+    storm: { name: 'The storm passage', type: 'storm',
+      desc: 'Run the weather instead of the enemy. No action at all — but the sea takes her toll of hulls and hands.' },
+  },
+
+  genOptions() {
+    const c = this.campaign;
+    const next = c.stage + 1;
+    if (next >= this.STAGES.length) {
+      return [Object.assign({ id: 'patrol' }, this.ASSIGNMENTS.patrol,
+        { name: 'The last action', desc: 'The enemy flag is at sea with a ship of the line. There is only one order this could ever be.' })];
+    }
+    const pool = ['escort', 'hunt', 'storm'];
+    const second = W.pick(pool);
+    return [Object.assign({ id: 'patrol' }, this.ASSIGNMENTS.patrol),
+      Object.assign({ id: second }, this.ASSIGNMENTS[second])];
+  },
+
+  chooseAction(idx) {
+    const c = this.campaign;
+    const o = (c.actionOptions || [])[idx];
+    if (!o) return 'none';
+    if (o.type === 'storm') {
+      let toll = 0;
+      for (const s of this.ships) {
+        s.hull = Math.max(3, s.hull - Math.round(s.hullMax * W.rand(0.08, 0.16)));
+        const lost = Math.min(Math.max(0, s.hands - 10), Math.round(s.complement * W.rand(0.02, 0.06)));
+        s.hands -= lost; toll += lost;
+      }
+      c.stage++;
+      c.lastPassage = `The passage is bad. Sprung seams all round, and the sea takes ${toll} hands.`;
+      c.actionOptions = this.genOptions();
+      return 'refit';
+    }
+    this.pendingMod = o.id;
+    c.stage++;
+    this.setupAction();
+    return 'battle';
+  },
+
   settleAction() {
     const c = this.campaign;
     c.gold += this.summary.gold;
@@ -487,6 +543,7 @@ W.Fleet = {
       this.say(`Your flag now flies aboard ${this.ships[0].name}.`);
     }
     c.lieutenantOffer = W.chance(0.45);
+    c.actionOptions = this.genOptions();
     this.summary.settled = true;
   },
 
@@ -522,6 +579,14 @@ W.Fleet = {
     if (pts <= 0) return false;
     c.gold -= pts * 2;
     s.hull += pts;
+    return true;
+  },
+
+  remountGun(s) {
+    const c = this.campaign;
+    if (s.guns >= s.gunsMax || c.gold < 8) return false;
+    c.gold -= 8;
+    s.guns++;
     return true;
   },
 
