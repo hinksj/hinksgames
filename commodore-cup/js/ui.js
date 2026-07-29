@@ -59,7 +59,11 @@
       showZoom(src, e.clientX > window.innerWidth / 2 ? 'left' : 'right');
     });
     document.addEventListener('mouseout', function (e) {
-      if (e.target && e.target.tagName === 'IMG') hideZoom();
+      if (e.target && e.target.tagName === 'IMG') {
+        // fall back to the pinned (selected) card instead of hiding
+        if (ui.pinned) showZoom(ui.pinned, 'right');
+        else hideZoom();
+      }
     });
   }
 
@@ -80,6 +84,7 @@
       return;
     }
     ui.sel = ui.sel.filter(function (id) { return myHand().indexOf(id) >= 0; });
+    if (!ui.sel.length && ui.pinned) { ui.pinned = null; hideZoom(); }
     if (ui.onLocalAction) ui.onLocalAction();
     render();
     pump();
@@ -226,6 +231,12 @@
       if (line.indexOf(me().name) === 0) d.className = 'me';
       d.textContent = line;
       el.appendChild(d);
+      // someone else's play touched YOU (steal, swap, skip, forced pass):
+      // shout it — a line in the log is easy to miss and reads like a bug
+      if (line.indexOf(me().name) >= 0 && st.turn !== ui.mySeat &&
+          line.indexOf('— Round') !== 0) {
+        toast('⚠️ ' + line, 5000);
+      }
     }
     ui.logLen = st.log.length;
     el.scrollTop = el.scrollHeight;
@@ -315,12 +326,11 @@
     }
     if (!isMyTurn() || st.phase !== 'main') return;
     var i = ui.sel.indexOf(id);
-    if (i >= 0) { ui.sel.splice(i, 1); hideZoom(); }
-    else {
-      ui.sel.push(id);
-      // selecting pops the card up large (covers touch screens, where there's no hover)
-      showZoom(CARDS[id].art, 'right');
-    }
+    if (i >= 0) ui.sel.splice(i, 1);
+    else ui.sel.push(id);
+    // pin a large preview of the newest selected card (works on touch too)
+    ui.pinned = ui.sel.length ? CARDS[ui.sel[ui.sel.length - 1]].art : null;
+    if (ui.pinned) showZoom(ui.pinned, 'right'); else hideZoom();
     render();
   }
 
@@ -494,12 +504,12 @@
     return html + '</table>';
   }
 
-  function toast(msg) {
+  function toast(msg, ms) {
     var t = $('toast');
     t.textContent = msg;
     t.style.display = 'block';
     clearTimeout(toast._t);
-    toast._t = setTimeout(function () { t.style.display = 'none'; }, 2600);
+    toast._t = setTimeout(function () { t.style.display = 'none'; }, ms || 2600);
   }
   ui.toast = toast;
 
