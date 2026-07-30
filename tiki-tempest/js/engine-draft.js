@@ -62,6 +62,15 @@
     st.dir = (st.round % 2 === 1) ? 1 : -1; // pass left, then right, alternating
     var out = {};
     st.removed.forEach(function (id) { out[id] = 1; });
+    // last round's served drinks return to the recipe deck (scores stay banked);
+    // stale menu cards stay put — only the deck behind them refills
+    st.players.forEach(function (p) {
+      p.served.forEach(function (e) { st.recipeDeck.push(e.card); });
+    });
+    if (st.round > 1) {
+      shuffleSt(st, st.recipeDeck);
+      while (st.menu.length < data.MENU_SIZE && st.recipeDeck.length) st.menu.push(st.recipeDeck.pop());
+    }
     st.players.forEach(function (p) {
       p.beers.forEach(function (id) { out[id] = 1; });
       p.hand = []; p.bar = []; p.served = []; p.banked = []; p.umbrella = null;

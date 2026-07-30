@@ -242,7 +242,7 @@
       }
       el.appendChild(d);
     });
-    if (!st.menu.length) el.innerHTML = '<div style="color:#8a5a34;margin:auto">the menu is drunk dry</div>';
+    if (!st.menu.length) el.innerHTML = '<div style="color:#8a5a34;margin:auto">the menu is drunk dry — more drinks return next round</div>';
   }
 
   function wantServe(recId) {

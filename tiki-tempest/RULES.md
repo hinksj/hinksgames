@@ -92,7 +92,9 @@ itself goes **into that hand** as you pass it on, off to help someone else.
 | Last Call | Picking it rings the bell: this round is the game's last. |
 
 **Round end:** after the 14th pick (or a Storm Surge). Score served
-drinks; bars, hands and set-asides wash back into the deck; beers persist.
+drinks; bars, hands and set-asides wash back into the deck; beers persist, and
+**served recipes return to the recipe deck** for the next round (your points
+are banked — the menu never runs dry, only stale).
 After the final round, add the beer bonus — highest total is **Master
 Mixologist**.
 
@@ -160,9 +162,10 @@ A round ends when **any** of these happens:
   round; the second time it empties, the round ends).
 
 Score served cocktails (with Doubles and Umbrella garnishes) onto the running
-total. Then everything resets **except**: your **Beer row** (it persists all
-game), the running score, and consumed recipe cards (they're gone — the Menu
-runs thinner in later rounds). Unserved Bar ingredients and hands are shuffled
+total. Then everything resets **except** your **Beer row** (it persists all game)
+and the running score. Served recipes return to the recipe deck reshuffled —
+the bar restocks the menu between rounds, though recipes nobody served stay
+right where they are on it. Unserved Bar ingredients and hands are shuffled
 back into the Main Deck along with used specials. Deal new 5-card hands; the
 player left of last round's starter pours first.
 
