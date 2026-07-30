@@ -850,9 +850,12 @@ W.UI = {
       <h4>THE ENEMY LINE — what the glass shows</h4>`;
     F.enemy.forEach((s, i) => {
       const t = F.TRAITS[s.captain.trait];
+      const st = F.SHIP_TRAITS[s.trait];
       body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
         <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, ${s.hullMax} hull,
-        ${spiritWord(s.morale)} crew · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}</span></div>`;
+        ${spiritWord(s.morale)} crew · <i>${st.name}</i> (${st.desc})
+        · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
+        <b style="color:#a02418">${s.intel ? 'Your glass says she ' + F.intentWord(s.order.tactic) + '.' : 'Her intent is unclear.'}</b></span></div>`;
     });
     body += `
       <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:6px">
@@ -879,7 +882,8 @@ W.UI = {
       body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
         <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, hull ${Math.ceil(s.hull)}/${s.hullMax},
         crew ${handsPct}%${handsPct < 60 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
-        · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
+        · <i>${F.SHIP_TRAITS[s.trait].name}</i>
+        · Capt. ${s.captain.name}${s.captain.distinguished ? ' ★' : ''}, <i>${t.name}</i>: ${t.desc}<br>
         <label>Target <select data-tgt="${i}">${tgtOpts(s.order.target)}</select></label>
         <label style="margin-left:8px">Tactic <select data-tac="${i}">${tacOpts(s.order.tactic)}</select></label>
         ${mu ? `<br><i class="wchips">She throws ~${Math.round(mu.hers * 24)} lb of metal to your

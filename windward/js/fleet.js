@@ -43,6 +43,16 @@ W.Fleet = {
     weatherly: { name: 'Weatherly',      desc: 'Better odds of holding the weather gauge at the start.' },
   },
 
+  // hulls have characters of their own, visible to both sides
+  SHIP_TRAITS: {
+    weatherly: { name: 'Weatherly',  desc: 'A sweet sailer — better odds of the weather gauge.' },
+    oak:       { name: 'Stout Oak',  desc: 'Thick-sided: shrugs off a share of every hit.' },
+    chasers:   { name: 'Bow-chasers', desc: 'Keeps firing well on the way in — cutting the line costs her less.' },
+    flyer:     { name: 'A Flyer',    desc: 'Fast: reaches her station a round sooner (rakes on round 2).' },
+    dry:       { name: 'Dry Powder', desc: 'A well-kept magazine: +10% throw-weight.' },
+    crank:     { name: 'Crank & Wet', desc: 'A poor, leaky sailer: −10% throw-weight and no help to the gauge.' },
+  },
+
   // per-ship orders — the real vocabulary of the plan
   TACTICS: {
     engage: { name: 'Engage her',    desc: 'Lie alongside the target and trade broadsides. The honest duel.' },
@@ -71,11 +81,12 @@ W.Fleet = {
   COMPLEMENTS: { cutter: 60, sloop: 80, brig: 110, frigate: 150, shipofline: 200 },
   PRIZE_VALUE: { cutter: 40, sloop: 60, brig: 80, frigate: 120, shipofline: 200 },
 
-  makeShip(cls, name, captName, trait, side) {
+  makeShip(cls, name, captName, trait, side, shipTrait) {
     const c = this.CLASSES[cls];
     const comp = this.COMPLEMENTS[cls] || 100;
     return {
       cls, name, side,
+      trait: shipTrait || W.pick(Object.keys(this.SHIP_TRAITS)),
       hull: c.hull, hullMax: c.hull, guns: c.guns, gunsMax: c.guns,
       complement: comp, hands: comp,
       morale: side === 'player' ? 70
@@ -96,9 +107,9 @@ W.Fleet = {
       lieutenantOffer: false,
     };
     this.ships = [
-      this.makeShip('sloop', 'The Petrel (flag)', 'You', 'gunnery', 'player'),
-      this.makeShip('brig', 'Salt Haven', W.nameFor(), 'ironsides', 'player'),
-      this.makeShip('cutter', 'Wren', W.nameFor(), 'boarder', 'player'),
+      this.makeShip('sloop', 'The Petrel (flag)', 'You', 'gunnery', 'player', 'weatherly'),
+      this.makeShip('brig', 'Salt Haven', W.nameFor(), 'ironsides', 'player', 'oak'),
+      this.makeShip('cutter', 'Wren', W.nameFor(), 'boarder', 'player', 'flyer'),
     ];
     this.setupAction();
   },
@@ -115,6 +126,15 @@ W.Fleet = {
       this.makeShip(cls, this.ENEMY_NAMES[(c.stage * 3 + n++) % this.ENEMY_NAMES.length],
         W.nameFor(), W.pick(traits), 'enemy'));
     if (this.mod === 'hunt') this.enemy.forEach(e => { e.morale = Math.min(78, e.morale + 5); });
+    this.enemy.forEach((e, i) => {
+      let tactic = 'engage';
+      if (e.cls === 'cutter') tactic = W.chance(0.5) ? 'board' : 'engage';
+      else if (e.cls === 'brig') tactic = W.pick(['engage', 'engage', 'cut']);
+      else if (e.cls === 'frigate' || e.cls === 'shipofline') tactic = W.pick(['engage', 'cut']);
+      if (e.captain.trait === 'boarder') tactic = 'board';
+      e.order = { tactic, target: Math.min(i, this.ships.length - 1) };
+      e.intel = W.chance(0.75); // your lookouts read her rig and her history — usually
+    });
     this.ships.forEach((s, i) => {
       s.order = { tactic: 'engage', target: Math.min(i, this.enemy.length - 1) };
       s.struck = false; s.sunk = false; s.rakeDone = false;
@@ -151,8 +171,11 @@ W.Fleet = {
   },
 
   begin() {
-    const weatherly = this.ships.filter(s => s.captain.trait === 'weatherly' && s.captain.alive).length;
-    this.gauge = W.chance(0.5 + 0.2 * weatherly);
+    const capW = this.ships.filter(s => s.captain.trait === 'weatherly' && s.captain.alive).length;
+    const mineW = this.ships.filter(s => s.trait === 'weatherly').length;
+    const mineC = this.ships.filter(s => s.trait === 'crank').length;
+    const theirW = this.enemy.filter(s => s.trait === 'weatherly').length;
+    this.gauge = W.chance(W.clamp(0.5 + 0.15 * capW + 0.1 * mineW - 0.08 * theirW - 0.06 * mineC, 0.2, 0.85));
     if (!this.planName) this.planName = 'Your Own Plan';
     this.say(`The line forms — ${this.planName}. ` +
       (this.gauge ? 'You hold the weather gauge.' : 'The enemy holds the weather gauge.'));
@@ -193,16 +216,28 @@ W.Fleet = {
       w *= 1.16 * (0.55 + 0.45 * W.clamp(ship.hands / ship.complement, 0, 1));
     }
     if (ship.captain && ship.captain.trait === 'gunnery' && ship.captain.alive) w *= 1.2;
+    if (ship.captain && ship.captain.distinguished) w *= 1.08;
+    if (ship.trait === 'dry') w *= 1.1;
+    if (ship.trait === 'crank') w *= 0.9;
     const out = { engage: 1, cut: 1.05, range: 0.6, board: 1.1, screen: 0.7 };
-    if (tactic && ship.side === 'player') w *= out[tactic] || 1;
+    if (tactic) w *= out[tactic] || 1;
     return w;
+  },
+
+  intentWord(tactic) {
+    return {
+      engage: 'means to lie alongside and trade broadsides',
+      cut: 'means to cut YOUR line — expect a rake by the third round',
+      range: 'will keep her distance and harry',
+      board: 'means to close and board',
+    }[tactic] || 'holds her course';
   },
 
   matchup(myShip) {
     const foe = this.enemy[myShip.order.target];
     if (!foe) return null;
     const mine = this.throwWeight(myShip, myShip.order.tactic);
-    const hers = this.throwWeight(foe, 'engage');
+    const hers = this.throwWeight(foe, foe.intel && foe.order ? foe.order.tactic : 'engage');
     const r = mine / Math.max(0.01, hers);
     let verdict;
     if (r >= 1.35) verdict = 'you have her badly outgunned';
@@ -251,18 +286,19 @@ W.Fleet = {
 
     this.say(`— Round ${this.round} —`);
 
-    // your ships fight their orders
+    // plan the round's fire, so doubling can be seen and rewarded
+    const flag = this.ships[0];
+    const attacks = [];
     for (const a of mine) {
       const b = this.targetOf(a);
-      if (b) this.fireOn(a, b);
+      if (b) attacks.push([a, b]);
     }
-    // enemy ships pick their marks: whoever engages them, else the flagship
-    const flag = this.ships[0];
     for (const b of this.alive(this.enemy)) {
-      let mark = mine.find(s => this.targetOf(s) === b) || flag;
-      if (mark.struck || mark.sunk) mark = this.alive(this.ships)[0];
+      let mark = this.ships[b.order ? b.order.target : 0];
+      if (!mark || mark.struck || mark.sunk) {
+        mark = mine.find(s => this.targetOf(s) === b) || this.alive(this.ships)[0];
+      }
       if (!mark) break;
-      // a screening ship takes fire meant for the flagship
       if (mark === flag) {
         const screen = mine.find(s => s.order.tactic === 'screen' && s !== flag);
         if (screen && W.chance(0.45)) {
@@ -270,19 +306,37 @@ W.Fleet = {
           this.say(`${screen.name} puts herself between the enemy and the flag.`);
         }
       }
-      this.fireOn(b, mark);
+      attacks.push([b, mark]);
+    }
+    const count = new Map();
+    for (const [a, b] of attacks) count.set(b, (count.get(b) || 0) + 1);
+    this._doubled = new Set();
+    for (const [a, b] of attacks) {
+      if (count.get(b) >= 2) this._doubled.add(a);
+    }
+    const seenDouble = new Set();
+    for (const [, b] of attacks) {
+      if (count.get(b) >= 2 && !seenDouble.has(b) && b.side === 'enemy') {
+        seenDouble.add(b);
+        this.say(`${b.name} is doubled — fire pours in from both sides.`);
+      }
+    }
+    for (const [a, b] of attacks) {
+      if (!a.struck && !a.sunk && !b.struck && !b.sunk) this.fireOn(a, b);
     }
 
-    // boarding attempts
-    for (const a of mine) {
-      if (a.order.tactic !== 'board' || this.round < 2) continue;
-      const b = this.targetOf(a);
-      if (!b || b.struck || b.sunk) continue;
-      let odds = (b.morale < 55 ? 0.22 : 0.07) * (this.closerRounds > 0 ? 1.5 : 1);
+    // boarding attempts, from either line
+    for (const [a, b] of attacks) {
+      const tac = a.order ? a.order.tactic : 'engage';
+      if (tac !== 'board' || this.round < 2 || a.struck || a.sunk || b.struck || b.sunk) continue;
+      const aIsMine = a.side === 'player';
+      let odds = (b.morale < 55 ? 0.22 : 0.07) * (aIsMine && this.closerRounds > 0 ? 1.5 : 1);
+      if (!aIsMine) odds *= 0.6; // your people are drilled to repel them
       if (a.captain.trait === 'boarder' && a.captain.alive) odds *= 2;
       if (W.chance(odds)) {
         b.struck = true;
         this.say(`${a.name} grapples and boards ${b.name} — her colors come down!`);
+        this.floatAt(b, 'BOARDED', '#a02418');
         this.fxAt(b, 'boom');
       }
     }
@@ -307,10 +361,12 @@ W.Fleet = {
     }
   },
 
+  rakeRoundOf(ship) { return ship.trait === 'flyer' ? 2 : 3; },
+
   fireOn(a, b) {
     const aIsMine = a.side === 'player';
-    const tac = aIsMine ? a.order.tactic : 'engage';
-    const victimTac = b.side === 'player' ? b.order.tactic : 'engage';
+    const tac = a.order ? a.order.tactic : 'engage';
+    const victimTac = b.order ? b.order.tactic : 'engage';
 
     let dmg = a.guns * W.rand(0.75, 1.25) * 0.42;
     if (aIsMine) {
@@ -318,25 +374,29 @@ W.Fleet = {
       dmg *= 0.55 + 0.45 * W.clamp(a.hands / a.complement, 0, 1); // short-handed guns fire slow
     }
     if (a.captain.trait === 'gunnery' && a.captain.alive) dmg *= 1.2;
+    if (a.captain.distinguished) dmg *= 1.08;
+    if (a.trait === 'dry') dmg *= 1.1;
+    if (a.trait === 'crank') dmg *= 0.9;
     if (aIsMine && this.closerRounds > 0) dmg *= 1.18;
     if (this.gauge) dmg *= aIsMine ? 1.1 : 0.92;
+    if (this._doubled && this._doubled.has(a)) dmg *= 1.2;
 
     let rake = false;
-    if (aIsMine) {
-      if (tac === 'cut') {
-        if (this.round <= 2) dmg *= 0.35;
-        else if (!a.rakeDone) { a.rakeDone = true; rake = true; dmg *= 2.2; }
-        else dmg *= 1.05;
-      }
-      if (tac === 'range') dmg *= 0.6;
-      if (tac === 'board') dmg *= 1.1;
-      if (tac === 'screen') dmg *= 0.7;
+    const myRakeRound = this.rakeRoundOf(a);
+    if (tac === 'cut') {
+      if (this.round < myRakeRound) dmg *= (a.trait === 'chasers' ? 0.7 : 0.35);
+      else if (!a.rakeDone) { a.rakeDone = true; rake = true; dmg *= 2.2; }
+      else dmg *= 1.05;
     }
+    if (tac === 'range') dmg *= 0.6;
+    if (tac === 'board') dmg *= 1.1;
+    if (tac === 'screen') dmg *= 0.7;
     // how hard the victim is to hurt depends on HER orders — but a refusing
     // line cannot refuse forever: the enemy comes down on her, round by round
     if (victimTac === 'range') dmg *= Math.min(1, 0.4 + Math.max(0, this.round - 4) * 0.15);
-    if (victimTac === 'cut' && this.round <= 2) dmg *= this.gauge ? 1.25 : 1.45;
+    if (victimTac === 'cut' && this.round < this.rakeRoundOf(b)) dmg *= this.gauge === (b.side === 'player') ? 1.25 : 1.45;
     if (victimTac === 'board') dmg *= 1.15;
+    if (b.trait === 'oak') dmg *= 0.85;
 
     dmg = Math.max(0.4, dmg);
     b.hull -= dmg;
@@ -346,7 +406,7 @@ W.Fleet = {
       this.say(`${a.name} cuts the line and rakes ${b.name} stem to stern!`);
       this.floatAt(b, 'RAKED!', '#a02418');
     }
-    if (aIsMine && tac === 'range') moraleHit += 4; // harried without reply
+    if (tac === 'range') moraleHit += 4; // harried without reply
     b.morale -= moraleHit;
     const floor = (b.captain.trait === 'ironsides' && b.captain.alive) ? 20 : 0;
     b.morale = Math.max(floor, b.morale);
@@ -535,6 +595,15 @@ W.Fleet = {
     for (const s of this.ships) {
       if (s.sunk && s.captain.alive && W.chance(0.4)) {
         c.captains.push(s.captain);
+      }
+    }
+    // captains who took their ordered prize are mentioned in the Gazette
+    for (const s of this.ships) {
+      if (s.struck || s.sunk || !s.captain.alive || s.captain.distinguished) continue;
+      const tgt = this.enemy[s.order.target];
+      if (tgt && tgt.struck) {
+        s.captain.distinguished = true;
+        this.say(`Captain ${s.captain.name} will be mentioned in the Gazette.`);
       }
     }
     const oldFlag = this.ships[0];
