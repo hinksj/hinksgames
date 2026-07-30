@@ -281,19 +281,20 @@
 
   function passHands(st) {
     st.passCount++;
-    if (st.passCount >= st.passes) {
-      endRound(st, 'closing time');
-      return;
-    }
+    // the clock stops the top-ups, not the round: after the last scheduled
+    // pick, hands play out draw-free until empty ('drunk dry' in maybeReveal)
     var hands = st.players.map(function (p) { return p.hand; });
     st.players.forEach(function (p) {
       // receive from the neighbor opposite the passing direction
       var src = (p.i - st.dir + st.players.length) % st.players.length;
       p.hand = hands[src];
     });
-    // pass PLUS draw: every hand tops up by one from the stock, so picks
-    // always offer a real choice (and Storm Surge can surface any pass)
+    // pass PLUS draw: hands top up from the stock so picks always offer a
+    // real choice — but only while more picks remain than cards held, so the
+    // closing picks drain every hand to zero and no dealt card goes unplayed
+    var remaining = st.passes - st.passCount;
     for (var i = 0; i < st.players.length; i++) {
+      if (st.players[i].hand.length >= remaining) continue;
       var r = drawFromDeck(st, st.players[i].hand, st.players[i].name);
       if (r === null) return; // surge struck
     }
@@ -351,15 +352,18 @@
   // ---------- round / game end ----------
   function endRound(st, why) {
     st.pending = null; st.fxQueue = []; st.picks = {};
+    var leftover = 0;
     st.players.forEach(function (p) {
       p.roundScore = p.served.reduce(function (n, e) { return n + e.pts; }, 0);
       p.score += p.roundScore;
       if (p.umbrella) { st.discard.push(p.umbrella); p.umbrella = null; }
       while (p.banked.length) st.discard.push(p.banked.pop());
+      leftover += p.hand.length;
       while (p.hand.length) st.discard.push(p.hand.pop());
     });
     st.lastRoundWhy = why;
-    log(st, 'Round ' + st.round + ' ends (' + why + ').');
+    log(st, 'Round ' + st.round + ' ends (' + why + ')' +
+      (leftover ? ' — ' + leftover + ' unplayed cards wash out to sea.' : ' — every hand played out.'));
     if (st.finalRound || st.round >= st.rounds) finishGame(st);
     else st.phase = 'roundEnd';
   }
