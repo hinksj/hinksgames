@@ -35,6 +35,21 @@ W.UI = {
       this.tipEl.style.top = y + 'px';
     });
 
+    if (W.Sound) {
+      W.Sound.init();
+      const mute = document.getElementById('mutebtn');
+      if (mute) {
+        mute.classList.toggle('off', !W.Sound.on);
+        mute.textContent = W.Sound.on ? '🔊' : '🔇';
+        mute.addEventListener('click', () => {
+          const on = W.Sound.toggle();
+          mute.classList.toggle('off', !on);
+          mute.textContent = on ? '🔊' : '🔇';
+        });
+      }
+      // audio contexts need a user gesture; arm on the first click anywhere
+      document.addEventListener('pointerdown', () => { if (W.Sound.on) W.Sound.ensure(); }, { once: true });
+    }
     const help = document.getElementById('helpbtn');
     if (help) help.addEventListener('click', () => {
       if (W.state.mode === 'combat') W.paused = true;
@@ -962,6 +977,7 @@ W.UI = {
   },
 
   openCrisisIntro() {
+    if (W.Sound) W.Sound.play('alarm');
     const def = W.Fleet.CRISIS_DEFS[W.Fleet.crisisKind || 'fire'];
     this.modal({
       title: `⚠ ${def.banner.charAt(0) + def.banner.slice(1).toLowerCase()}!`,
@@ -972,6 +988,7 @@ W.UI = {
 
   openFleetEnd() {
     const s = W.Fleet.summary;
+    if (W.Sound) W.Sound.play(s.win ? 'stingWin' : (s.withdraw ? 'bell' : 'stingLoss'));
     if (s.flagLost) {
       W.Fleet.clearCruise();
       this.modal({
@@ -1166,6 +1183,7 @@ W.UI = {
   },
 
   openGameover(msg) {
+    if (W.Sound) W.Sound.play('stingLoss');
     this.modal({
       title: 'Lost With All Hands',
       body: `<p>${msg}</p><p class="sub">The Heart of the Storm sinks into the dark, and the

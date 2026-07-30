@@ -47,8 +47,14 @@ body {
 #resources { color: #9fb8c9; font-size: 13px; }
 #resources.low { color: #ff7a5c; font-weight: bold; }
 #sectorlabel { color: #9fb8c9; }
-#helpbtn {
+#mutebtn {
   margin-left: auto;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #1c2c3d; border: 1px solid #6d5638;
+  font-size: 12px; cursor: pointer;
+}
+#mutebtn.off { opacity: .45; }
+#helpbtn {
   width: 26px; height: 26px; border-radius: 50%;
   background: #1c2c3d; color: #e9c46a; border: 1px solid #b98f4a;
   font-family: inherit; font-size: 15px; font-weight: bold; cursor: pointer;

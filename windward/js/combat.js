@@ -191,6 +191,7 @@ W.Combat = {
     }
 
     if (!p.def.noEvade && W.chance(foe.evasion() / 100)) {
+      if (W.Sound) W.Sound.play('splash');
       W.addFx(pos.x, pos.y, 'MISS', '#9fb8c9');
       W.burst(pos.x + W.rand(-30, 30), pos.y + 46, '#bcd8e8', 7, 55, 0.5, 2); // splash
       return;
@@ -215,6 +216,7 @@ W.Combat = {
     }
     if (p.def.dmg > 0) {
       foe.hull -= p.def.dmg;
+      if (W.Sound) W.Sound.play('cannon');
       W.addFx(pos.x, pos.y, '-' + p.def.dmg, '#ff7a5c');
       W.boom(pos.x, pos.y, p.def.dmg >= 2 ? 48 : 36);
       W.burst(pos.x, pos.y, '#e8b06a', 10, 95, 0.45, 2.5);      // splinters
@@ -259,6 +261,7 @@ W.Combat = {
       W.player.intruders.push(c);
     }
     const pos = (W.Render && W.Render.roomCenter) ? W.Render.roomCenter(W.player, room.idx) : { x: 0, y: 0 };
+    if (W.Sound) W.Sound.play('clash');
     W.addFx(pos.x, pos.y - 10, 'BOARDED!', '#ff5c5c');
     W.paused = true;
   },

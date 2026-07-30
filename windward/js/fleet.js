@@ -285,6 +285,7 @@ W.Fleet = {
     if (this.closerRounds > 0) this.closerRounds--;
 
     this.say(`— Round ${this.round} —`);
+    if (W.Sound) W.Sound.play('cannon');
 
     // plan the round's fire, so doubling can be seen and rewarded
     const flag = this.ships[0];
@@ -428,6 +429,7 @@ W.Fleet = {
         this.fxAt(b, 'boom');
       } else {
         b.struck = true;
+        if (W.Sound) W.Sound.play('bell');
         this.say(`${b.name} strikes her colors!`);
         this.floatAt(b, 'STRUCK', '#5a4020');
       }
