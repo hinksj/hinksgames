@@ -66,7 +66,7 @@ choice). A round is **14 picks**; the stock reshuffles from the discard pile
 whenever it runs dry. Kept cards resolve immediately:
 
 - **Ingredient** → face up onto your **Bar**.
-- **Beer** → your beer shelf (scores at game end, most +10 / fewest −5).
+- **Beer** → your beer shelf (scores at game end, most +6 / fewest −3).
 - **Special** → resolves at once (see table), except **Make It a Double** and
   **Guest Bartender**, which are **set aside** for later.
 
@@ -168,7 +168,7 @@ player left of last round's starter pours first.
 
 After the final round (round 2 by default, or the Last Call round):
 
-- **Most beers: +10 points.** &nbsp; **Fewest beers (including zero): −5.**
+- **Most beers: +6 points.** &nbsp; **Fewest beers (including zero): −3.**
   Ties share the prize/penalty in full. With 2 players, only the +10 applies.
 - Highest total is crowned **Master Mixologist of the Tiki Tempest**. Tie:
   most cocktails served; still tied, split the tab and share the title.
@@ -190,8 +190,10 @@ Decisions made to finish it, and why:
    "round" language on Storm Surge and Last Call and lands the 20–40 minute
    target. Storm Surge cuts a round short; the reshuffle-if-dealt rule is
    printed on the card itself.
-4. **Beers score +10/−5** (most/fewest), per the design conversation's
-   pudding analogy. They persist across rounds exactly like Sushi Go puddings.
+4. **Beers score +6/−3** (most/fewest) — Sushi Go's own pudding values.
+   The design chat's +10/−5 made the beer race decide ~half of all games in
+   simulation (the beer leader won 98% of drafts); at +6/−3 beers matter
+   without being the whole game. They persist across rounds like puddings.
 5. **The Seagull/Umbrella duel**: the printed Seagull takes table ingredients,
    so the printed Umbrella's protection covers your Bar while unattached, then
    garnishes (+1) the next drink you serve — honoring all three printed

@@ -90,7 +90,19 @@ body {
 }
 .crewitem:hover { border-color: #8a6a42; }
 .crewitem.sel { border-color: #e9c46a; box-shadow: 0 0 6px #e9c46a55; }
+.crewitem { display: flex; gap: 7px; align-items: flex-start; }
+.crewitem .cportrait {
+  width: 40px; height: 40px; border-radius: 4px; flex: 0 0 40px;
+  border: 1px solid #6d5638; object-fit: cover; background: #16110a;
+}
+.crewitem .cbody { flex: 1; min-width: 0; }
 .crewitem .cdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.captportrait {
+  width: 46px; height: 46px; border-radius: 50%; flex: 0 0 46px;
+  border: 2px solid #8a6a42; object-fit: cover; background: #e6d7a8;
+  margin-right: 4px;
+}
+.captportrait.sm { width: 36px; height: 36px; flex-basis: 36px; }
 .crewitem .crace { color: #6d8aa3; font-size: 11px; margin-left: 5px; }
 .crewitem .chp { height: 5px; background: #1a2635; border-radius: 2px; margin: 4px 0 2px; overflow: hidden; }
 .crewitem .chpfill { height: 100%; background: #63d68a; }

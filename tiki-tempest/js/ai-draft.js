@@ -22,7 +22,7 @@
   function beerRank(st, p) {
     var mine = p.beers.length, most = 0;
     st.players.forEach(function (pl) { if (pl.i !== p.i) most = Math.max(most, pl.beers.length); });
-    return mine <= most ? 1.6 : 0.9; // chase the pudding when behind
+    return mine <= most ? 1.15 : 0.7; // worth a pick when behind, not a strategy
   }
   function cardValue(st, p, id) {
     var c = CARDS[id];

@@ -69,6 +69,19 @@ W.UI = {
     });
   },
 
+  divPortrait(c) {
+    const pre = { human: 'seaman', tideborn: 'diver', brass: 'carpenter', stormtouched: 'marine' }[c.race] || 'seaman';
+    const v = 1 + (c.id % 2);
+    return `<img class="cportrait" src="assets/art/portrait_${pre}${v}.png" onerror="this.style.display='none'">`;
+  },
+
+  captPortrait(name, size) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return `<img class="captportrait${size === 'sm' ? ' sm' : ''}" ` +
+      `src="assets/art/portrait_capt${1 + h % 6}.png" onerror="this.style.display='none'">`;
+  },
+
   canvasXY(e) {
     const r = this.els.canvas.getBoundingClientRect();
     return {
@@ -168,10 +181,11 @@ W.UI = {
         `${race.waterRes === 0 ? ' · cannot drown' : ''}${race.fireRes < 1 ? ' · shrugs off fire and flood' : ''}</span><br>` +
         `Click them, then click a room, to send them there. They act on their own once they arrive.`;
       div.innerHTML =
-        `<span class="cdot" style="background:${race.color}"></span><b>${c.name}</b>` +
+        this.divPortrait(c) +
+        `<div class="cbody"><span class="cdot" style="background:${race.color}"></span><b>${c.name}</b>` +
         `<span class="crace">${race.name}</span>` +
         `<div class="chp"><div class="chpfill" style="width:${W.clamp(c.hp / c.maxHp * 100, 0, 100)}%"></div></div>` +
-        `<span class="cstatus">${c.status}</span>`;
+        `<span class="cstatus">${c.status}</span></div>`;
       div.addEventListener('click', () => { this.sel.crew = (this.sel.crew === c) ? null : c; });
       box.appendChild(div);
     }
@@ -851,7 +865,7 @@ W.UI = {
     F.enemy.forEach((s, i) => {
       const t = F.TRAITS[s.captain.trait];
       const st = F.SHIP_TRAITS[s.trait];
-      body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
+      body += `<div class="storerow">${this.captPortrait(s.captain.name)}<b>${i + 1}. ${s.name}</b>
         <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, ${s.hullMax} hull,
         ${spiritWord(s.morale)} crew · <i>${st.name}</i> (${st.desc})
         · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
@@ -879,7 +893,7 @@ W.UI = {
       const t = F.TRAITS[s.captain.trait];
       const mu = F.matchup(s);
       const handsPct = Math.round(100 * s.hands / s.complement);
-      body += `<div class="storerow"><b>${i + 1}. ${s.name}</b>
+      body += `<div class="storerow">${this.captPortrait(s.captain.name)}<b>${i + 1}. ${s.name}</b>
         <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, hull ${Math.ceil(s.hull)}/${s.hullMax},
         crew ${handsPct}%${handsPct < 60 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
         · <i>${F.SHIP_TRAITS[s.trait].name}</i>
@@ -1011,7 +1025,7 @@ W.UI = {
         .concat(c.captains.map(x => x.name));
       const capOpts = allCapts.map(n =>
         `<option${n === sh.captain.name ? ' selected' : ''}>${n}</option>`).join('');
-      body += `<div class="storerow"><b>${sh.name}</b>
+      body += `<div class="storerow">${this.captPortrait(sh.captain.name, 'sm')}<b>${sh.name}</b>
         <span class="sdesc">${F.CLASSES[sh.cls].name} ·
           hull ${Math.ceil(sh.hull)}/${sh.hullMax} ·
           guns ${sh.guns}/${sh.gunsMax}${sh.guns < sh.gunsMax ? ' <b style="color:#a02418">(dismounted)</b>' : ''} ·
