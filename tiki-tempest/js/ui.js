@@ -266,6 +266,11 @@
       // table-shaking events get a banner for everyone, not just a log line
       if (line.indexOf('⛈') >= 0) { toast(line, 6500); sfx('bad'); }
       else if (line.indexOf('🔔') >= 0 || line.indexOf('📖') >= 0) { toast(line, 5500); sfx('round'); }
+      // fizzled effects look like bugs if they only whisper in the log
+      else if (line.indexOf('The seagull finds') === 0 || line.indexOf('The torch gutters') === 0 ||
+               line.indexOf('No hands worth plundering') === 0) {
+        toast('💨 ' + line, 4500); sfx('skip');
+      }
       var idx = line.indexOf(me().name);
       var tableWide = ['👐', '—', '🌴', '🌊', '🔔', '⛈', '🏆', '📖'].indexOf(line.charAt(0)) >= 0 ||
         line.indexOf('Round ') === 0;
