@@ -165,36 +165,44 @@ W.UI = {
   },
 
   updateCrew(P) {
-    const sig = P.crew.map(c =>
-      `${c.id}:${Math.round(c.hp)}:${c.status}:${this.sel.crew === c ? 1 : 0}`).join('|')
-      + '#' + P.intruders.length;
-    if (sig === this.crewSig) return;
-    this.crewSig = sig;
-    const box = this.els.crewlist;
-    box.innerHTML = '';
-    for (const c of P.crew) {
-      const race = W.RACES[c.race];
-      const div = document.createElement('div');
-      div.className = 'crewitem' + (this.sel.crew === c ? ' sel' : '');
-      div.dataset.tip = `<b>${c.name}</b> — ${race.name}<br>${race.desc}<br>` +
-        `<span class="tchips">repairs ×${race.repair} · fights ×${race.combat} · speed ×${race.speed}` +
-        `${race.waterRes === 0 ? ' · cannot drown' : ''}${race.fireRes < 1 ? ' · shrugs off fire and flood' : ''}</span><br>` +
-        `Click them, then click a room, to send them there. They act on their own once they arrive.`;
-      div.innerHTML =
-        this.divPortrait(c) +
-        `<div class="cbody"><span class="cdot" style="background:${race.color}"></span><b>${c.name}</b>` +
-        `<span class="crace">${race.name}</span>` +
-        `<div class="chp"><div class="chpfill" style="width:${W.clamp(c.hp / c.maxHp * 100, 0, 100)}%"></div></div>` +
-        `<span class="cstatus">${c.status}</span></div>`;
-      div.addEventListener('click', () => { this.sel.crew = (this.sel.crew === c) ? null : c; });
-      box.appendChild(div);
+    // rebuild only when the roster or selection changes; portraits must not be
+    // recreated every frame or they never finish decoding
+    const sig = P.crew.map(c => c.id).join(',') + '|' +
+      (this.sel.crew ? this.sel.crew.id : 0) + '|' + (P.intruders.length ? 1 : 0);
+    if (sig !== this.crewSig) {
+      this.crewSig = sig;
+      const box = this.els.crewlist;
+      box.innerHTML = '';
+      this.crewRefs = [];
+      for (const c of P.crew) {
+        const race = W.RACES[c.race];
+        const div = document.createElement('div');
+        div.className = 'crewitem' + (this.sel.crew === c ? ' sel' : '');
+        div.dataset.tip = `<b>${c.name}</b> — ${race.name}<br>${race.desc}<br>` +
+          `<span class="tchips">repairs ×${race.repair} · fights ×${race.combat} · speed ×${race.speed}` +
+          `${race.waterRes === 0 ? ' · cannot drown' : ''}${race.fireRes < 1 ? ' · shrugs off fire and flood' : ''}</span><br>` +
+          `Click them, then click a room, to send them there. They act on their own once they arrive.`;
+        div.innerHTML =
+          this.divPortrait(c) +
+          `<div class="cbody"><span class="cdot" style="background:${race.color}"></span><b>${c.name}</b>` +
+          `<span class="crace">${race.name}</span>` +
+          `<div class="chp"><div class="chpfill"></div></div>` +
+          `<span class="cstatus"></span></div>`;
+        div.addEventListener('click', () => { this.sel.crew = (this.sel.crew === c) ? null : c; });
+        box.appendChild(div);
+        this.crewRefs.push({ c, fill: div.querySelector('.chpfill'), status: div.querySelector('.cstatus') });
+      }
+      if (P.intruders.length) {
+        const div = document.createElement('div');
+        div.className = 'crewitem';
+        div.style.borderColor = '#a33b2b';
+        div.innerHTML = `<b style="color:#ff7a5c">⚠ boarders aboard!</b>`;
+        box.appendChild(div);
+      }
     }
-    if (P.intruders.length) {
-      const div = document.createElement('div');
-      div.className = 'crewitem';
-      div.style.borderColor = '#a33b2b';
-      div.innerHTML = `<b style="color:#ff7a5c">⚠ ${P.intruders.length} boarder${P.intruders.length > 1 ? 's' : ''} aboard!</b>`;
-      box.appendChild(div);
+    for (const r of (this.crewRefs || [])) {
+      r.fill.style.width = W.clamp(r.c.hp / r.c.maxHp * 100, 0, 100) + '%';
+      r.status.textContent = r.c.status;
     }
   },
 
