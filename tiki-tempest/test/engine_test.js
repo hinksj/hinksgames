@@ -25,7 +25,7 @@ function conserved(st) {
   if (st.mode === 'draft' && st.picks) {
     // picks stay in hands until reveal; nothing extra to count
   }
-  var recipes = st.menu.length + st.recipeDeck.length +
+  var recipes = st.menu.length + st.recipeDeck.length + (st.recipeSpent || []).length +
     st.players.reduce(function (s, p) { return s + p.served.length; }, 0);
   return n === st.deckIds.length && recipes === 22;
 }

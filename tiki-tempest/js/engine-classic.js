@@ -42,7 +42,7 @@
           score: 0, roundScore: 0, servedTotal: 0 };
       }),
       deck: [], discard: [], removed: [],
-      recipeDeck: [], menu: [],
+      recipeDeck: [], recipeSpent: [], menu: [],
       turn: 0, phase: 'draw', playsLeft: 0, turnsThisRound: 0, refills: 0,
       pending: null, winner: -1, log: [], _rndCalls: 0,
       roundStarter: 0
@@ -53,20 +53,32 @@
     return st;
   }
 
+
+  // top the menu up by one; when the recipe deck is spent entirely, the drinks
+  // served in past rounds are reshuffled into a fresh deck
+  function refillMenuCard(st) {
+    if (!st.recipeDeck.length && st.recipeSpent.length) {
+      st.recipeDeck = shuffleSt(st, st.recipeSpent);
+      st.recipeSpent = [];
+      log(st, '📖 The recipe book is rewritten — past drinks rejoin the deck.');
+    }
+    if (!st.recipeDeck.length) return false;
+    st.menu.push(st.recipeDeck.pop());
+    return true;
+  }
   function startRound(st, starter) {
     st.round++;
     st.roundStarter = starter % st.players.length;
     // rebuild the main deck from everything not permanently out of the game
     var out = {};
     st.removed.forEach(function (id) { out[id] = 1; });
-    // last round's served drinks return to the recipe deck (scores stay banked);
-    // stale menu cards stay put — only the deck behind them refills
+    // served drinks retire to the spent pile; the recipe deck runs continuously
+    // across the whole game and only rewrites itself when it runs out entirely
     st.players.forEach(function (p) {
-      p.served.forEach(function (e) { st.recipeDeck.push(e.card); });
+      p.served.forEach(function (e) { st.recipeSpent.push(e.card); });
     });
-    if (st.round > 1) {
-      shuffleSt(st, st.recipeDeck);
-      while (st.menu.length < data.MENU_SIZE && st.recipeDeck.length) st.menu.push(st.recipeDeck.pop());
+    while (st.menu.length < data.MENU_SIZE) {
+      if (!refillMenuCard(st)) break;
     }
     st.players.forEach(function (p) {
       p.beers.forEach(function (id) { out[id] = 1; }); // beers stay shelved
@@ -152,7 +164,7 @@
       }
     });
     removeFrom(st.menu, recId);
-    if (st.recipeDeck.length) st.menu.push(st.recipeDeck.pop());
+    refillMenuCard(st);
     var entry = { card: recId, pts: r.pts, doubled: false, umbrella: false };
     if (doubleCard) {
       removeFrom(p.hand, doubleCard);

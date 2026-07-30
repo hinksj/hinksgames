@@ -242,7 +242,7 @@
       }
       el.appendChild(d);
     });
-    if (!st.menu.length) el.innerHTML = '<div style="color:#8a5a34;margin:auto">the menu is drunk dry — more drinks return next round</div>';
+    if (!st.menu.length) el.innerHTML = '<div style="color:#8a5a34;margin:auto">the menu is drunk dry</div>';
   }
 
   function wantServe(recId) {
@@ -263,8 +263,11 @@
       if (line.indexOf(me().name) === 0) d.className = 'me';
       d.textContent = line;
       el.appendChild(d);
+      // table-shaking events get a banner for everyone, not just a log line
+      if (line.indexOf('⛈') >= 0) { toast(line, 6500); sfx('bad'); }
+      else if (line.indexOf('🔔') >= 0 || line.indexOf('📖') >= 0) { toast(line, 5500); sfx('round'); }
       var idx = line.indexOf(me().name);
-      var tableWide = ['👐', '—', '🌴', '🌊', '🔔', '⛈', '🏆'].indexOf(line.charAt(0)) >= 0 ||
+      var tableWide = ['👐', '—', '🌴', '🌊', '🔔', '⛈', '🏆', '📖'].indexOf(line.charAt(0)) >= 0 ||
         line.indexOf('Round ') === 0;
       var personal = idx > 0 && !tableWide &&
         (st.mode === 'draft' || st.turn !== ui.mySeat);
