@@ -100,7 +100,14 @@
   });
 
   // Deck variants — "we can alter the number of cards used". The stocked bar
-  // trims beers and surplus commons so rum density rises (helps classic mode).
+  // trims beers and surplus commons AND adds extra rum (every recipe needs it;
+  // the printed 20 run dry across four bars). Extra rum cards are digital-only.
+  var EXTRA_RUM = 4;
+  for (var xr = 1; xr <= EXTRA_RUM; xr++) {
+    var xid = 'ing-rum-x' + xr;
+    CARDS[xid] = { id: xid, kind: 'ing', ing: 'rum', name: 'Rum', rare: false,
+      art: 'assets/cards/ing-rum.jpg' };
+  }
   var STOCKED_CUTS = { beer: 10, pineapple: 14, 'coconut-cream': 12, lime: 12 };
   var DECKS = {
     printed: MAIN_DECK.slice(),
@@ -110,7 +117,7 @@
       if (c.kind === 'beer') return n <= STOCKED_CUTS.beer;
       if (c.kind === 'ing' && STOCKED_CUTS[c.ing]) return n <= STOCKED_CUTS[c.ing];
       return true;
-    })
+    }).concat(Object.keys(CARDS).filter(function (id) { return id.indexOf('ing-rum-x') === 0; }))
   };
 
   G.data = {

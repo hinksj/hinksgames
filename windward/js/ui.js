@@ -1071,6 +1071,7 @@ W.UI = {
           ${sh.captain.alive ? '' : ' †'}</span>
         <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>repair +5 (⚜10)</button>
         ${sh.guns < sh.gunsMax ? `<button data-gun="${i}" ${c.gold < 8 ? 'disabled' : ''}>remount gun (⚜8)</button>` : ''}
+        ${sh.gunsMax < (F.CLASSES[sh.cls].guns + 2) ? `<button data-buygun="${i}" ${c.gold < 45 ? 'disabled' : ''} title="Pierce her side for one more gun — permanent">add a gun (⚜45)</button>` : ''}
         ${i > 0 ? `<button data-flag="${i}" title="Shift your flag — this ship becomes the flagship (and the one whose crises you fight by hand)">hoist flag here</button>` : ''}
         <button data-hplus="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+10 hands</button>
         <button data-hminus="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−10 hands</button></div>`;
@@ -1106,10 +1107,15 @@ W.UI = {
     m.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
       const outcome = F.chooseAction(+b.dataset.go);
       if (outcome === 'battle') { this.closeModal(); this.openMuster(); }
+      else if (outcome === 'stormcrisis') { this.closeModal(); this.openCrisisIntro(); }
       else this.openRefit();
     }));
     m.querySelectorAll('[data-gun]').forEach(b => b.addEventListener('click', () => {
       F.remountGun(F.ships[+b.dataset.gun]);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-buygun]').forEach(b => b.addEventListener('click', () => {
+      F.buyGun(F.ships[+b.dataset.buygun]);
       this.openRefit();
     }));
     m.querySelectorAll('[data-take]').forEach(b => b.addEventListener('click', () => {

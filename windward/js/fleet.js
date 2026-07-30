@@ -29,7 +29,7 @@ W.Fleet = {
     ['cutter', 'cutter', 'brig'],
     ['cutter', 'brig', 'brig'],
     ['cutter', 'brig', 'frigate'],
-    ['brig', 'frigate', 'frigate'],
+    ['cutter', 'frigate', 'frigate'],
     ['frigate', 'frigate', 'shipofline'],
   ],
   ENEMY_NAMES: ['Alarm', 'Vulture', 'Basilisk', 'Harpy', 'Cerberus', 'Gorgon',
@@ -345,11 +345,20 @@ W.Fleet = {
     this.checkStrikes(this.ships);
     this.checkStrikes(this.enemy);
 
+    // crises come from damage — or from plain sea-luck, which owes every
+    // cruise at least one visit sooner or later
     const crisisAt = flag.trait === 'oak' ? 0.5 : 0.65;
-    if (!this.crisisUsed && !flag.struck && !flag.sunk && flag.hull < flag.hullMax * crisisAt) {
+    const hurt = flag.hull < flag.hullMax * crisisAt;
+    const c = this.campaign || {};
+    let fortune = 0;
+    if (this.round === 3) {
+      fortune = 0.12 + (c.stage >= 3 && !(c.crisesFaced > 0) ? 0.3 : 0);
+    }
+    if (!this.crisisUsed && !flag.struck && !flag.sunk && (hurt || W.chance(fortune))) {
       this.crisisUsed = true;
       this.pendingCrisis = true;
-      this.crisisKind = this.pickCrisisKind(flag);
+      this.crisisKind = hurt ? this.pickCrisisKind(flag)
+        : W.pick(['fire', 'fire', 'mast', 'magazine']); // own wadding, parted stays
       return;
     }
 
@@ -550,6 +559,7 @@ W.Fleet = {
   startCrisis() {
     this.pendingCrisis = false;
     this.crisisModalShown = false;
+    if (this.campaign) this.campaign.crisesFaced = (this.campaign.crisesFaced || 0) + 1;
     const kind = this.crisisKind || 'fire';
     const flag = this.ships[0];
     W.player = this.makeCrisisShip(flag ? flag.cls : 'sloop');
@@ -629,6 +639,7 @@ W.Fleet = {
   },
 
   endCrisis(kind) {
+    this.lastCrisisOutcome = kind;
     const flag = this.ships[0];
     const def = this.CRISIS_DEFS[this.crisisKind || 'fire'];
     if (kind === 'saved') {
@@ -662,6 +673,26 @@ W.Fleet = {
     } else {
       flag.sunk = true;
       this.say('The damage party is lost, and the flagship with it.');
+    }
+    if (this.crisisReturn === 'refit') {
+      // a storm-bred crisis returns you to the anchorage, not to a battle
+      this.crisisReturn = null;
+      this.phase = 'muster';
+      W.state.mode = 'fleet';
+      if (flag.struck || flag.sunk) {
+        this.ships = this.ships.filter(s => !s.struck && !s.sunk);
+        if (!this.ships.length) {
+          this.summary = { flagLost: true, stage: this.campaign.stage, rounds: 0, prizes: 0,
+            lost: 1, remaining: 0, casualties: 0, win: false, finalStage: false, prizeShips: [], gold: 0 };
+          this.result = 'defeat';
+          this.phase = 'done';
+          return;
+        }
+        this.say(`Your flag now flies aboard ${this.ships[0].name}.`);
+      }
+      this.pendingRefitReturn = true;
+      this.saveCruise();
+      return;
     }
     this.phase = 'battle';
     W.state.mode = 'fleet';
@@ -713,7 +744,7 @@ W.Fleet = {
     hunt: { name: 'The commodore\'s hunt', type: 'battle',
       desc: 'Chase down a prize-rich line. Half again the prize money — against crews with their blood up.' },
     storm: { name: 'The storm passage', type: 'storm',
-      desc: 'Run the weather instead of the enemy. No action at all — but the sea takes her toll of hulls and hands.' },
+      desc: 'Run the weather instead of the enemy. No action at all — but the sea taxes hulls and hands, and storms breed emergencies of their own.' },
   },
 
   genOptions() {
@@ -743,6 +774,14 @@ W.Fleet = {
       c.stage++;
       c.lastPassage = `The passage is bad. Sprung seams all round, and the sea takes ${toll} hands.`;
       c.actionOptions = this.genOptions();
+      if (W.chance(0.5)) {
+        // the storm finds the weak plank
+        this.crisisKind = W.pick(['flood', 'flood', 'mast']);
+        this.crisisReturn = 'refit';
+        this.pendingCrisis = true;
+        this.crisisModalShown = false;
+        return 'stormcrisis';
+      }
       return 'refit';
     }
     this.pendingMod = o.id;
@@ -812,6 +851,17 @@ W.Fleet = {
     if (pts <= 0) return false;
     c.gold -= pts * 2;
     s.hull += pts;
+    return true;
+  },
+
+  // late gold converts to weight of metal: pierce her for another gun
+  buyGun(s) {
+    const c = this.campaign;
+    const cap = (this.CLASSES[s.cls] ? this.CLASSES[s.cls].guns : s.gunsMax) + 2;
+    if (s.gunsMax >= cap || c.gold < 45) return false;
+    c.gold -= 45;
+    s.gunsMax++;
+    s.guns++;
     return true;
   },
 

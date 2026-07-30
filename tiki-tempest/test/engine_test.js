@@ -12,7 +12,7 @@ function ok(cond, msg) {
 }
 
 ok(data.MAIN_DECK.length === 135, 'printed deck is 135');
-ok(data.DECKS.stocked.length === 117, 'stocked deck is 117, got ' + data.DECKS.stocked.length);
+ok(data.DECKS.stocked.length === 121, 'stocked deck is 121, got ' + data.DECKS.stocked.length);
 ok(data.RECIPE_DECK.length === 22, 'recipe deck is 22');
 
 function conserved(st) {

@@ -326,6 +326,10 @@ W.Main = {
       if (W.state.mode === 'crisis' && !W.paused) {
         W.Fleet.crisisTick(dt);
       }
+      if (W.Fleet.pendingRefitReturn) {
+        W.Fleet.pendingRefitReturn = false;
+        W.UI.openRefit();
+      }
       if (W.Fleet.pendingCrisis && !W.Fleet.crisisModalShown) {
         W.Fleet.crisisModalShown = true;
         W.UI.openCrisisIntro();

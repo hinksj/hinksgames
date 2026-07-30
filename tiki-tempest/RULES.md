@@ -42,7 +42,9 @@ bar — closes them down. In the spirit of Sushi Go!, with a storm rolling in.*
 
 Both modes share the Drink Menu, serving, beers, and the special cards; either
 can be played with the full **printed deck (135)** or the **well-stocked bar**
-variant (117 — fewer beers and surplus commons, so rum flows more freely).
+variant (121 — fewer beers and surplus commons, plus **4 extra rum**; every
+recipe needs rum, and the printed 20 run scarce across four bars — this is the
+recommended default).
 
 ## Object
 
