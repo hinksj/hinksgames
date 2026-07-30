@@ -651,6 +651,7 @@ W.Fleet = {
     this.pendingMod = o.id;
     c.stage++;
     this.setupAction();
+    this.saveCruise();
     return 'battle';
   },
 
@@ -679,6 +680,7 @@ W.Fleet = {
     c.lieutenantOffer = W.chance(0.45);
     c.actionOptions = this.genOptions();
     this.summary.settled = true;
+    this.saveCruise();
   },
 
   takePrize(cls) {
@@ -775,6 +777,58 @@ W.Fleet = {
   nextStage() {
     this.campaign.stage++;
     this.setupAction();
+  },
+
+  // --- the cruise survives a closed tab ---
+  CRUISE_KEY: 'windward_cruise_v1',
+
+  saveCruise() {
+    try {
+      const c = this.campaign;
+      if (!c) return;
+      localStorage.setItem(this.CRUISE_KEY, JSON.stringify({
+        campaign: {
+          stage: c.stage, gold: c.gold, hands: c.hands,
+          captains: c.captains, lieutenantOffer: c.lieutenantOffer,
+        },
+        ships: this.ships.map(s => ({
+          cls: s.cls, name: s.name, trait: s.trait, hull: Math.ceil(s.hull),
+          guns: s.guns, gunsMax: s.gunsMax, hands: s.hands, captain: s.captain,
+        })),
+      }));
+    } catch (e) { /* storage unavailable — sail on */ }
+  },
+
+  hasCruise() {
+    try { return !!localStorage.getItem(this.CRUISE_KEY); } catch (e) { return false; }
+  },
+
+  clearCruise() {
+    try { localStorage.removeItem(this.CRUISE_KEY); } catch (e) { /* ignore */ }
+  },
+
+  loadCruise() {
+    let d;
+    try { d = JSON.parse(localStorage.getItem(this.CRUISE_KEY)); } catch (e) { d = null; }
+    if (!d || !d.ships || !d.ships.length) return false;
+    this.campaign = Object.assign(
+      { stage: 1, gold: 40, hands: 30, captains: [], lieutenantOffer: false }, d.campaign);
+    this.ships = d.ships.map(sd => {
+      const s = this.makeShip(sd.cls, sd.name, sd.captain.name, sd.captain.trait, 'player', sd.trait);
+      s.hull = Math.min(s.hullMax, sd.hull);
+      s.guns = sd.guns; s.gunsMax = sd.gunsMax; s.hands = sd.hands;
+      s.captain = sd.captain;
+      return s;
+    });
+    this.enemy = [];
+    this.campaign.actionOptions = this.genOptions();
+    this.summary = { settled: true, prizeShips: [], win: false, stage: this.campaign.stage };
+    this.result = null;
+    this.active = true;
+    this.phase = 'muster';
+    W.state.mode = 'fleet';
+    W.paused = false;
+    return true;
   },
 
   close() {

@@ -349,9 +349,19 @@ W.UI = {
     if (hasSave) buttons.unshift({
       label: '⚓ Continue Voyage', fn: () => { this.closeModal(); W.Main.load(); },
     });
+    if (W.Fleet.hasCruise()) {
+      buttons.push({
+        label: '⚔ Resume the cruise',
+        fn: () => {
+          this.closeModal();
+          if (W.Fleet.loadCruise()) this.openRefit();
+          else { W.Fleet.newSkirmish(); this.openMuster(); }
+        },
+      });
+    }
     buttons.push({
       label: '⚔ Line of Battle — a commodore\'s cruise (prototype)',
-      fn: () => { this.closeModal(); W.Fleet.newSkirmish(); this.openMuster(); },
+      fn: () => { this.closeModal(); W.Fleet.clearCruise(); W.Fleet.newSkirmish(); this.openMuster(); },
     });
     buttons.push({ label: 'How to Play', fn: () => this.openHowto(() => this.openTitle()) });
     buttons.push({ label: "Captain's Glossary", fn: () => this.openGlossary(() => this.openTitle()) });
@@ -963,6 +973,7 @@ W.UI = {
   openFleetEnd() {
     const s = W.Fleet.summary;
     if (s.flagLost) {
+      W.Fleet.clearCruise();
       this.modal({
         title: 'The Squadron Is Lost',
         body: `<p>The last of your ships is taken or gone under, at action ${s.stage} of
@@ -975,6 +986,7 @@ W.UI = {
       return;
     }
     if (s.win && s.finalStage) {
+      W.Fleet.clearCruise();
       this.modal({
         title: '⚑ The Cruise Is Made',
         body: `<p>Five actions, and the last of them against a ship of the line — beaten.
@@ -1069,10 +1081,11 @@ W.UI = {
       sub: 'Ships, hands, and captains persist for the whole cruise. Spend well, choose well.',
       body,
       buttons: [
-        { label: 'Abandon the cruise', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
+        { label: 'Abandon the cruise', fn: () => { W.Fleet.clearCruise(); W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
       ],
       row: true,
     });
+    W.Fleet.saveCruise();
     m.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
       const outcome = F.chooseAction(+b.dataset.go);
       if (outcome === 'battle') { this.closeModal(); this.openMuster(); }
