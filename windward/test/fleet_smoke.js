@@ -29,7 +29,8 @@ function runBattle(setup) {
     if (W.Fleet.pendingCrisis) {
       crises++;
       W.Fleet.startCrisis();
-      W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; });
+      W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; r.water = 0; });
+      W.player.intruders.forEach(c => { c.hp = 0; });
       W.Fleet.crisisTick(0.1);
       assert.strictEqual(W.Fleet.phase, 'battle', 'crisis did not return to battle');
     }
