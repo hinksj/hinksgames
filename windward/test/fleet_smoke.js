@@ -31,6 +31,7 @@ function runBattle(setup) {
       W.Fleet.startCrisis();
       W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; r.water = 0; });
       W.player.intruders.forEach(c => { c.hp = 0; });
+      Object.values(W.player.systems).forEach(s => { s.damage = 0; });
       W.Fleet.crisisTick(0.1);
       assert.strictEqual(W.Fleet.phase, 'battle', 'crisis did not return to battle');
     }
@@ -78,6 +79,7 @@ console.log('mixed orders: OK');
       W.Fleet.startCrisis();
       W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; r.water = 0; });
       W.player.intruders.forEach(c => { c.hp = 0; });
+      Object.values(W.player.systems).forEach(s => { s.damage = 0; });
       W.Fleet.crisisTick(0.1);
     }
     t += 0.1;
@@ -108,6 +110,7 @@ for (let run = 0; run < 8; run++) {
         W.Fleet.startCrisis();
         W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; r.water = 0; });
         W.player.intruders.forEach(c => { c.hp = 0; });
+        Object.values(W.player.systems).forEach(s => { s.damage = 0; });
         W.Fleet.crisisTick(0.1);
       }
       t += 0.1;

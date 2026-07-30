@@ -345,10 +345,11 @@ W.Fleet = {
     this.checkStrikes(this.ships);
     this.checkStrikes(this.enemy);
 
-    if (!this.crisisUsed && !flag.struck && !flag.sunk && flag.hull < flag.hullMax * 0.65) {
+    const crisisAt = flag.trait === 'oak' ? 0.5 : 0.65;
+    if (!this.crisisUsed && !flag.struck && !flag.sunk && flag.hull < flag.hullMax * crisisAt) {
       this.crisisUsed = true;
       this.pendingCrisis = true;
-      this.crisisKind = W.pick(['fire', 'flood', 'boarders']);
+      this.crisisKind = this.pickCrisisKind(flag);
       return;
     }
 
@@ -402,6 +403,9 @@ W.Fleet = {
 
     dmg = Math.max(0.4, dmg);
     b.hull -= dmg;
+    if (b === this.ships[0] && b.side === 'player') {
+      this.flagLastHit = { cls: a.cls, tactic: tac };
+    }
     let moraleHit = dmg * 1.2;
     if (rake) {
       moraleHit += 22;
@@ -465,6 +469,41 @@ W.Fleet = {
   },
 
   // --- the crisis: the flagship's trouble, handled by your own hands ---
+  // The kind is not random: it grows out of what has been hitting her, what
+  // she is made of, and who is aboard.
+  pickCrisisKind(flag) {
+    const hit = this.flagLastHit || {};
+    const w = { fire: 3, flood: 2, boarders: 1, mast: 2, magazine: 1 };
+    if (hit.cls === 'frigate' || hit.cls === 'shipofline') { w.fire += 2; w.mast += 2; }
+    if (hit.tactic === 'cut') w.flood += 2;   // raked hulls take it below the line
+    if (hit.tactic === 'board') w.boarders += 5;
+    if (this.enemy.some(e => !e.struck && !e.sunk && e.order && e.order.tactic === 'board')) {
+      w.boarders += 2;
+    }
+    if (flag.trait === 'dry') w.fire = Math.max(1, w.fire - 1);   // a well-kept magazine
+    if (flag.trait === 'crank') w.flood += 2;                     // she was leaky before the war
+    if (!this.gauge) w.mast += 1;                                 // fighting from leeward, rig exposed
+    let total = 0;
+    for (const k in w) total += w[k];
+    let roll = Math.random() * total;
+    for (const k in w) { roll -= w[k]; if (roll <= 0) return k; }
+    return 'fire';
+  },
+
+  // the interior you fight the crisis in IS your flagship's class
+  makeCrisisShip(cls) {
+    const layoutId = { cutter: 'cutter', sloop: 'sloop', brig: 'brig',
+      frigate: 'frigate', shipofline: 'leviathan' }[cls] || 'sloop';
+    const levels = { helm: 1, sails: 2, ward: 2, cannons: 2, pumps: 2, surgeon: 1 };
+    const present = new Set(W.LAYOUTS[layoutId].rooms.map(r => r.sys).filter(Boolean));
+    const sys = {};
+    for (const id of present) sys[id] = levels[id] || 1;
+    return new W.Ship({
+      name: 'The damage party', layout: layoutId, faction: 'player',
+      hull: 30, reactor: 8, sys, crew: [],
+    });
+  },
+
   CRISIS_DEFS: {
     fire: {
       banner: 'FIRE ABOARD THE FLAGSHIP',
@@ -490,13 +529,40 @@ W.Fleet = {
       saved: 'The boarders are thrown back into the sea. The line cheers the flag.',
       failed: 'They are driven off at last, but they leave the flagship bloodied.',
     },
+    mast: {
+      banner: 'THE RIGGING IS SHOT THROUGH',
+      sub: 'The sails station is wrecked and burning scraps are coming down. Repair it or lose her legs.',
+      intro: 'A ball has gone through the mainmast\'s heart and the rigging is coming down in '
+        + 'burning festoons. If the sails cannot be worked, the flagship is a floating target.',
+      saved: 'Jury-rigged and drawing again — she answers her helm. The line cheers the flag.',
+      failed: 'She fights the rest of the action half-crippled, slow and shaken.',
+    },
+    magazine: {
+      banner: 'FIRE NEAR THE MAGAZINE',
+      sub: 'Smoke in the hold, powder two rooms away. There is no second chance at this one.',
+      intro: 'Burning wadding has fallen down a hatchway and the hold is alight — two rooms from '
+        + 'the powder. Every second of this fire is borrowed.',
+      saved: 'The hold is drowned and the powder never knew. The line breathes again.',
+      failed: 'The fire brushes the magazine before it dies.',
+    },
   },
 
   startCrisis() {
     this.pendingCrisis = false;
     this.crisisModalShown = false;
     const kind = this.crisisKind || 'fire';
-    W.player = W.makePlayerShip();
+    const flag = this.ships[0];
+    W.player = this.makeCrisisShip(flag ? flag.cls : 'sloop');
+    // the damage party reflects the flagship's muster: short-handed ships send
+    // fewer; a full complement sends a specialist for the trouble at hand
+    const ratio = flag ? flag.hands / flag.complement : 1;
+    const party = [{ race: 'human' }, { race: 'human' }, { race: 'tideborn' }];
+    if (ratio < 0.5) party.pop();
+    if (ratio >= 0.85) {
+      party.push({ race: { fire: 'brass', mast: 'brass', magazine: 'brass',
+        flood: 'tideborn', boarders: 'stormtouched' }[kind] || 'human' });
+    }
+    party.forEach(spec => W.player.addCrewSpec(spec));
     if (kind === 'fire') {
       [W.pick(W.player.rooms), W.pick(W.player.rooms)].forEach(r => { r.fire = Math.max(r.fire, 55); });
       const leak = W.pick(W.player.rooms.filter(r => r.y >= 2));
@@ -509,7 +575,7 @@ W.Fleet = {
         r.breach = true; r.breachWork = 0; r.water = Math.max(r.water, 25);
       }
       this.crisisTimer = 50;
-    } else {
+    } else if (kind === 'boarders') {
       for (let i = 0; i < 3; i++) {
         const room = W.pick(W.player.rooms);
         const race = W.pick(['stormtouched', 'human']);
@@ -521,6 +587,21 @@ W.Fleet = {
         W.player.intruders.push(b);
       }
       this.crisisTimer = 60;
+    } else if (kind === 'mast') {
+      const sails = W.player.systems.sails;
+      if (sails) sails.damage = sails.level;
+      const sailsRoom = W.player.roomOf('sails');
+      if (sailsRoom) sailsRoom.fire = 35;
+      const cannons = W.player.systems.cannons;
+      if (cannons) cannons.damage = Math.min(cannons.level, 1);
+      this.crisisTimer = 55;
+    } else { // magazine
+      const holds = W.player.rooms.filter(r => !r.sys);
+      const seat = holds.length ? W.pick(holds) : W.pick(W.player.rooms);
+      seat.fire = 70;
+      const adj = seat.adj.length ? W.player.rooms[seat.adj[0]] : null;
+      if (adj) adj.fire = Math.max(adj.fire, 35);
+      this.crisisTimer = 30;
     }
     this.phase = 'crisis';
     W.state.mode = 'crisis';
@@ -536,9 +617,12 @@ W.Fleet = {
     const leaking = W.player.rooms.some(r => r.breach);
     const awash = W.player.rooms.some(r => r.water > 30);
     const boarders = W.player.intruders.some(c => c.hp > 0);
+    const sailsOk = !W.player.systems.sails || W.player.systems.sails.damage <= 0;
     const saved = kind === 'fire' ? (!burning && !leaking)
       : kind === 'flood' ? (!leaking && !awash)
-      : !boarders;
+      : kind === 'boarders' ? !boarders
+      : kind === 'mast' ? (sailsOk && !burning)
+      : !burning;
     if (saved) return this.endCrisis('saved');
     if (W.player.aliveCrew().length === 0) return this.endCrisis('lost');
     if (this.crisisTimer <= 0) return this.endCrisis('failed');
@@ -559,6 +643,17 @@ W.Fleet = {
       } else if (this.crisisKind === 'flood') {
         flag.hull -= 5;
         flag.hands = Math.max(10, flag.hands - 6);
+      } else if (this.crisisKind === 'mast') {
+        flag.morale -= 12;
+        flag.guns = Math.max(2, flag.guns - 1);
+      } else if (this.crisisKind === 'magazine') {
+        if (W.chance(0.35)) {
+          flag.sunk = true;
+          this.say('The magazine goes. There is a white flash, and then there is no flagship.');
+        } else {
+          flag.hull -= 8;
+          flag.morale -= 15;
+        }
       } else {
         flag.hull -= 6;
         flag.morale -= 15;
