@@ -98,19 +98,49 @@ ASSETS = {
     'parchment': dict(batch='chart', jpeg=True, prompt=(
         'A blank aged parchment texture, warm cream and tan, subtle stains, fibers and gentle '
         'wrinkles, evenly lit, no text, no drawings, no border — just the empty paper surface.')),
-    # --- phase 2: run after the core style is approved ---
-    'portrait_human1': dict(batch='portraits', transparent=True, square=True, prompt=(
-        f'{STYLE} Bust portrait of a weathered Napoleonic-era sailor, plain working clothes, '
-        'kind tired eyes. Head and shoulders, transparent background.')),
-    'portrait_selkie1': dict(batch='portraits', transparent=True, square=True, prompt=(
-        f'{STYLE} Bust portrait of a selkie sailor from folklore: human, but seal-sleek dark hair, '
-        'large dark liquid eyes, faint mottling at the temples, oilskin coat. Transparent background.')),
-    'portrait_golem1': dict(batch='portraits', transparent=True, square=True, prompt=(
-        f'{STYLE} Bust portrait of a shipwright\'s golem: kiln-fired clay figure in sailor\'s slops, '
-        'a worn inscribed word on its brow, warm amber eyes, patient expression. Transparent background.')),
-    'portrait_storm1': dict(batch='portraits', transparent=True, square=True, prompt=(
-        f'{STYLE} Bust portrait of a storm-touched sailor: gaunt, quick-eyed, faint pale '
-        'lightning-scar filigree across one cheek and neck, hair slightly adrift. Transparent background.')),
+    # --- portraits: crew divisions and fleet captains ---
+    'portrait_seaman1': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a weathered able seaman of the Napoleonic navy, plain working '
+        'slops, tarred pigtail, kind tired eyes. Head and shoulders, transparent background.')),
+    'portrait_seaman2': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a young able seawoman of a Napoleonic-era crew, checked shirt, '
+        'cropped hair, steady gaze. Head and shoulders, transparent background.')),
+    'portrait_diver1': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a salvage diver of the age of sail: lean, wet dark hair, '
+        'oilskin over bare shoulders, a knife on a neck-cord. Transparent background.')),
+    'portrait_diver2': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a Cornish pearl-diver turned sailor, sun-dark, salt-bleached '
+        'curls, holding breath-calm expression. Transparent background.')),
+    'portrait_carpenter1': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a massive ship\'s carpenter, leather apron, mallet on the '
+        'shoulder, sawdust in his beard, patient eyes. Transparent background.')),
+    'portrait_carpenter2': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a wiry older ship\'s carpenter, spectacles pushed up, rule and '
+        'pencil in a chest pocket. Transparent background.')),
+    'portrait_marine1': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a marine of the Napoleonic era in a red coat with white '
+        'crossbelts, black round hat, drilled and unbothered. Transparent background.')),
+    'portrait_marine2': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a marine sergeant, red coat, scarred cheek, musket sling over '
+        'one shoulder, calm veteran stare. Transparent background.')),
+    'portrait_capt1': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a Napoleonic naval post-captain: blue coat with gold epaulettes, '
+        'bicorne under arm, grey at the temples, weather-lined face. Transparent background.')),
+    'portrait_capt2': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a young Napoleonic-era naval commander, blue coat, single '
+        'epaulette, eager and unproven. Transparent background.')),
+    'portrait_capt3': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a woman post-captain of a Napoleonic-style navy, blue coat with '
+        'gold lace, hair pinned under a bicorne, formidable calm. Transparent background.')),
+    'portrait_capt4': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a grizzled old sailing-master promoted late: plain blue coat, '
+        'white hair queued, eyes like charts. Transparent background.')),
+    'portrait_capt5': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of an elegant, ambitious Napoleonic frigate captain, immaculate '
+        'uniform, a duelist\'s half-smile. Transparent background.')),
+    'portrait_capt6': dict(batch='portraits', transparent=True, square=True, prompt=(
+        f'{STYLE} Bust portrait of a hard-bitten privateer commander in a mismatched half-uniform, '
+        'headscarf under a battered bicorne, gold earring. Transparent background.')),
 }
 
 

@@ -562,11 +562,12 @@
 
   function scoreTable(st) {
     var rows = st.lastScores || E.scoreRound(st);
-    var html = '<table><tr><th>skipper</th><th>melds</th><th>specials</th><th>members</th>' +
+    var html = '<table><tr><th>skipper</th><th>melds</th><th>size bonus</th><th>specials</th><th>members</th>' +
       '<th>toast</th><th>hand</th><th>round</th><th class="total">total</th><th>⚓ support</th></tr>';
     rows.forEach(function (r) {
       var p = st.players[r.player];
-      html += '<tr><td>' + esc(r.name) + '</td><td>' + r.melded + '</td><td>' + r.specials +
+      html += '<tr><td>' + esc(r.name) + '</td><td>' + r.melded + '</td><td>' + (r.bonus || 0) +
+        '</td><td>' + r.specials +
         '</td><td>' + r.members + '</td><td>' + r.toast + '</td><td>' + r.hand +
         '</td><td>' + r.total + '</td><td class="total">' + p.score + '</td><td>' +
         p.supporters + '/' + st.membersToWin + '</td></tr>';

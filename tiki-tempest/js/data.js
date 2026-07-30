@@ -118,7 +118,7 @@
     CARDS: CARDS, MAIN_DECK: MAIN_DECK, RECIPE_DECK: RECIPE_DECK,
     BACK_MAIN: 'assets/cards/back-main.jpg',
     BACK_RECIPE: 'assets/cards/back-recipe.jpg',
-    HAND_SIZE: 5, MENU_SIZE: 4, TURNS_PER_ROUND: 10, PASSES_PER_ROUND: 10, ROUNDS_DEFAULT: 2,
+    HAND_SIZE: 5, MENU_SIZE: 4, TURNS_PER_ROUND: 10, PASSES_PER_ROUND: 14, HAND_BASE: 12, ROUNDS_DEFAULT: 2,
     PLAYS_PER_TURN: 2, BEER_MOST: 10, BEER_FEWEST: -5
   };
 }(typeof window !== 'undefined' ? (window.TT = window.TT || {}) : (module.exports = {})));

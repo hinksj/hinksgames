@@ -248,9 +248,17 @@
   // ---------- scoring ----------
   function scoreRound(st) {
     var rows = st.players.map(function (p) {
-      var melded = 0;
+      var melded = 0, bonus = 0;
       st.melds.forEach(function (m) {
         m.cards.forEach(function (e) { if (e.by === p.i) melded++; });
+        if (m.type === 'set' && m.cards.length === 4) {
+          // +2 to whoever completed the 4-card set
+          var last = m.cards.reduce(function (a, b) { return (b.ord || 0) > (a.ord || 0) ? b : a; });
+          if (last.by === p.i) bonus += 2;
+        } else if (m.type === 'run') {
+          // +1 for each run card beyond the third, to whoever played it
+          m.cards.forEach(function (e) { if ((e.ord || 0) >= 3 && e.by === p.i) bonus++; });
+        }
       });
       // members score their points once, in the round they were courted
       var memberPts = p.membersRound.reduce(function (n, id) { return n + CARDS[id].pts; }, 0);
@@ -258,11 +266,11 @@
         return n - (CARDS[id].kind === 'special' ? 2 : 1);
       }, 0);
       var row = {
-        player: p.i, name: p.name, melded: melded,
-        specials: p.played.length * 2, members: memberPts,
+        player: p.i, name: p.name, melded: melded, bonus: bonus,
+        specials: p.played.length, members: memberPts,
         toast: p.toast ? 5 : 0, hand: handPenalty
       };
-      row.total = melded + row.specials + memberPts + row.toast + handPenalty;
+      row.total = melded + bonus + row.specials + memberPts + row.toast + handPenalty;
       return row;
     });
     return rows;
@@ -275,23 +283,32 @@
       p.score += r.total;
     });
     st.lastScores = rows;
-    // to be named Commodore you need the points AND the members' support
+    // to be named Commodore you need the points AND the members' support;
+    // landslide: each supporter beyond the threshold is worth +1 at the finish
+    var lands = st.players.map(function (p) { return Math.max(0, p.supporters - st.membersToWin); });
+    var eff = function (p) { return p.score + lands[p.i]; };
     var qualified = st.players.filter(function (p) {
-      return p.score >= st.target && p.supporters >= st.membersToWin;
+      return eff(p) >= st.target && p.supporters >= st.membersToWin;
     });
     st.players.forEach(function (p) {
-      if (p.score >= st.target && p.supporters < st.membersToWin) {
+      if (eff(p) >= st.target && p.supporters < st.membersToWin) {
         log(st, p.name + ' has the points but not the votes — ' +
           p.supporters + '/' + st.membersToWin + ' members backing them.');
       }
     });
     if (qualified.length) {
-      qualified.sort(function (a, b) { return b.score - a.score || b.supporters - a.supporters; });
-      if (qualified.length > 1 && qualified[0].score === qualified[1].score &&
+      qualified.sort(function (a, b) { return eff(b) - eff(a) || b.supporters - a.supporters; });
+      if (qualified.length > 1 && eff(qualified[0]) === eff(qualified[1]) &&
           qualified[0].supporters === qualified[1].supporters) {
         st.phase = 'roundEnd'; // sail-off: another round
         log(st, 'Tied at the top — a sail-off round is called!');
       } else {
+        st.players.forEach(function (p) {
+          if (lands[p.i] > 0) {
+            p.score += lands[p.i];
+            log(st, p.name + ' rides a landslide: +' + lands[p.i] + ' for members beyond the threshold.');
+          }
+        });
         st.winner = qualified[0].i;
         st.phase = 'gameEnd';
         log(st, qualified[0].name + ' is named COMMODORE — ' + qualified[0].score +
@@ -425,9 +442,9 @@
       if (!type) throw new Error('not a legal set or run');
       a.cards.forEach(function (id) { removeFromHand(p, id); });
       st.melds.push({
-        id: 'm' + (st.melds.length + 1) + '-' + st.round, type: type,
+        id: 'm' + (st.melds.length + 1) + '-' + st.round, type: type, nextOrd: a.cards.length,
         cards: a.cards.slice().sort(function (x, y) { return CARDS[x].rank - CARDS[y].rank; })
-          .map(function (id) { return { card: id, by: p.i }; })
+          .map(function (id, idx) { return { card: id, by: p.i, ord: idx }; })
       });
       st.meldedThisTurn = true;
       log(st, p.name + ' melds a ' + type + ': ' +
@@ -443,7 +460,8 @@
       if (!canExtend(m, a.card)) throw new Error('cannot extend');
       removeFromHand(p, a.card);
       st.meldedThisTurn = true; // extending a meld also earns a Membership Drive
-      m.cards.push({ card: a.card, by: p.i });
+      m.nextOrd = m.nextOrd || m.cards.length;
+      m.cards.push({ card: a.card, by: p.i, ord: m.nextOrd++ });
       m.cards.sort(function (x, y) { return CARDS[x.card].rank - CARDS[y.card].rank; });
       log(st, p.name + ' adds ' + CARDS[a.card].name + ' to a ' + m.type);
       checkOut(st);

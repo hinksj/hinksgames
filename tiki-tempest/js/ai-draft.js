@@ -14,7 +14,8 @@
         missTotal += m;
         if (k === ing) missThis = m;
       });
-      if (missThis) v += r.pts / Math.max(1, missTotal);
+      // commit hard to nearly-done recipes: closeness squared, not linear
+      if (missThis) v += r.pts / Math.max(1, missTotal * missTotal);
     });
     return v;
   }

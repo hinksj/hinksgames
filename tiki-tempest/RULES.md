@@ -62,7 +62,7 @@ stays as a face-down stock.
 together, then pass the rest of their hand on — **left** in round 1, **right**
 in round 2, alternating — and **everyone draws one card from the stock** into
 their new hand (pass *plus* draw: hands stay full, every pick is a real
-choice). A round is **10 picks**; the stock reshuffles from the discard pile
+choice). A round is **14 picks**; the stock reshuffles from the discard pile
 whenever it runs dry. Kept cards resolve immediately:
 
 - **Ingredient** → face up onto your **Bar**.
@@ -89,7 +89,7 @@ itself goes **into that hand** as you pass it on, off to help someone else.
 | Storm Surge | Lurks in the **stock** — if it surfaces on any draw (the pass-draw, a Breeze, Torch, or Plunder), the round ends instantly. |
 | Last Call | Picking it rings the bell: this round is the game's last. |
 
-**Round end:** after the 10th pick (or a Storm Surge). Score served
+**Round end:** after the 14th pick (or a Storm Surge). Score served
 drinks; bars, hands and set-asides wash back into the deck; beers persist.
 After the final round, add the beer bonus — highest total is **Master
 Mixologist**.

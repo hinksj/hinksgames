@@ -138,7 +138,7 @@
     }
     if (st.mode === 'draft') {
       $('tRound').textContent = 'round ' + st.round + '/' + (st.finalRound ? st.round : st.rounds) +
-        ' · pick ' + Math.min(data.PASSES_PER_ROUND, (st.passCount || 0) + 1) + '/' + data.PASSES_PER_ROUND +
+        ' · pick ' + Math.min(st.passes, (st.passCount || 0) + 1) + '/' + st.passes +
         ' · passing ' + (st.dir === 1 ? '⟵ left' : 'right ⟶') +
         (st.finalRound ? ' · LAST CALL' : '');
     } else {

@@ -75,7 +75,8 @@ console.log('mixed orders: OK');
     }
     if (W.Fleet.pendingCrisis) {
       W.Fleet.startCrisis();
-      W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; });
+      W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; r.water = 0; });
+      W.player.intruders.forEach(c => { c.hp = 0; });
       W.Fleet.crisisTick(0.1);
     }
     t += 0.1;
@@ -104,7 +105,8 @@ for (let run = 0; run < 8; run++) {
       W.Fleet.tick(0.1);
       if (W.Fleet.pendingCrisis) {
         W.Fleet.startCrisis();
-        W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; });
+        W.player.rooms.forEach(r => { r.fire = 0; r.breach = false; r.water = 0; });
+        W.player.intruders.forEach(c => { c.hp = 0; });
         W.Fleet.crisisTick(0.1);
       }
       t += 0.1;

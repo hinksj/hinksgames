@@ -137,10 +137,11 @@ W.Render = {
       ctx.fillStyle = '#ff8a5c';
       ctx.font = 'bold 16px "IM Fell English", Georgia';
       ctx.textAlign = 'center';
-      ctx.fillText(`FIRE ABOARD THE FLAGSHIP — ${Math.max(0, Math.ceil(W.Fleet.crisisTimer))}s`, 500, 24);
+      const cdef = W.Fleet.CRISIS_DEFS[W.Fleet.crisisKind || 'fire'];
+      ctx.fillText(`${cdef.banner} — ${Math.max(0, Math.ceil(W.Fleet.crisisTimer))}s`, 500, 24);
       ctx.font = '12px "IM Fell English", Georgia';
       ctx.fillStyle = '#cfe3f0';
-      ctx.fillText('Send crew to the burning rooms and the leak. The line holds its breath.', 500, 42);
+      ctx.fillText(cdef.sub, 500, 42);
       return;
     }
 

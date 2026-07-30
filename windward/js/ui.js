@@ -930,11 +930,10 @@ W.UI = {
   },
 
   openCrisisIntro() {
+    const def = W.Fleet.CRISIS_DEFS[W.Fleet.crisisKind || 'fire'];
     this.modal({
-      title: '🔥 Fire Aboard the Flagship!',
-      body: `<p>A shell has burst on the gun deck and the smoke coming up the hatches is the
-        wrong color. The line will hold formation — but the flagship's fight, for the next
-        minute, is with the fire and the sea. Take command of the damage party.</p>`,
+      title: `⚠ ${def.banner.charAt(0) + def.banner.slice(1).toLowerCase()}!`,
+      body: `<p>${def.intro}</p><p class="sub">The line holds formation while you fight it.</p>`,
       buttons: [{ label: 'Below decks!', fn: () => { this.closeModal(); W.Fleet.startCrisis(); } }],
     });
   },

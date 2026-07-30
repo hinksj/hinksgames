@@ -30,12 +30,14 @@
     if (st.log.length > 250) st.log.shift();
   }
 
-  function handSize(n) { return Math.max(6, 12 - n); } // 2p:10 3p:9 4p:8 5p:7
+  function handSize(st) { return Math.max(6, st.handBase - st.players.length); }
 
   function newGame(opts) {
     var st = {
       mode: 'draft',
       deckIds: opts.deckIds || data.MAIN_DECK,
+      handBase: opts.handBase || data.HAND_BASE,
+      passes: opts.passes || data.PASSES_PER_ROUND,
       seed: opts.seed || Math.floor(Math.random() * 1e9),
       rounds: opts.rounds || data.ROUNDS_DEFAULT,
       round: 0, finalRound: false,
@@ -67,7 +69,7 @@
     });
     st.deck = shuffleSt(st, st.deckIds.filter(function (id) { return !out[id]; }));
     st.discard = [];
-    var hs = handSize(st.players.length);
+    var hs = handSize(st);
     st.players.forEach(function (p) {
       for (var i = 0; i < hs; i++) p.hand.push(st.deck.pop());
       // printed on Storm Surge: if dealt, reshuffle into the bottom half, redraw
@@ -279,7 +281,7 @@
 
   function passHands(st) {
     st.passCount++;
-    if (st.passCount >= data.PASSES_PER_ROUND) {
+    if (st.passCount >= st.passes) {
       endRound(st, 'closing time');
       return;
     }

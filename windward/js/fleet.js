@@ -347,6 +347,7 @@ W.Fleet = {
     if (!this.crisisUsed && !flag.struck && !flag.sunk && flag.hull < flag.hullMax * 0.65) {
       this.crisisUsed = true;
       this.pendingCrisis = true;
+      this.crisisKind = W.pick(['fire', 'flood', 'boarders']);
       return;
     }
 
@@ -461,16 +462,64 @@ W.Fleet = {
     }
   },
 
-  // --- the crisis: fire aboard the flagship, handled by hand ---
+  // --- the crisis: the flagship's trouble, handled by your own hands ---
+  CRISIS_DEFS: {
+    fire: {
+      banner: 'FIRE ABOARD THE FLAGSHIP',
+      sub: 'Send crew to the burning rooms and the leak. The line holds its breath.',
+      intro: 'A shell has burst on the gun deck and the smoke coming up the hatches is the wrong '
+        + 'color. Take command of the damage party before the fire finds the magazine.',
+      saved: 'The fire is beaten out — the line cheers the flag.',
+      failed: 'The fire reaches the orlop before it dies. The flagship is badly hurt.',
+    },
+    flood: {
+      banner: 'THE FLAGSHIP IS TAKING WATER',
+      sub: 'Plug the shot-holes and let the pumps gain. Divers and carpenters earn their pay now.',
+      intro: 'Three shot have gone home below the waterline and the well is gaining fast. '
+        + 'Take command of the damage party before she settles.',
+      saved: 'The holes are plugged and the pumps gain. She swims — the line cheers the flag.',
+      failed: 'She is saved, barely, waterlogged and wallowing. It costs hull and hands.',
+    },
+    boarders: {
+      banner: 'BOARDERS ON THE FLAGSHIP',
+      sub: 'They are over the rail. Marines to the fight; everyone else out of their way.',
+      intro: 'Grappling hooks bite the rail and enemy boarders come over in a wave. '
+        + 'Take command below — repel them hand to hand.',
+      saved: 'The boarders are thrown back into the sea. The line cheers the flag.',
+      failed: 'They are driven off at last, but they leave the flagship bloodied.',
+    },
+  },
+
   startCrisis() {
     this.pendingCrisis = false;
     this.crisisModalShown = false;
+    const kind = this.crisisKind || 'fire';
     W.player = W.makePlayerShip();
-    const rooms = [W.pick(W.player.rooms), W.pick(W.player.rooms)];
-    rooms.forEach(r => { r.fire = Math.max(r.fire, 55); });
-    const leak = W.pick(W.player.rooms.filter(r => r.y >= 2));
-    if (leak) { leak.breach = true; leak.breachWork = 0; }
-    this.crisisTimer = 45;
+    if (kind === 'fire') {
+      [W.pick(W.player.rooms), W.pick(W.player.rooms)].forEach(r => { r.fire = Math.max(r.fire, 55); });
+      const leak = W.pick(W.player.rooms.filter(r => r.y >= 2));
+      if (leak) { leak.breach = true; leak.breachWork = 0; }
+      this.crisisTimer = 45;
+    } else if (kind === 'flood') {
+      const below = W.player.rooms.filter(r => r.y >= 2);
+      for (let i = 0; i < 3; i++) {
+        const r = below[i % below.length];
+        r.breach = true; r.breachWork = 0; r.water = Math.max(r.water, 25);
+      }
+      this.crisisTimer = 50;
+    } else {
+      for (let i = 0; i < 3; i++) {
+        const room = W.pick(W.player.rooms);
+        const race = W.pick(['stormtouched', 'human']);
+        const b = new W.Crew(race, W.nameFor(), 'enemy');
+        b.ship = W.player;
+        b.roomIdx = room.idx;
+        const ctr = W.player.center(room);
+        b.px = ctr.x; b.py = ctr.y;
+        W.player.intruders.push(b);
+      }
+      this.crisisTimer = 60;
+    }
     this.phase = 'crisis';
     W.state.mode = 'crisis';
     W.paused = false;
@@ -480,22 +529,38 @@ W.Fleet = {
     if (this.phase !== 'crisis') return;
     W.player.tick(dt);
     this.crisisTimer -= dt;
+    const kind = this.crisisKind || 'fire';
     const burning = W.player.rooms.some(r => r.fire > 0);
     const leaking = W.player.rooms.some(r => r.breach);
-    if (!burning && !leaking) return this.endCrisis('saved');
+    const awash = W.player.rooms.some(r => r.water > 30);
+    const boarders = W.player.intruders.some(c => c.hp > 0);
+    const saved = kind === 'fire' ? (!burning && !leaking)
+      : kind === 'flood' ? (!leaking && !awash)
+      : !boarders;
+    if (saved) return this.endCrisis('saved');
     if (W.player.aliveCrew().length === 0) return this.endCrisis('lost');
-    if (this.crisisTimer <= 0) return this.endCrisis('burned');
+    if (this.crisisTimer <= 0) return this.endCrisis('failed');
   },
 
   endCrisis(kind) {
     const flag = this.ships[0];
+    const def = this.CRISIS_DEFS[this.crisisKind || 'fire'];
     if (kind === 'saved') {
-      this.say('The fire is beaten out — the line cheers the flag.');
+      this.say(def.saved);
       this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 8); });
-    } else if (kind === 'burned') {
-      flag.hull -= 6;
-      flag.morale -= 15;
-      this.say('The fire reaches the orlop before it dies. The flagship is badly hurt.');
+    } else if (kind === 'failed') {
+      this.say(def.failed);
+      if (this.crisisKind === 'boarders') {
+        flag.morale -= 18;
+        flag.hands = Math.max(10, flag.hands - 10);
+        flag.hull -= 2;
+      } else if (this.crisisKind === 'flood') {
+        flag.hull -= 5;
+        flag.hands = Math.max(10, flag.hands - 6);
+      } else {
+        flag.hull -= 6;
+        flag.morale -= 15;
+      }
       if (flag.hull <= 0) { flag.struck = true; this.say('The flagship strikes her colors!'); }
     } else {
       flag.sunk = true;

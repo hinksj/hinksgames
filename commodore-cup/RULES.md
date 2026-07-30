@@ -174,7 +174,9 @@ When someone goes out, everyone scores:
 | Item | Points |
 |---|---|
 | Each suit card you melded (sets, runs, extensions) | **+1** |
-| Each Special Action card you played | **+2** |
+| Completing a set's 4th card | **+2** to whoever added it |
+| Each run card beyond the third | **+1** to whoever played it |
+| Each Special Action card you played | **+1** |
 | Each member courted **this round** | **its printed value** (+8 … −6) |
 | Commodore's Toast (you went out) | **+5** |
 | Each card left in your hand — suit card | **−1** |
@@ -195,6 +197,10 @@ At a **six-player** table 25 members can't back everyone, so the bar drops to
 Points without support get you nothing but a bar bill — if you cross 50 with
 fewer than 5 supporters, the election is postponed and play continues until
 someone has both. Court those members.
+
+**Landslide:** at the finish, every supporter **beyond** the required 5 is
+worth **+1** — the membership rewards a broad coalition, so the member deck
+stays worth fighting over to its last card.
 
 ---
 
@@ -231,3 +237,8 @@ incomplete. This ruleset finalizes them:
    members stay on the table all game and the 25-card deck depletes, so the
    membership is a visible, contested resource. Extending a meld also arms
    the Membership Drive — late-round turns still earn courting rights.
+10. **v1.1 balance** (simulated playtest): specials dropped from +2 to +1 —
+   at +2 the winner was farming ~19 points just for firing them, rivaling
+   melds; their effects are the real reward. Meld **size bonuses** (+2 for a
+   set's 4th card, +1 per run card past the third) reward building the harder
+   shapes. **Landslide** keeps courting alive after the fifth vote.
