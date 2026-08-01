@@ -1112,16 +1112,22 @@ W.UI = {
           · Capt. <select data-capt="${i}">${capOpts}</select>
           ${sh.captain.alive ? '' : ' †'}
           ${sh.captain.learned ? `<i class="wchips">(${F.TRAITS[sh.captain.trait].name} + ${F.TRAITS[sh.captain.learned].name})</i>` : ''}</span>
-        <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>repair +5 (⚜10)</button>
+        <button data-rep1="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+1 (⚜2)</button>
+        <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+5 (⚜10)</button>
+        <button data-repfull="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''} title="Repair as much as the purse allows">full</button>
         ${sh.guns < sh.gunsMax ? `<button data-gun="${i}" ${c.gold < 8 ? 'disabled' : ''}>remount gun (⚜8)</button>` : ''}
         ${sh.gunsMax < (F.CLASSES[sh.cls].guns + 2) ? `<button data-buygun="${i}" ${c.gold < 45 ? 'disabled' : ''} title="Pierce her side for one more gun — permanent">add a gun (⚜45)</button>` : ''}
         ${i > 0 ? `<button data-flag="${i}" title="Shift your flag — this ship becomes the flagship (and the one whose crises you fight by hand)">hoist flag here</button>` : ''}
-        <button data-hplus="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+10 hands</button>
-        <button data-hminus="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−10 hands</button></div>`;
+        <button data-hplus5="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+5</button>
+        <button data-hplus="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+10</button>
+        <button data-hfill="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''} title="Fill her complement from the pool">fill</button>
+        <button data-hminus5="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−5</button>
+        <button data-hminus="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−10</button></div>`;
     });
     body += `<h4>RECRUITING</h4>
       <div class="storerow"><b>Muster hands</b><span class="sdesc">Volunteers and the press: ⚜3 a head.</span>
-        <button data-hire="10" ${c.gold < 30 ? 'disabled' : ''}>+10 hands (⚜30)</button></div>`;
+        <button data-hire="3" ${c.gold < 9 ? 'disabled' : ''}>+3 (⚜9)</button>
+        <button data-hire="10" ${c.gold < 30 ? 'disabled' : ''}>+10 (⚜30)</button></div>`;
     if (c.lieutenantOffer) {
       body += `<div class="storerow"><b>A passed-over lieutenant</b><span class="sdesc">Seeks a command.
         Competent, hungry, ⚜60.</span>
@@ -1176,12 +1182,32 @@ W.UI = {
       F.repairShip(F.ships[+b.dataset.rep], 5);
       this.openRefit();
     }));
+    m.querySelectorAll('[data-rep1]').forEach(b => b.addEventListener('click', () => {
+      F.repairShip(F.ships[+b.dataset.rep1], 1);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-repfull]').forEach(b => b.addEventListener('click', () => {
+      F.repairShip(F.ships[+b.dataset.repfull], 999);
+      this.openRefit();
+    }));
     m.querySelectorAll('[data-hplus]').forEach(b => b.addEventListener('click', () => {
       F.moveHands(F.ships[+b.dataset.hplus], 10);
       this.openRefit();
     }));
     m.querySelectorAll('[data-hminus]').forEach(b => b.addEventListener('click', () => {
       F.moveHands(F.ships[+b.dataset.hminus], -10);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-hplus5]').forEach(b => b.addEventListener('click', () => {
+      F.moveHands(F.ships[+b.dataset.hplus5], 5);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-hminus5]').forEach(b => b.addEventListener('click', () => {
+      F.moveHands(F.ships[+b.dataset.hminus5], -5);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-hfill]').forEach(b => b.addEventListener('click', () => {
+      F.moveHands(F.ships[+b.dataset.hfill], 999);
       this.openRefit();
     }));
     m.querySelectorAll('[data-hire]').forEach(b => b.addEventListener('click', () => {
