@@ -62,6 +62,102 @@
     }
   };
 
+  // ---------- generative soundtrack: slow synthwave, Am-F-C-G ----------
+  var music = { on: true, timer: null, nextT: 0, barIdx: 0, bus: null };
+  try { music.on = localStorage.getItem('cc-music') !== '0'; } catch (e) {}
+  function midiFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+  var PROG = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+  var SPB = 60 / 82; // seconds per beat at 82 BPM
+  function mbus() {
+    if (!music.bus) {
+      music.bus = ctx.createGain();
+      music.bus.gain.value = 0.5;
+      music.bus.connect(ctx.destination);
+    }
+    return music.bus;
+  }
+  function pad(freq, t, dur) {
+    [0, 3].forEach(function (det) {
+      var o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+      o.type = 'sawtooth'; o.frequency.value = freq; o.detune.value = det;
+      f.type = 'lowpass'; f.frequency.value = 750;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.016, t + 0.6);
+      g.gain.setValueAtTime(0.016, t + dur - 0.8);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(f); f.connect(g); g.connect(mbus());
+      o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+  function bassNote(freq, t, dur) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'triangle'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(mbus());
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function hat(t) {
+    var len = Math.floor(ctx.sampleRate * 0.03);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    var src = ctx.createBufferSource(); src.buffer = buf;
+    var f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6000;
+    var g = ctx.createGain(); g.gain.setValueAtTime(0.015, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+    src.connect(f); f.connect(g); g.connect(mbus());
+    src.start(t); src.stop(t + 0.04);
+  }
+  function sparkle(freq, t) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.02, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    o.connect(g); g.connect(mbus());
+    o.start(t); o.stop(t + 1.3);
+  }
+  function scheduleBar(t, chord, barIdx) {
+    var barLen = SPB * 4;
+    chord.forEach(function (n) { pad(midiFreq(n), t, barLen); });
+    for (var i = 0; i < 8; i++) bassNote(midiFreq(chord[0] - 24), t + i * SPB / 2, SPB * 0.42);
+    for (var h = 0; h < 4; h++) hat(t + (h + 0.5) * SPB);
+    if (barIdx % 2 === 1) sparkle(midiFreq(chord[(barIdx >> 1) % 3] + 24), t + SPB * (1 + barIdx % 2));
+  }
+  function musicTick() {
+    if (!music.on || !ctx) return;
+    var horizon = ctx.currentTime + 1.4;
+    if (music.nextT < ctx.currentTime) music.nextT = ctx.currentTime + 0.1;
+    while (music.nextT < horizon) {
+      scheduleBar(music.nextT, PROG[music.barIdx % PROG.length], music.barIdx);
+      music.nextT += SPB * 4;
+      music.barIdx++;
+    }
+    music.timer = setTimeout(musicTick, 350);
+  }
+  function startMusic() {
+    if (!ensureCtx() || music.timer) return;
+    musicTick();
+  }
+  function stopMusic() {
+    if (music.timer) { clearTimeout(music.timer); music.timer = null; }
+    if (music.bus) { music.bus.gain.value = 0; music.bus = null; }
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('click', function () { if (music.on) startMusic(); });
+  }
+  G.music = {
+    toggle: function () {
+      music.on = !music.on;
+      try { localStorage.setItem('cc-music', music.on ? '1' : '0'); } catch (e) {}
+      if (music.on) startMusic(); else stopMusic();
+      return music.on;
+    },
+    isOn: function () { return music.on; }
+  };
+
   var lastPlayed = {};
   G.sound = {
     play: function (name) {

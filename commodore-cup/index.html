@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Commodore Cup — the 1980s yacht club card game</title>
-<link rel="stylesheet" href="css/style.css?v=11">
+<link rel="stylesheet" href="css/style.css?v=12">
 </head>
 <body>
 
 <div id="menu">
   <h1 class="burgee">Commodore Cup</h1>
   <div class="tag">melds &middot; martinis &middot; members — first to 50 points takes the burgee
-    <span style="opacity:.55">· build 11</span></div>
+    <span style="opacity:.55">· build 12</span></div>
   <div class="cardfan">
     <img src="assets/cards/back-general.jpg" alt="">
     <img src="assets/cards/member-champagne-charlotte.jpg" alt="Champagne Charlotte">
@@ -59,6 +59,10 @@
       <button id="btnJoin">Join a table</button>
     </div>
     <div class="err" id="mErr"></div>
+    <div style="margin-top:6px">
+      <button class="ghost" id="btnMusic2" title="Toggle music">🎵</button>
+      <button class="ghost" id="btnSound2" title="Toggle sound">🔊</button>
+    </div>
     <div style="color:var(--dim);font-size:13px">Host a table, share the room code, friends join from
       anywhere. The host's browser runs the game; empty seats can be filled with AI rivals.
       <a href="RULES.md" target="_blank">Read the full rules</a>.</div>
@@ -71,7 +75,8 @@
     <span class="round" id="tRound"></span>
     <span class="spacer"></span>
     <span class="netcode" id="tNet"></span>
-    <span style="color:#6a4bb0;font-size:12px">b11</span>
+    <span style="color:#6a4bb0;font-size:12px">b12</span>
+    <button class="ghost" id="btnMusic" title="Toggle music">🎵</button>
     <button class="ghost" id="btnSound" title="Toggle sound">🔊</button>
     <button class="ghost" id="btnRules">Rules</button>
     <button class="ghost" id="btnQuit">Leave table</button>

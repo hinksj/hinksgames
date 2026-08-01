@@ -62,6 +62,98 @@
     }
   };
 
+  // ---------- generative soundtrack: island exotica — marimba calypso ----------
+  var music = { on: true, timer: null, nextT: 0, barIdx: 0, bus: null };
+  try { music.on = localStorage.getItem('tt-music') !== '0'; } catch (e) {}
+  function midiFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+  var PROG = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]]; // C Am F G
+  var SPB = 60 / 96;
+  var PATTERN = [0, 1.5, 2, 2.5, 3.5]; // syncopated calypso hits (in beats)
+  function mbus() {
+    if (!music.bus) {
+      music.bus = ctx.createGain();
+      music.bus.gain.value = 0.5;
+      music.bus.connect(ctx.destination);
+    }
+    return music.bus;
+  }
+  function marimba(freq, t) {
+    [1, 2].forEach(function (h, i) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq * h;
+      var v = i === 0 ? 0.05 : 0.015;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(v, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      o.connect(g); g.connect(mbus());
+      o.start(t); o.stop(t + 0.55);
+    });
+  }
+  function shaker(t, vol) {
+    var len = Math.floor(ctx.sampleRate * 0.05);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    var src = ctx.createBufferSource(); src.buffer = buf;
+    var f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 8000; f.Q.value = 1.5;
+    var g = ctx.createGain(); g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    src.connect(f); f.connect(g); g.connect(mbus());
+    src.start(t); src.stop(t + 0.06);
+  }
+  function conga(freq, t) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.7, t + 0.12);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(g); g.connect(mbus());
+    o.start(t); o.stop(t + 0.2);
+  }
+  function scheduleBar(t, chord, barIdx) {
+    PATTERN.forEach(function (beat, i) {
+      var note = chord[(i + barIdx) % 3] + (i % 2 === 1 ? 12 : 0);
+      marimba(midiFreq(note), t + beat * SPB);
+    });
+    for (var e = 0; e < 8; e++) shaker(t + e * SPB / 2, e % 2 ? 0.012 : 0.02);
+    conga(180, t);
+    conga(140, t + 2.5 * SPB);
+    if (barIdx % 4 === 3) marimba(midiFreq(chord[0] + 24), t + 3.75 * SPB);
+  }
+  function musicTick() {
+    if (!music.on || !ctx) return;
+    var horizon = ctx.currentTime + 1.4;
+    if (music.nextT < ctx.currentTime) music.nextT = ctx.currentTime + 0.1;
+    while (music.nextT < horizon) {
+      scheduleBar(music.nextT, PROG[music.barIdx % PROG.length], music.barIdx);
+      music.nextT += SPB * 4;
+      music.barIdx++;
+    }
+    music.timer = setTimeout(musicTick, 350);
+  }
+  function startMusic() {
+    if (!ensureCtx() || music.timer) return;
+    musicTick();
+  }
+  function stopMusic() {
+    if (music.timer) { clearTimeout(music.timer); music.timer = null; }
+    if (music.bus) { music.bus.gain.value = 0; music.bus = null; }
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('click', function () { if (music.on) startMusic(); });
+  }
+  G.music = {
+    toggle: function () {
+      music.on = !music.on;
+      try { localStorage.setItem('tt-music', music.on ? '1' : '0'); } catch (e) {}
+      if (music.on) startMusic(); else stopMusic();
+      return music.on;
+    },
+    isOn: function () { return music.on; }
+  };
+
   var lastPlayed = {};
   G.sound = {
     play: function (name) {

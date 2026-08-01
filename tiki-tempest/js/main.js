@@ -157,11 +157,22 @@
 
   // ---------- misc ----------
   function drawSoundBtn() {
-    $('btnSound').textContent = (G.sound && G.sound.isMuted()) ? '🔇' : '🔊';
+    var s = (G.sound && G.sound.isMuted()) ? '🔇' : '🔊';
+    var mOp = (G.music && G.music.isOn()) ? '1' : '0.35';
+    ['btnSound', 'btnSound2'].forEach(function (id) { if ($(id)) $(id).textContent = s; });
+    ['btnMusic', 'btnMusic2'].forEach(function (id) { if ($(id)) $(id).style.opacity = mOp; });
   }
-  $('btnSound').addEventListener('click', function () {
-    if (G.sound) G.sound.toggle();
-    drawSoundBtn();
+  ['btnMusic', 'btnMusic2'].forEach(function (id) {
+    if ($(id)) $(id).addEventListener('click', function () {
+      if (G.music) G.music.toggle();
+      drawSoundBtn();
+    });
+  });
+  ['btnSound', 'btnSound2'].forEach(function (id) {
+    if ($(id)) $(id).addEventListener('click', function () {
+      if (G.sound) G.sound.toggle();
+      drawSoundBtn();
+    });
   });
   drawSoundBtn();
   $('btnRules').addEventListener('click', function () { window.open('RULES.md', '_blank'); });
