@@ -833,7 +833,7 @@ W.Fleet = {
 
   settleAction() {
     const c = this.campaign;
-    c.gold += this.summary.gold;
+    c.gold = Math.round(c.gold) + this.summary.gold;
     for (const s of this.ships) {
       if (s.sunk && s.captain.alive && W.chance(0.4)) {
         c.captains.push(s.captain);
@@ -904,10 +904,12 @@ W.Fleet = {
 
   repairShip(s, pts) {
     const c = this.campaign;
-    pts = Math.min(pts, s.hullMax - s.hull, Math.floor(c.gold / 2));
+    // whole points, whole coins — the purser keeps no fractions
+    pts = Math.min(pts, Math.ceil(s.hullMax - s.hull), Math.floor(c.gold / 2));
+    pts = Math.floor(pts);
     if (pts <= 0) return false;
     c.gold -= pts * 2;
-    s.hull += pts;
+    s.hull = Math.min(s.hullMax, s.hull + pts);
     return true;
   },
 

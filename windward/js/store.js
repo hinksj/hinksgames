@@ -44,10 +44,10 @@ W.Store = {
   repairOne(n) {
     n = n || 1;
     const P = W.player;
-    n = Math.min(n, P.hullMax - P.hull, Math.floor(W.state.gold / 2));
+    n = Math.floor(Math.min(n, Math.ceil(P.hullMax - P.hull), Math.floor(W.state.gold / 2)));
     if (n <= 0) return false;
     W.state.gold -= n * 2;
-    P.hull += n;
+    P.hull = Math.min(P.hullMax, P.hull + n);
     return true;
   },
 
