@@ -83,6 +83,11 @@
             ui.pumpNow();
           }
         }
+      } else if (kind === 'data' && msg && msg.type === 'chat') {
+        var seatC = net.seatOf.get(conn);
+        var nm = (seatC !== undefined && ui.st) ? ui.st.players[seatC].name : 'Guest';
+        var txtC = String(msg.text || '').trim().slice(0, 140);
+        if (txtC) pushChat(nm, txtC);
       } else if (kind === 'data' && msg && msg.type === 'action') {
         var seat2 = net.seatOf.get(conn);
         if (seat2 === undefined || !validFrom(seat2, msg.action)) return;
@@ -126,6 +131,26 @@
   }
   function broadcast() { net.broadcast({ type: 'state', state: ui.st }); }
 
+  // ---------- table chat (rides the host-authoritative log) ----------
+  function pushChat(name, text) {
+    if (!ui.st) return;
+    ui.st.log.push('💬 ' + name + ': ' + text);
+    broadcast();
+    ui.pumpNow();
+  }
+  function sendChat() {
+    var inp = $('chatInput');
+    var text = (inp.value || '').trim().slice(0, 140);
+    if (!text || !ui.st || !ui.roomCode) return;
+    inp.value = '';
+    if (ui.isGuest) net.send({ type: 'chat', text: text });
+    else pushChat(myName(), text);
+  }
+  $('chatSend').addEventListener('click', sendChat);
+  $('chatInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') sendChat();
+  });
+
   // ---------- join ----------
   $('btnJoin').addEventListener('click', function () {
     err('');
@@ -159,7 +184,11 @@
   function drawSoundBtn() {
     var s = (G.sound && G.sound.isMuted()) ? '🔇' : '🔊';
     var mOp = (G.music && G.music.isOn()) ? '1' : '0.35';
-    ['btnSound', 'btnSound2'].forEach(function (id) { if ($(id)) $(id).textContent = s; });
+    if ($('btnTrack')) {
+    $('btnTrack').style.display = (G.music && G.music.hasTracks()) ? '' : 'none';
+    $('btnTrack').addEventListener('click', function () { if (G.music) G.music.next(); });
+  }
+  ['btnSound', 'btnSound2'].forEach(function (id) { if ($(id)) $(id).textContent = s; });
     ['btnMusic', 'btnMusic2'].forEach(function (id) { if ($(id)) $(id).style.opacity = mOp; });
   }
   ['btnMusic', 'btnMusic2'].forEach(function (id) {
@@ -168,6 +197,10 @@
       drawSoundBtn();
     });
   });
+  if ($('btnTrack')) {
+    $('btnTrack').style.display = (G.music && G.music.hasTracks()) ? '' : 'none';
+    $('btnTrack').addEventListener('click', function () { if (G.music) G.music.next(); });
+  }
   ['btnSound', 'btnSound2'].forEach(function (id) {
     if ($(id)) $(id).addEventListener('click', function () {
       if (G.sound) G.sound.toggle();

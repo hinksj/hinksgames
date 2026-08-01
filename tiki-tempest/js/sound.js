@@ -133,13 +133,49 @@
     }
     music.timer = setTimeout(musicTick, 350);
   }
+  // uploaded soundtrack (assets/music/playlist.js) takes over from the synth
+  var audio = null, trackOrder = null, trackIdx = -1;
+  function playlist() {
+    return (G.PLAYLIST && G.PLAYLIST.length) ? G.PLAYLIST : null;
+  }
+  function startTracks() {
+    var pl = playlist();
+    if (!pl || typeof Audio === 'undefined') return false;
+    if (!audio) {
+      audio = new Audio();
+      audio.volume = 0.45;
+      audio.addEventListener('ended', function () { nextTrack(); });
+    }
+    if (!trackOrder || trackOrder.length !== pl.length) {
+      trackOrder = pl.map(function (_, i) { return i; });
+      for (var i = trackOrder.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = trackOrder[i]; trackOrder[i] = trackOrder[j]; trackOrder[j] = t;
+      }
+      trackIdx = 0;
+    }
+    var tr = pl[trackOrder[trackIdx % trackOrder.length]];
+    var src = tr.file || tr;
+    if (audio.src.indexOf(src) < 0) audio.src = src;
+    audio.play().catch(function () {});
+    G.music.nowPlaying = tr.title || String(src).split('/').pop();
+    return true;
+  }
+  function nextTrack() {
+    if (!playlist()) return;
+    trackIdx++;
+    if (audio) audio.src = '';
+    startTracks();
+  }
   function startMusic() {
+    if (startTracks()) return; // uploaded soundtrack wins
     if (!ensureCtx() || music.timer) return;
     musicTick();
   }
   function stopMusic() {
     if (music.timer) { clearTimeout(music.timer); music.timer = null; }
     if (music.bus) { music.bus.gain.value = 0; music.bus = null; }
+    if (audio) audio.pause();
   }
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('click', function () { if (music.on) startMusic(); });
@@ -151,7 +187,9 @@
       if (music.on) startMusic(); else stopMusic();
       return music.on;
     },
-    isOn: function () { return music.on; }
+    isOn: function () { return music.on; },
+    next: function () { if (music.on) nextTrack(); },
+    hasTracks: function () { return !!playlist(); }
   };
 
   var lastPlayed = {};

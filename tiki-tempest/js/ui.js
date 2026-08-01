@@ -27,6 +27,7 @@
     $('menu').style.display = 'none';
     $('table').style.display = 'block';
     $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
+    if ($('chatBox')) $('chatBox').style.display = ui.roomCode ? 'flex' : 'none';
     bindZoom();
     render();
     pump();
@@ -224,6 +225,13 @@
     return d;
   }
 
+  var ING_NAME = {};
+  data.INGREDIENTS.forEach(function (ing) { ING_NAME[ing.id] = ing.name; });
+  function recipeCaption(r) {
+    return Object.keys(r.needs).map(function (k) {
+      return r.needs[k] + ' ' + ING_NAME[k];
+    }).join(' + ') + ' · ' + r.pts + ' pts';
+  }
   function renderMenu(st) {
     var el = $('menuCards');
     el.innerHTML = '';
@@ -235,7 +243,8 @@
       var servable = canAct && E.canServe(st, me(), recId);
       d.className = 'mrec' + (servable ? ' servable' : '');
       d.innerHTML = '<img src="' + CARDS[recId].art + '" title="' +
-        esc(CARDS[recId].name + ' — ' + CARDS[recId].pts + ' pts') + '">';
+        esc(CARDS[recId].name + ' — ' + CARDS[recId].pts + ' pts') + '">' +
+        '<div class="rcp">' + esc(recipeCaption(CARDS[recId])) + '</div>';
       if (servable) {
         d.title = 'Serve ' + CARDS[recId].name + '!';
         d.addEventListener('click', function () { wantServe(recId); });
@@ -260,6 +269,13 @@
     for (var i = ui.logLen; i < st.log.length; i++) {
       var d = document.createElement('div');
       var line = st.log[i];
+      if (line.indexOf('💬') === 0) {
+        d.className = 'chatline';
+        d.textContent = line;
+        el.appendChild(d);
+        if (line.indexOf('💬 ' + me().name + ':') !== 0) { toast(line, 4000); sfx('pluck'); }
+        continue;
+      }
       if (line.indexOf(me().name) === 0) d.className = 'me';
       d.textContent = line;
       el.appendChild(d);

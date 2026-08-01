@@ -32,6 +32,7 @@
     $('menu').style.display = 'none';
     $('table').style.display = 'block';
     $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
+    if ($('chatBox')) $('chatBox').style.display = ui.roomCode ? 'flex' : 'none';
     bindZoom();
     render();
     pump();
@@ -273,6 +274,13 @@
     for (var i = ui.logLen; i < st.log.length; i++) {
       var d = document.createElement('div');
       var line = st.log[i];
+      if (line.indexOf('💬') === 0) {
+        d.className = 'chatline';
+        d.textContent = line;
+        el.appendChild(d);
+        if (line.indexOf('💬 ' + me().name + ':') !== 0) { toast(line, 4000); sfx('pluck'); }
+        continue;
+      }
       if (line.indexOf(me().name) === 0) d.className = 'me';
       d.textContent = line;
       el.appendChild(d);
