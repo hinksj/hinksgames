@@ -198,6 +198,24 @@ W.Fleet = {
     if (this.log.length > 60) this.log.shift();
   },
 
+  // the cruise's log-book: everything notable, for the end-of-cruise report
+  chron(text) {
+    if (!this.campaign) return;
+    (this.campaign.chronicle = this.campaign.chronicle || [])
+      .push({ stage: this.campaign.stage, text });
+  },
+
+  markStruck(s) {
+    s.struck = true;
+    s.struckAt = this.battleT;
+    if (W.Sound) W.Sound.play('bell');
+  },
+
+  markSunk(s) {
+    s.sunk = true;
+    s.sunkAt = this.battleT;
+  },
+
   alive(list) { return list.filter(s => !s.struck && !s.sunk); },
 
   // signal hoists: your only voice once battle is joined
@@ -227,8 +245,27 @@ W.Fleet = {
   rakeTimeOf(s) { return s.trait === 'flyer' ? 6.5 : 9.5; },
 
   tick(dt) {
+    // after the last colors come down, the plan gets its closing moment
+    if (this.phase === 'done' && this.endDelay > 0) {
+      this.endDelay -= dt;
+      this.battleT += dt;
+      for (const shot of (this.shots || [])) shot.t += dt;
+      if (Math.random() < dt * 3 && W.Render && W.Render.fleetPos) {
+        const beaten = this.enemy.filter(s => s.struck || s.sunk);
+        if (beaten.length && this.summary && this.summary.win) {
+          const p = W.Render.fleetPos(W.pick(beaten));
+          if (p) W.boom(p.x + W.rand(-20, 20), p.y + W.rand(-8, 8), 26);
+        }
+      }
+      return;
+    }
     if (this.phase !== 'battle' || this.result || this.pendingCrisis) return;
     this.battleT += dt;
+    for (const shot of (this.shots || [])) {
+      shot.t += dt;
+      if (shot.t >= shot.dur && !shot.done) { shot.done = true; this.resolveShot(shot); }
+    }
+    this.shots = (this.shots || []).filter(s => !s.done);
     this.roundT = this.battleT % this.ROUND_S;
     this.round = Math.floor(this.battleT / this.ROUND_S);
     if (this.closerT > 0) this.closerT -= dt;
@@ -293,22 +330,31 @@ W.Fleet = {
       if (b.cls === 'shipofline') odds *= 0.3;
       if (a.captain.alive && this.capHas(a.captain, 'boarder')) odds *= 2;
       if (W.chance(odds)) {
-        b.struck = true;
+        this.markStruck(b);
         if (a.side === 'player' && a.deeds) a.deeds.boarded = true;
-        if (W.Sound) W.Sound.play('bell');
         this.say(`${a.name} grapples and boards ${b.name} — her colors come down!`);
         this.floatAt(b, 'BOARDED', '#a02418');
         this.fxAt(b, 'boom');
         return;
       }
     }
-    // doubling: is anyone else laying guns on the same target right now?
-    this._doubled = new Set();
-    const mates = (a.side === 'player' ? this.alive(this.ships) : this.alive(this.enemy))
-      .filter(x => x !== a && this.targetFor(x) === b);
-    if (mates.length) this._doubled.add(a);
-    this.fireOn(a, b);
+    // the broadside is fired now — it LANDS in a moment
+    const doubled = (a.side === 'player' ? this.alive(this.ships) : this.alive(this.enemy))
+      .some(x => x !== a && this.targetFor(x) === b);
+    (this.shots = this.shots || []).push({ a, b, t: 0, dur: 0.55, doubled });
+    if (W.Render && W.Render.fleetPos) {
+      const p = W.Render.fleetPos(a);
+      if (p) W.burst(p.x + (a.side === 'player' ? 20 : -20), p.y, '#8d8d84', 4, 30, 0.5, 2.5);
+    }
     if (W.Sound) W.Sound.play('cannon');
+  },
+
+  resolveShot(shot) {
+    const { a, b, doubled } = shot;
+    if (a.struck || a.sunk || b.struck || b.sunk) return;
+    this._doubled = new Set();
+    if (doubled) this._doubled.add(a);
+    this.fireOn(a, b);
   },
 
   slowChecks() {
@@ -486,12 +532,12 @@ W.Fleet = {
     this.fxAt(b, 'hit');
     if (b.hull <= 0) {
       if (W.chance(0.3)) {
-        b.sunk = true;
+        this.markSunk(b);
         this.say(`${b.name} goes down by the head!`);
+        this.chron(`${b.name} sunk in action.`);
         this.fxAt(b, 'boom');
       } else {
-        b.struck = true;
-        if (W.Sound) W.Sound.play('bell');
+        this.markStruck(b);
         this.say(`${b.name} strikes her colors!`);
         this.floatAt(b, 'STRUCK', '#5a4020');
       }
@@ -502,7 +548,7 @@ W.Fleet = {
     for (const s of list) {
       if (s.struck || s.sunk) continue;
       if (s.morale <= 25 && W.chance(0.4)) {
-        s.struck = true;
+        this.markStruck(s);
         this.say(`${s.name}'s crew has had enough — she strikes!`);
         this.floatAt(s, 'STRUCK', '#5a4020');
       }
@@ -689,6 +735,8 @@ W.Fleet = {
 
   endCrisis(kind) {
     this.lastCrisisOutcome = kind;
+    this.chron(`Crisis — ${this.CRISIS_DEFS[this.crisisKind || 'fire'].banner.toLowerCase()}: ` +
+      (kind === 'saved' ? 'beaten' : kind === 'failed' ? 'it cost us' : 'the party was lost') + '.');
     const flag = this.ships[0];
     const def = this.CRISIS_DEFS[this.crisisKind || 'fire'];
     if (kind === 'saved') {
@@ -781,6 +829,12 @@ W.Fleet = {
     this.say(win ? `The enemy line is broken. ${prizes} prize${prizes === 1 ? '' : 's'} taken.`
       : (kind === 'withdraw' ? 'You bring the squadron off intact enough to fight again.'
         : 'The action is lost.'));
+    const assign = (this.ASSIGNMENTS[this.mod] || { name: 'the patrol' }).name;
+    this.chron(`Action ${this.summary.stage} — ${assign}: ` +
+      (win ? `VICTORY, ${prizes} prize${prizes === 1 ? '' : 's'} taken` :
+        (kind === 'withdraw' ? 'withdrew in good order' : 'the action was lost')) +
+      `${this.summary.casualties ? `; the bill was ${this.summary.casualties} hands` : ''}.`);
+    this.endDelay = this.summary.win || this.summary.flagLost ? 2.4 : 1.2;
     this.phase = 'done';
   },
 
@@ -822,6 +876,7 @@ W.Fleet = {
       }
       c.stage++;
       c.lastPassage = `The passage is bad. Sprung seams all round, and the sea takes ${toll} hands.`;
+      this.chron(`Ran the storm passage; the sea took ${toll} hands.`);
       c.actionOptions = this.genOptions();
       if (W.chance(0.5)) {
         // the storm finds the weak plank
@@ -862,6 +917,7 @@ W.Fleet = {
         s.captain.learned = W.pick(pool);
         this.say(`Captain ${s.captain.name} comes out of it a better officer — ` +
           `${this.TRAITS[s.captain.learned].name}.`);
+        this.chron(`Captain ${s.captain.name} learned ${this.TRAITS[s.captain.learned].name}.`);
       }
     }
 
@@ -872,6 +928,7 @@ W.Fleet = {
       if (tgt && tgt.struck) {
         s.captain.distinguished = true;
         this.say(`Captain ${s.captain.name} will be mentioned in the Gazette.`);
+        this.chron(`Captain ${s.captain.name} mentioned in the Gazette.`);
       }
     }
     const oldFlag = this.ships[0];
@@ -895,11 +952,13 @@ W.Fleet = {
     ship.hull = Math.round(ship.hullMax * 0.45);
     ship.hands = 0; // she sails when you give her a prize crew
     this.ships.push(ship);
+    this.chron(`Took a ${this.CLASSES[cls].name} into service under Captain ${capt.name}.`);
     return true;
   },
 
   sellPrize(cls) {
     this.campaign.gold += this.PRIZE_VALUE[cls] || 50;
+    this.chron(`Sent in a ${this.CLASSES[cls].name} for ⚜${this.PRIZE_VALUE[cls] || 50}.`);
   },
 
   hireLieutenant() {
@@ -1005,6 +1064,7 @@ W.Fleet = {
         campaign: {
           stage: c.stage, gold: c.gold, hands: c.hands,
           captains: c.captains, lieutenantOffer: c.lieutenantOffer,
+          chronicle: c.chronicle || [],
         },
         ships: this.ships.map(s => ({
           cls: s.cls, name: s.name, trait: s.trait, hull: Math.ceil(s.hull),

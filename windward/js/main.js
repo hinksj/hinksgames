@@ -326,7 +326,8 @@ W.Main = {
       if (W.state.mode === 'combat' && W.Combat.active && !W.paused) {
         W.Combat.tick(dt);
       }
-      if (W.state.mode === 'fleet' && W.Fleet.active && !W.paused) {
+      if (W.state.mode === 'fleet' && W.Fleet.active && !W.paused &&
+          (W.Fleet.phase === 'battle' || W.Fleet.phase === 'done')) {
         W.Fleet.tick(dt);
       }
       if (W.state.mode === 'crisis' && !W.paused) {
@@ -340,7 +341,8 @@ W.Main = {
         W.Fleet.crisisModalShown = true;
         W.UI.openCrisisIntro();
       }
-      if (W.Fleet.active && W.Fleet.phase === 'done' && W.Fleet.summary && !W.Fleet.summaryShown) {
+      if (W.Fleet.active && W.Fleet.phase === 'done' && W.Fleet.summary &&
+          !(W.Fleet.endDelay > 0) && !W.Fleet.summaryShown) {
         W.Fleet.summaryShown = true;
         W.UI.openFleetEnd();
       }

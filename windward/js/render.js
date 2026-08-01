@@ -995,11 +995,37 @@ W.Render = {
     return { x: pos.x + bobX, y: pos.y, h };
   },
 
-  drawShipMarker(ctx, p, len, ink, struck, sunk, sails) {
+  drawShipMarker(ctx, p, len, ink, struck, sunk, sails, s) {
+    const F = W.Fleet;
+    const since = (at) => (at != null ? Math.max(0, (F.battleT || 0) - at) : 99);
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(p.h);
     if (sunk) {
+      const dt = s ? since(s.sunkAt) : 99;
+      if (dt < 2.2) {
+        // she settles: tilting, fading, the sea ringing her
+        ctx.rotate(dt * 0.3);
+        ctx.globalAlpha = Math.max(0.15, 1 - dt / 2.2);
+        const w = len * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(len * 0.52, 0);
+        ctx.quadraticCurveTo(len * 0.16, w * 0.9, -len * 0.48, w * 0.55);
+        ctx.lineTo(-len * 0.48, -w * 0.55);
+        ctx.quadraticCurveTo(len * 0.16, -w * 0.9, len * 0.52, 0);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(245,238,216,0.8)';
+        ctx.fill();
+        ctx.strokeStyle = ink;
+        ctx.stroke();
+        ctx.rotate(-dt * 0.3);
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = '#3a2a17';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(0, 0, len * 0.35 + dt * 14, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+        return;
+      }
       ctx.strokeStyle = '#a02418';
       ctx.lineWidth = 2.5;
       ctx.beginPath();
@@ -1009,7 +1035,21 @@ W.Render = {
       ctx.restore();
       return;
     }
-    if (struck) ctx.globalAlpha = 0.5;
+    if (struck) {
+      const dt = s ? since(s.struckAt) : 99;
+      ctx.globalAlpha = dt < 1.4 ? 1 - 0.5 * (dt / 1.4) : 0.5;
+      if (dt < 1.4) {
+        // her colors come down the halyard
+        ctx.rotate(-p.h);
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(0, -4); ctx.stroke();
+        const fy = -22 + 16 * (dt / 1.4);
+        ctx.fillStyle = '#a02418';
+        ctx.fillRect(0.5, fy, 9, 5);
+        ctx.rotate(p.h);
+      }
+    }
     const w = len * 0.3;
     ctx.beginPath();
     ctx.moveTo(len * 0.52, 0);
@@ -1112,7 +1152,7 @@ W.Render = {
         const p = this.fleetPos(s);
         if (!p) continue;
         const ink = s.side === 'player' ? INK : RED;
-        this.drawShipMarker(ctx, p, LEN[s.cls] || 40, ink, s.struck, s.sunk, !s.struck && !s.sunk);
+        this.drawShipMarker(ctx, p, LEN[s.cls] || 40, ink, s.struck, s.sunk, !s.struck && !s.sunk, s);
         if (s.sunk) continue;
         const lx = s.side === 'player' ? p.x - 26 : p.x + 26;
         ctx.textAlign = s.side === 'player' ? 'right' : 'left';
@@ -1129,6 +1169,28 @@ W.Render = {
         ctx.fillStyle = '#8a6a1a';
         ctx.fillRect(bx, p.y + 6, 44 * W.clamp(s.morale / 70, 0, 1), 2);
       }
+    }
+
+    // broadsides in flight: lobbed arcs of iron, drawn in ink
+    for (const shot of (F.shots || [])) {
+      if (shot.done) continue;
+      const pa = this.fleetPos(shot.a), pb = this.fleetPos(shot.b);
+      if (!pa || !pb) continue;
+      const frac = W.clamp(shot.t / shot.dur, 0, 1);
+      const x = W.lerp(pa.x, pb.x, frac);
+      const arc = -26 * Math.sin(frac * Math.PI);
+      const y = W.lerp(pa.y, pb.y, frac) + arc;
+      ctx.strokeStyle = 'rgba(58,42,23,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const bfrac = Math.max(0, frac - 0.12);
+      ctx.moveTo(W.lerp(pa.x, pb.x, bfrac), W.lerp(pa.y, pb.y, bfrac) - 26 * Math.sin(bfrac * Math.PI));
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, shot.a.cls === 'shipofline' ? 3.4 : 2.4, 0, Math.PI * 2);
+      ctx.fillStyle = shot.a.side === 'player' ? '#3a2a17' : '#a02418';
+      ctx.fill();
     }
 
     // who fights whom: a thin line from each of your ships to her target

@@ -1029,12 +1029,20 @@ W.UI = {
   openFleetEnd() {
     const s = W.Fleet.summary;
     if (W.Sound) W.Sound.play(s.win ? 'stingWin' : (s.withdraw ? 'bell' : 'stingLoss'));
+    const chronicle = () => {
+      const ch = (W.Fleet.campaign && W.Fleet.campaign.chronicle) || [];
+      if (!ch.length) return '';
+      return `<h4>THE CRUISE, AS THE LOG TELLS IT</h4>
+        <div style="max-height:220px;overflow-y:auto;font-size:13.5px;line-height:1.5">
+        ${ch.map(e => `<div><b style="color:#8a6a42">S${e.stage}</b> — ${e.text}</div>`).join('')}</div>`;
+    };
     if (s.flagLost) {
+      const report = chronicle();
       W.Fleet.clearCruise();
       this.modal({
         title: 'The Squadron Is Lost',
         body: `<p>The last of your ships is taken or gone under, at action ${s.stage} of
-          ${W.Fleet.STAGES.length}. The Admiralty will write letters. The sea will not read them.</p>`,
+          ${W.Fleet.STAGES.length}. The Admiralty will write letters. The sea will not read them.</p>${report}`,
         buttons: [
           { label: 'Begin a new cruise', fn: () => { this.closeModal(); W.Fleet.startCampaign(); this.openMuster(); } },
           { label: 'Back to the title', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
@@ -1043,13 +1051,14 @@ W.UI = {
       return;
     }
     if (s.win && s.finalStage) {
+      const report = chronicle();
       W.Fleet.clearCruise();
       this.modal({
         title: '⚑ The Cruise Is Made',
         body: `<p>Five actions, and the last of them against a ship of the line — beaten.
           You bring ${s.remaining} ship${s.remaining === 1 ? '' : 's'} home with prize-flags
           flying, and the Gazette will make a legend of it.</p>
-          <p class="goldnote">Final purse: ⚜ ${W.Fleet.campaign.gold + s.gold}</p>`,
+          <p class="goldnote">Final purse: ⚜ ${W.Fleet.campaign.gold + s.gold}</p>${report}`,
         buttons: [
           { label: 'Begin a new cruise', fn: () => { this.closeModal(); W.Fleet.startCampaign(); this.openMuster(); } },
           { label: 'Back to the title', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
@@ -1159,6 +1168,15 @@ W.UI = {
       sub: 'Ships, hands, and captains persist for the whole cruise. Spend well, choose well.',
       body,
       buttons: [
+        { label: 'The log so far', fn: () => {
+          const ch = (c.chronicle || []).map(e => `<div><b style="color:#8a6a42">S${e.stage}</b> — ${e.text}</div>`).join('')
+            || '<p>Nothing worth the ink, yet.</p>';
+          this.modal({
+            title: '📖 The Cruise Log',
+            body: `<div style="max-height:340px;overflow-y:auto;font-size:14px;line-height:1.55">${ch}</div>`,
+            buttons: [{ label: 'Back to the refit', fn: () => this.openRefit() }],
+          });
+        } },
         { label: 'Abandon the cruise', fn: () => { W.Fleet.clearCruise(); W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
       ],
       row: true,
