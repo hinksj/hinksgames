@@ -1112,17 +1112,28 @@ W.UI = {
           · Capt. <select data-capt="${i}">${capOpts}</select>
           ${sh.captain.alive ? '' : ' †'}
           ${sh.captain.learned ? `<i class="wchips">(${F.TRAITS[sh.captain.trait].name} + ${F.TRAITS[sh.captain.learned].name})</i>` : ''}</span>
-        <button data-rep1="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+1 (⚜2)</button>
-        <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+5 (⚜10)</button>
-        <button data-repfull="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''} title="Repair as much as the purse allows">full</button>
-        ${sh.guns < sh.gunsMax ? `<button data-gun="${i}" ${c.gold < 8 ? 'disabled' : ''}>remount gun (⚜8)</button>` : ''}
-        ${sh.gunsMax < (F.CLASSES[sh.cls].guns + 2) ? `<button data-buygun="${i}" ${c.gold < 45 ? 'disabled' : ''} title="Pierce her side for one more gun — permanent">add a gun (⚜45)</button>` : ''}
-        ${i > 0 ? `<button data-flag="${i}" title="Shift your flag — this ship becomes the flagship (and the one whose crises you fight by hand)">hoist flag here</button>` : ''}
-        <button data-hplus5="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+5</button>
-        <button data-hplus="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+10</button>
-        <button data-hfill="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''} title="Fill her complement from the pool">fill</button>
-        <button data-hminus5="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−5</button>
-        <button data-hminus="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−10</button></div>`;
+        <span class="rowctl">
+          <span class="ctlgrp" data-tip="<b>Hull repairs</b> — ⚜2 per point. <i>full</i> repairs as much as the purse allows.">
+            <i>repair</i>
+            <button data-rep1="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+1</button>
+            <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+5</button>
+            <button data-repfull="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>full</button>
+          </span>
+          <span class="ctlgrp" data-tip="<b>Hands</b> — move crew between ship and shore pool, free. <i>fill</i> tops up her complement. Short-handed ships serve their guns slowly.">
+            <i>hands</i>
+            <button data-hminus="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−10</button>
+            <button data-hminus5="${i}" ${sh.hands <= 0 ? 'disabled' : ''}>−5</button>
+            <button data-hplus5="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+5</button>
+            <button data-hplus="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>+10</button>
+            <button data-hfill="${i}" ${c.hands <= 0 || sh.hands >= sh.complement ? 'disabled' : ''}>fill</button>
+          </span>
+          <span class="ctlgrp" data-tip="<b>Guns</b> — <i>remount</i> restores a dismounted gun (⚜8); <i>add</i> pierces her for a new one, permanent (⚜45, +2 max).">
+            <i>guns</i>
+            ${sh.guns < sh.gunsMax ? `<button data-gun="${i}" ${c.gold < 8 ? 'disabled' : ''}>remount ⚜8</button>` : ''}
+            ${sh.gunsMax < (F.CLASSES[sh.cls].guns + 2) ? `<button data-buygun="${i}" ${c.gold < 45 ? 'disabled' : ''}>add ⚜45</button>` : ''}
+          </span>
+          ${i > 0 ? `<button data-flag="${i}" data-tip="<b>Shift your flag</b> — this ship becomes the flagship: hers are the crises you fight by hand.">hoist flag here</button>` : ''}
+        </span></div>`;
     });
     body += `<h4>RECRUITING</h4>
       <div class="storerow"><b>Muster hands</b><span class="sdesc">Volunteers and the press: ⚜3 a head.</span>

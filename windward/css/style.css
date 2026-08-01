@@ -110,6 +110,10 @@ body {
 }
 .captportrait.sm { width: 36px; height: 36px; flex-basis: 36px; }
 canvas.shipthumb { flex: 0 0 auto; align-self: center; }
+.storerow { flex-wrap: wrap; }
+.rowctl { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; flex-basis: 100%; margin-top: 5px; }
+.ctlgrp { white-space: nowrap; }
+.ctlgrp > i { color: #8a6a42; font-size: 11px; letter-spacing: 1px; margin-right: 4px; }
 .crewitem .crace { color: #6d8aa3; font-size: 11px; margin-left: 5px; }
 .crewitem .chp { height: 5px; background: #1a2635; border-radius: 2px; margin: 4px 0 2px; overflow: hidden; }
 .crewitem .chpfill { height: 100%; background: #63d68a; }
