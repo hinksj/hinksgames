@@ -36,6 +36,13 @@ function greedyOrders() {
         if (tac === 'cut') score += hers > F.throwWeight(ship, 'engage') * 1.15 ? 0.35 : -0.15;
         if (tac === 'range') score += ratio < 0.7 ? 0.55 : -0.35;
         if (assigned[ti]) score += 0.25; // doubling pays
+        // the finale plan, as any gunroom knows it
+        if (foe.isEnemyFlag) {
+          const escortsUp = F.enemy.some(e => !e.isEnemyFlag && !e.struck && !e.sunk);
+          if (escortsUp) score -= 0.6;          // break the escorts first
+          if (tac === 'cut') score += 0.45;     // she cannot punish the approach
+          if (tac === 'board') score -= 1.0;    // her sides are a cliff
+        }
         if (best === null || score > best.score) best = { score, tac, ti };
       }
     });
@@ -89,6 +96,10 @@ function runCruise(policy) {
     }
     const s = F.summary;
     if (!s) break;
+    if (s.stage >= F.STAGES.length) {
+      out.finaleAttempts = (out.finaleAttempts || 0) + 1;
+      if (s.win) out.finaleWins = (out.finaleWins || 0) + 1;
+    }
     if (s.flagLost) { out.result = 'lost'; out.deathStage = s.stage; break; }
     if (s.win && s.finalStage) { out.result = 'made'; break; }
     F.settleAction();
@@ -161,5 +172,8 @@ for (const policy of ['random', 'greedy']) {
   console.log(`  outcomes: ${JSON.stringify(crisisOutcomes)}`);
   console.log(`prizes: taken ${avg(r => r.prizesTaken)}/cruise, sold ${avg(r => r.prizesSold)} · max squadron seen: ${Math.max(...runs.map(r => r.maxSquadron))}`);
   console.log(`gold at end (avg): ${avg(r => r.goldEnd)} · distinguished captains (avg): ${avg(r => r.distinguished)}`);
+  const fa = runs.reduce((a, r) => a + (r.finaleAttempts || 0), 0);
+  const fw = runs.reduce((a, r) => a + (r.finaleWins || 0), 0);
+  console.log(`finale actions: ${fa} fought, ${fw} won (${fa ? Math.round(100 * fw / fa) : 0}%)`);
 }
 console.log('\nSIM REPORT COMPLETE');

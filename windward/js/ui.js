@@ -902,7 +902,10 @@ W.UI = {
         <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, ${s.hullMax} hull,
         ${spiritWord(s.morale)} crew · <i>${st.name}</i> (${st.desc})
         · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
-        <b style="color:#a02418">${s.intel ? 'Your glass says she ' + F.intentWord(s.order.tactic) + '.' : 'Her intent is unclear.'}</b></span></div>`;
+        <b style="color:#a02418">${s.intel ? 'Your glass says she ' + F.intentWord(s.order.tactic) + '.' : 'Her intent is unclear.'}</b>
+        ${s.isEnemyFlag ? `<br><b>What every gunroom knows of her:</b> she wears too slowly to punish a
+        cutting approach; her sides are too high to board; and her people's heart is in her
+        escorts — break them, and she will know she is alone.` : ''}</span></div>`;
     });
     body += `
       <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:6px">

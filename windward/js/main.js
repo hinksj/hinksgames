@@ -54,6 +54,12 @@ W.Main = {
         W.Fleet.finishBattle();
         W.Fleet.summaryShown = true;
         W.UI.openRefit();
+      } else if (test === 'finale') {
+        W.UI.closeModal();
+        W.Fleet.newSkirmish();
+        W.Fleet.campaign.stage = 5;
+        W.Fleet.setupAction();
+        W.UI.openMuster();
       } else if (test === 'muster') {
         W.UI.closeModal();
         W.Fleet.newSkirmish();

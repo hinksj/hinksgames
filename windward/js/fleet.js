@@ -122,9 +122,18 @@ W.Fleet = {
     this.pendingMod = null;
     if (this.mod === 'escort' && line.length > 2) line = line.slice(0, -1);
     let n = 0;
+    const finale = c.stage >= this.STAGES.length;
     this.enemy = line.map(cls =>
       this.makeShip(cls, this.ENEMY_NAMES[(c.stage * 3 + n++) % this.ENEMY_NAMES.length],
         W.nameFor(), W.pick(traits), 'enemy'));
+    if (finale) {
+      const flag = this.enemy.find(e => e.cls === 'shipofline') || this.enemy[this.enemy.length - 1];
+      flag.name = 'Sovereign Oak';
+      flag.trait = 'oak';
+      flag.captain = { name: 'Admiral Crayne', trait: 'ironsides', alive: true };
+      flag.isEnemyFlag = true;
+    }
+    this.spineBroke = false;
     if (this.mod === 'hunt') this.enemy.forEach(e => { e.morale = Math.min(78, e.morale + 5); });
     this.enemy.forEach((e, i) => {
       let tactic = 'engage';
@@ -332,6 +341,7 @@ W.Fleet = {
       if (tac !== 'board' || this.round < 2 || a.struck || a.sunk || b.struck || b.sunk) continue;
       const aIsMine = a.side === 'player';
       let odds = (b.morale < 55 ? 0.22 : 0.07) * (aIsMine && this.closerRounds > 0 ? 1.5 : 1);
+      if (b.cls === 'shipofline') odds *= 0.3; // her sides are a cliff
       if (!aIsMine) odds *= 0.6; // your people are drilled to repel them
       if (a.captain.trait === 'boarder' && a.captain.alive) odds *= 2;
       if (W.chance(odds)) {
@@ -345,6 +355,18 @@ W.Fleet = {
     this.checkStrikes(this.ships);
     this.checkStrikes(this.enemy);
 
+    // when the last escort strikes, the great ship's people know it's over
+    const eFlag = this.enemy.find(e => e.isEnemyFlag);
+    if (eFlag && !eFlag.struck && !eFlag.sunk && !this.spineBroke &&
+        this.enemy.every(e => e === eFlag || e.struck || e.sunk)) {
+      this.spineBroke = true;
+      eFlag.morale -= 32;
+      eFlag.captain.trait = 'gunnery'; // even Crayne's iron bends when the line is gone
+      eFlag.spineBroken = true;
+      this.say('The Sovereign Oak stands alone — and every soul aboard her knows it. Her fire slackens.');
+      this.floatAt(eFlag, 'SHAKEN', '#5a4020');
+    }
+
     // crises come from damage — or from plain sea-luck, which owes every
     // cruise at least one visit sooner or later
     const crisisAt = flag.trait === 'oak' ? 0.5 : 0.65;
@@ -353,6 +375,7 @@ W.Fleet = {
     let fortune = 0;
     if (this.round === 3) {
       fortune = 0.12 + (c.stage >= 3 && !(c.crisesFaced > 0) ? 0.3 : 0);
+      if (c.stage >= this.STAGES.length) fortune = Math.max(fortune, 0.5); // the finale tests everyone
     }
     if (!this.crisisUsed && !flag.struck && !flag.sunk && (hurt || W.chance(fortune))) {
       this.crisisUsed = true;
@@ -389,6 +412,7 @@ W.Fleet = {
     if (a.captain.distinguished) dmg *= 1.08;
     if (a.trait === 'dry') dmg *= 1.1;
     if (a.trait === 'crank') dmg *= 0.9;
+    if (a.spineBroken) dmg *= 0.75; // a great ship fighting alone, half-hearted
     if (aIsMine && this.closerRounds > 0) dmg *= 1.18;
     if (this.gauge) dmg *= aIsMine ? 1.1 : 0.92;
     if (this._doubled && this._doubled.has(a)) dmg *= 1.2;
@@ -406,7 +430,12 @@ W.Fleet = {
     // how hard the victim is to hurt depends on HER orders — but a refusing
     // line cannot refuse forever: the enemy comes down on her, round by round
     if (victimTac === 'range') dmg *= Math.min(1, 0.4 + Math.max(0, this.round - 4) * 0.15);
-    if (victimTac === 'cut' && this.round < this.rakeRoundOf(b)) dmg *= this.gauge === (b.side === 'player') ? 1.25 : 1.45;
+    if (victimTac === 'cut' && this.round < this.rakeRoundOf(b)) {
+      let pen = this.gauge === (b.side === 'player') ? 1.25 : 1.45;
+      // a ship of the line wears too slowly to punish a cutting approach
+      if (a.cls === 'shipofline') pen = 1 + (pen - 1) * 0.35;
+      dmg *= pen;
+    }
     if (victimTac === 'board') dmg *= 1.15;
     if (b.trait === 'oak') dmg *= 0.85;
 
