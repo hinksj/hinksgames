@@ -909,7 +909,7 @@ W.Render = {
   fleetProgress() {
     const F = W.Fleet;
     if (F.phase !== 'battle' && F.phase !== 'done' && F.phase !== 'crisis') return 0;
-    return F.round + W.clamp(F.roundT / F.ROUND_S, 0, 1);
+    return (F.battleT || 0) / F.ROUND_S;
   },
 
   bez(pts, t) {
@@ -1171,7 +1171,8 @@ W.Render = {
     ctx.font = 'bold 15px "IM Fell English", Georgia';
     if ((F.phase === 'battle' || F.phase === 'done') && F.planName) {
       const gaugeNote = F.gauge ? 'you hold the weather gauge' : 'they hold the weather gauge';
-      ctx.fillText(`THE PLAN, AS FOUGHT — ${F.planName} — round ${F.round} — ${gaugeNote}`, 500, 24);
+      const mm = Math.floor((F.battleT || 0) / 60), ss = String(Math.floor((F.battleT || 0) % 60)).padStart(2, '0');
+      ctx.fillText(`THE PLAN, AS FOUGHT — ${F.planName} — ${mm}:${ss} — ${gaugeNote}`, 500, 24);
     }
     ctx.textAlign = 'left';
     ctx.font = '12.5px "IM Fell English", Georgia';

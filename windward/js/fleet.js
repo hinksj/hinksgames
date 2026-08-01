@@ -12,7 +12,7 @@ W.Fleet = {
   ships: [], enemy: [],
   planName: null, gauge: false,
   round: 0, roundT: 0, log: [],
-  signals: 2, pendingSignal: null, closerRounds: 0,
+  signals: 2, pendingSignal: null, closerT: 0, battleT: 0,
   crisisUsed: false, pendingCrisis: false, crisisTimer: 0,
   result: null, summary: null,
 
@@ -151,9 +151,11 @@ W.Fleet = {
       s.morale = Math.round(50 + 22 * (s.hands / s.complement));
     });
     this.planName = null;
-    this.round = 0; this.roundT = 0;
+    this.round = 0; this.roundT = 0; this.battleT = 0; this.checkT = 0;
+    this.fortuneRolled = false; this.flagShifted = false;
+    this.ships.concat(this.enemy || []).forEach(s => { s.reload = null; });
     this.log = [];
-    this.signals = 2; this.pendingSignal = null; this.closerRounds = 0;
+    this.signals = 2; this.pendingSignal = null; this.closerT = 0;
     this.crisisUsed = false; this.pendingCrisis = false; this.crisisModalShown = false;
     this.flagShifted = false;
     this.result = null; this.summary = null;
@@ -203,18 +205,154 @@ W.Fleet = {
     if (this.signals <= 0 || this.pendingSignal || this.phase !== 'battle') return false;
     this.signals--;
     this.pendingSignal = kind;
+    this.signalAt = this.battleT + 1.5;
     this.say(kind === 'closer'
       ? 'The flags climb the halyard: ENGAGE THE ENEMY MORE CLOSELY.'
       : 'The flags climb the halyard: DISCONTINUE THE ACTION.');
     return true;
   },
 
+  // every gun on her own clock: heavier broadsides reload slower, short-handed
+  // crews serve them slowly, a Gunnery Master runs a faster deck
+  reloadTime(s) {
+    let r = 4 + s.guns * 0.35;
+    if (s.side === 'player') {
+      r *= 1 / (0.55 + 0.45 * W.clamp(s.hands / s.complement, 0, 1));
+    }
+    if (s.captain && s.captain.alive && this.capHas(s.captain, 'gunnery')) r *= 0.85;
+    if (s.side === 'player' && this.closerT > 0) r *= 0.85;
+    return r;
+  },
+
+  rakeTimeOf(s) { return s.trait === 'flyer' ? 6.5 : 9.5; },
+
   tick(dt) {
     if (this.phase !== 'battle' || this.result || this.pendingCrisis) return;
-    this.roundT += dt;
-    if (this.roundT >= this.ROUND_S) {
-      this.roundT = 0;
-      this.resolveRound();
+    this.battleT += dt;
+    this.roundT = this.battleT % this.ROUND_S;
+    this.round = Math.floor(this.battleT / this.ROUND_S);
+    if (this.closerT > 0) this.closerT -= dt;
+
+    // signals take a moment to be read down the line
+    if (this.pendingSignal && this.battleT >= this.signalAt) {
+      const sig = this.pendingSignal;
+      this.pendingSignal = null;
+      if (sig === 'breakoff') {
+        this.say('The squadron hauls off in good order.');
+        return this.finishBattle('withdraw');
+      }
+      this.closerT = 9;
+      this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 5); });
+      this.say('The line cheers and crowds sail.');
+    }
+
+    // each ship fires the moment her guns are ready
+    for (const s of [...this.alive(this.ships), ...this.alive(this.enemy)]) {
+      if (s.reload == null) s.reload = this.reloadTime(s) * W.rand(0.35, 0.85);
+      s.reload -= dt;
+      if (s.reload <= 0) {
+        this.fireCycle(s);
+        s.reload = this.reloadTime(s);
+      }
+    }
+
+    // the slower pulse: morale, strikes, the spine, crises, the end
+    this.checkT = (this.checkT || 0) + dt;
+    if (this.checkT >= 1) {
+      this.checkT = 0;
+      this.slowChecks();
+    }
+  },
+
+  targetFor(s) {
+    if (s.side === 'player') return this.targetOf(s);
+    let mark = this.ships[s.order ? s.order.target : 0];
+    if (!mark || mark.struck || mark.sunk) {
+      mark = this.alive(this.ships).find(x => this.targetOf(x) === s) || this.alive(this.ships)[0];
+    }
+    if (!mark) return null;
+    if (mark === this.ships[0]) {
+      const screen = this.alive(this.ships).find(x => x.order.tactic === 'screen' && x !== mark);
+      if (screen && W.chance(0.45)) {
+        mark = screen;
+        this.say(`${screen.name} puts herself between the enemy and the flag.`);
+      }
+    }
+    return mark;
+  },
+
+  fireCycle(a) {
+    const b = this.targetFor(a);
+    if (!b || b.struck || b.sunk) return;
+    const tac = a.order ? a.order.tactic : 'engage';
+    // a boarding ship spends her moment closing and grappling, not firing
+    if (tac === 'board' && this.battleT >= 8) {
+      const aIsMine = a.side === 'player';
+      let odds = (b.morale < 55 ? 0.22 : 0.07) * (aIsMine && this.closerT > 0 ? 1.5 : 1);
+      if (!aIsMine) odds *= 0.6;
+      if (b.cls === 'shipofline') odds *= 0.3;
+      if (a.captain.alive && this.capHas(a.captain, 'boarder')) odds *= 2;
+      if (W.chance(odds)) {
+        b.struck = true;
+        if (a.side === 'player' && a.deeds) a.deeds.boarded = true;
+        if (W.Sound) W.Sound.play('bell');
+        this.say(`${a.name} grapples and boards ${b.name} — her colors come down!`);
+        this.floatAt(b, 'BOARDED', '#a02418');
+        this.fxAt(b, 'boom');
+        return;
+      }
+    }
+    // doubling: is anyone else laying guns on the same target right now?
+    this._doubled = new Set();
+    const mates = (a.side === 'player' ? this.alive(this.ships) : this.alive(this.enemy))
+      .filter(x => x !== a && this.targetFor(x) === b);
+    if (mates.length) this._doubled.add(a);
+    this.fireOn(a, b);
+    if (W.Sound) W.Sound.play('cannon');
+  },
+
+  slowChecks() {
+    const mine = this.alive(this.ships);
+    const theirs = this.alive(this.enemy);
+    const flag = this.ships[0];
+
+    this.checkStrikes(this.ships);
+    this.checkStrikes(this.enemy);
+
+    const eFlag = this.enemy.find(e => e.isEnemyFlag);
+    if (eFlag && !eFlag.struck && !eFlag.sunk && !this.spineBroke &&
+        this.enemy.every(e => e === eFlag || e.struck || e.sunk)) {
+      this.spineBroke = true;
+      eFlag.morale -= 32;
+      eFlag.captain.trait = 'gunnery';
+      eFlag.spineBroken = true;
+      this.say('The Sovereign Oak stands alone — and every soul aboard her knows it. Her fire slackens.');
+      this.floatAt(eFlag, 'SHAKEN', '#5a4020');
+    }
+
+    const c = this.campaign || {};
+    const crisisAt = flag.trait === 'oak' ? 0.5 : 0.65;
+    const hurt = flag.hull < flag.hullMax * crisisAt;
+    let fortune = 0;
+    if (!this.fortuneRolled && this.battleT >= 9) {
+      this.fortuneRolled = true;
+      fortune = 0.12 + (c.stage >= 3 && !(c.crisesFaced > 0) ? 0.3 : 0);
+      if (c.stage >= this.STAGES.length) fortune = Math.max(fortune, 0.5);
+    }
+    if (!this.crisisUsed && !flag.struck && !flag.sunk && (hurt || W.chance(fortune))) {
+      this.crisisUsed = true;
+      this.pendingCrisis = true;
+      this.crisisKind = hurt ? this.pickCrisisKind(flag)
+        : W.pick(['fire', 'fire', 'mast', 'magazine']);
+      return;
+    }
+
+    if (!mine.length || !theirs.length) {
+      this.finishBattle();
+    } else if ((flag.struck || flag.sunk) && !this.flagShifted) {
+      this.flagShifted = true;
+      const heir = mine[0];
+      this.say(`The flag comes down with the ${flag.name} — and rises again aboard ${heir.name}.`);
     }
   },
 
@@ -283,154 +421,25 @@ W.Fleet = {
     return t;
   },
 
-  resolveRound() {
-    this.round++;
-    const mine = this.alive(this.ships);
-    const theirs = this.alive(this.enemy);
-    if (!mine.length || !theirs.length) return this.finishBattle();
-
-    // signals take effect as the new round begins
-    if (this.pendingSignal === 'breakoff') {
-      this.pendingSignal = null;
-      this.say('The squadron hauls off in good order.');
-      return this.finishBattle('withdraw');
-    }
-    if (this.pendingSignal === 'closer') {
-      this.pendingSignal = null;
-      this.closerRounds = 3;
-      this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 5); });
-      this.say('The line cheers and crowds sail.');
-    }
-    if (this.closerRounds > 0) this.closerRounds--;
-
-    this.say(`— Round ${this.round} —`);
-    if (W.Sound) W.Sound.play('cannon');
-
-    // plan the round's fire, so doubling can be seen and rewarded
-    const flag = this.ships[0];
-    const attacks = [];
-    for (const a of mine) {
-      const b = this.targetOf(a);
-      if (b) attacks.push([a, b]);
-    }
-    for (const b of this.alive(this.enemy)) {
-      let mark = this.ships[b.order ? b.order.target : 0];
-      if (!mark || mark.struck || mark.sunk) {
-        mark = mine.find(s => this.targetOf(s) === b) || this.alive(this.ships)[0];
-      }
-      if (!mark) break;
-      if (mark === flag) {
-        const screen = mine.find(s => s.order.tactic === 'screen' && s !== flag);
-        if (screen && W.chance(0.45)) {
-          mark = screen;
-          this.say(`${screen.name} puts herself between the enemy and the flag.`);
-        }
-      }
-      attacks.push([b, mark]);
-    }
-    const count = new Map();
-    for (const [a, b] of attacks) count.set(b, (count.get(b) || 0) + 1);
-    this._doubled = new Set();
-    for (const [a, b] of attacks) {
-      if (count.get(b) >= 2) this._doubled.add(a);
-    }
-    const seenDouble = new Set();
-    for (const [, b] of attacks) {
-      if (count.get(b) >= 2 && !seenDouble.has(b) && b.side === 'enemy') {
-        seenDouble.add(b);
-        this.say(`${b.name} is doubled — fire pours in from both sides.`);
-      }
-    }
-    for (const [a, b] of attacks) {
-      if (!a.struck && !a.sunk && !b.struck && !b.sunk) this.fireOn(a, b);
-    }
-
-    // boarding attempts, from either line
-    for (const [a, b] of attacks) {
-      const tac = a.order ? a.order.tactic : 'engage';
-      if (tac !== 'board' || this.round < 2 || a.struck || a.sunk || b.struck || b.sunk) continue;
-      const aIsMine = a.side === 'player';
-      let odds = (b.morale < 55 ? 0.22 : 0.07) * (aIsMine && this.closerRounds > 0 ? 1.5 : 1);
-      if (b.cls === 'shipofline') odds *= 0.3; // her sides are a cliff
-      if (!aIsMine) odds *= 0.6; // your people are drilled to repel them
-      if (a.captain.alive && this.capHas(a.captain, 'boarder')) odds *= 2;
-      if (W.chance(odds)) {
-        b.struck = true;
-        this.say(`${a.name} grapples and boards ${b.name} — her colors come down!`);
-        this.floatAt(b, 'BOARDED', '#a02418');
-        this.fxAt(b, 'boom');
-      }
-    }
-
-    this.checkStrikes(this.ships);
-    this.checkStrikes(this.enemy);
-
-    // when the last escort strikes, the great ship's people know it's over
-    const eFlag = this.enemy.find(e => e.isEnemyFlag);
-    if (eFlag && !eFlag.struck && !eFlag.sunk && !this.spineBroke &&
-        this.enemy.every(e => e === eFlag || e.struck || e.sunk)) {
-      this.spineBroke = true;
-      eFlag.morale -= 32;
-      eFlag.captain.trait = 'gunnery'; // even Crayne's iron bends when the line is gone
-      eFlag.spineBroken = true;
-      this.say('The Sovereign Oak stands alone — and every soul aboard her knows it. Her fire slackens.');
-      this.floatAt(eFlag, 'SHAKEN', '#5a4020');
-    }
-
-    // crises come from damage — or from plain sea-luck, which owes every
-    // cruise at least one visit sooner or later
-    const crisisAt = flag.trait === 'oak' ? 0.5 : 0.65;
-    const hurt = flag.hull < flag.hullMax * crisisAt;
-    const c = this.campaign || {};
-    let fortune = 0;
-    if (this.round === 3) {
-      fortune = 0.12 + (c.stage >= 3 && !(c.crisesFaced > 0) ? 0.3 : 0);
-      if (c.stage >= this.STAGES.length) fortune = Math.max(fortune, 0.5); // the finale tests everyone
-    }
-    if (!this.crisisUsed && !flag.struck && !flag.sunk && (hurt || W.chance(fortune))) {
-      this.crisisUsed = true;
-      this.pendingCrisis = true;
-      this.crisisKind = hurt ? this.pickCrisisKind(flag)
-        : W.pick(['fire', 'fire', 'mast', 'magazine']); // own wadding, parted stays
-      return;
-    }
-
-    // the action ends only when a whole line is out of it — if the flag falls
-    // and others still fly colors, the fight (and the cruise) goes on
-    if (!this.alive(this.ships).length || !this.alive(this.enemy).length) {
-      this.finishBattle();
-    } else if ((flag.struck || flag.sunk) && !this.flagShifted) {
-      this.flagShifted = true;
-      const heir = this.alive(this.ships)[0];
-      this.say(`The flag comes down with the ${flag.name} — and rises again aboard ${heir.name}.`);
-    }
-  },
-
-  rakeRoundOf(ship) { return ship.trait === 'flyer' ? 2 : 3; },
-
   fireOn(a, b) {
     const aIsMine = a.side === 'player';
     const tac = a.order ? a.order.tactic : 'engage';
     const victimTac = b.order ? b.order.tactic : 'engage';
 
-    let dmg = a.guns * W.rand(0.75, 1.25) * 0.42;
-    if (aIsMine) {
-      dmg *= 1.16; // drill tells
-      dmg *= 0.55 + 0.45 * W.clamp(a.hands / a.complement, 0, 1); // short-handed guns fire slow
-    }
+    let dmg = a.guns * W.rand(0.75, 1.25) * 0.42 * (this.reloadTime(a) / this.ROUND_S);
+    if (aIsMine) dmg *= 1.16; // drill tells (short-handedness now slows the reload instead)
     if (a.captain.alive && this.capHas(a.captain, 'gunnery')) dmg *= 1.2;
     if (a.captain.distinguished) dmg *= 1.08;
     if (a.trait === 'dry') dmg *= 1.1;
     if (a.trait === 'crank') dmg *= 0.9;
     if (a.spineBroken) dmg *= 0.75; // a great ship fighting alone, half-hearted
-    if (aIsMine && this.closerRounds > 0) dmg *= 1.18;
+    if (aIsMine && this.closerT > 0) dmg *= 1.18;
     if (this.gauge) dmg *= aIsMine ? 1.1 : 0.92;
     if (this._doubled && this._doubled.has(a)) dmg *= 1.2;
 
     let rake = false;
-    const myRakeRound = this.rakeRoundOf(a);
     if (tac === 'cut') {
-      if (this.round < myRakeRound) dmg *= (a.trait === 'chasers' ? 0.7 : 0.35);
+      if (this.battleT < this.rakeTimeOf(a)) dmg *= (a.trait === 'chasers' ? 0.7 : 0.35);
       else if (!a.rakeDone) { a.rakeDone = true; rake = true; dmg *= 2.2; }
       else dmg *= 1.05;
     }
@@ -439,8 +448,8 @@ W.Fleet = {
     if (tac === 'screen') dmg *= 0.7;
     // how hard the victim is to hurt depends on HER orders — but a refusing
     // line cannot refuse forever: the enemy comes down on her, round by round
-    if (victimTac === 'range') dmg *= Math.min(1, 0.4 + Math.max(0, this.round - 4) * 0.15);
-    if (victimTac === 'cut' && this.round < this.rakeRoundOf(b)) {
+    if (victimTac === 'range') dmg *= Math.min(1, 0.4 + Math.max(0, this.battleT / 3 - 4) * 0.15);
+    if (victimTac === 'cut' && this.battleT < this.rakeTimeOf(b)) {
       let pen = this.gauge === (b.side === 'player') ? 1.25 : 1.45;
       // a ship of the line wears too slowly to punish a cutting approach
       if (a.cls === 'shipofline') pen = 1 + (pen - 1) * 0.35;
