@@ -87,7 +87,9 @@ any meld on the table** — you **may** draw the top card of the Member Deck:
   luck at the bar.
 - Resolve its effect text **immediately** (draws, discards, peeks, skips,
   swaps). Effects are mandatory.
-- Maximum **one** member draw per turn.
+- **One member draw per new set or run** you lay down — a turn with two fresh
+  melds earns two Drives (court after each). A turn with only extensions earns
+  one.
 - **Members are for keeps.** The card stays in front of you for the rest of the
   game — your **Club Support**. Nothing can take a member from you, and even
   Seasick Susie's vote counts: she costs you 6 points the round you court her,
@@ -237,7 +239,12 @@ incomplete. This ruleset finalizes them:
    members stay on the table all game and the 25-card deck depletes, so the
    membership is a visible, contested resource. Extending a meld also arms
    the Membership Drive — late-round turns still earn courting rights.
-10. **v1.1 balance** (simulated playtest): specials dropped from +2 to +1 —
+10. **Courting scales with melding** (playtest): originally capped at one
+   member per turn; now each new set or run earns its own Drive. Simulation
+   shows double-meld turns are rare enough that the aggregate balance doesn't
+   move — but the turn where you lay two melds deserves two knocks on the
+   member deck.
+11. **v1.1 balance** (simulated playtest): specials dropped from +2 to +1 —
    at +2 the winner was farming ~19 points just for firing them, rivaling
    melds; their effects are the real reward. Meld **size bonuses** (+2 for a
    set's 4th card, +1 per run card past the third) reward building the harder

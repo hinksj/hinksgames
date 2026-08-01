@@ -164,7 +164,16 @@
       return { t: 'draw', from: 'pile' };
     }
 
-    // main phase: meld > special > extend > court > discard
+    // main phase: court after each meld > meld > special > extend > discard
+    if (st.meldedThisTurn && !st.courted && st.memberPile.length) {
+      // you can't win without the members: court until the votes are in,
+      // then keep pushing the luck only while trailing
+      if (me.supporters < st.membersToWin) return { t: 'court' };
+      var lead = leader(st, seat);
+      var myScore = me.score + me.roundScore;
+      var theirs = lead >= 0 ? st.players[lead].score + st.players[lead].roundScore : 0;
+      if (myScore <= theirs + 4) return { t: 'court' };
+    }
     var melds = E.findMelds(me.hand);
     if (melds.length) return { t: 'meldNew', cards: melds[0] };
 
@@ -185,15 +194,6 @@
       }
     }
 
-    if (st.meldedThisTurn && !st.courted && st.memberPile.length) {
-      // you can't win without the members: court until the votes are in,
-      // then keep pushing the luck only while trailing
-      if (me.supporters < st.membersToWin) return { t: 'court' };
-      var lead = leader(st, seat);
-      var myScore = me.score + me.roundScore;
-      var theirs = lead >= 0 ? st.players[lead].score + st.players[lead].roundScore : 0;
-      if (myScore <= theirs + 4) return { t: 'court' };
-    }
 
     if (!me.hand.length) return null; // went out mid-phase; engine will have ended round
     var pool = me.hand.filter(function (id) { return id !== st.tookFromDiscard; });
