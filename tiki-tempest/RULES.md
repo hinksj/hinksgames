@@ -146,7 +146,7 @@ Text as printed; clarifications govern the edge cases.
 | Card | Printed effect | Clarification |
 |---|---|---|
 | **Thieving Seagull** | Take any Ingredient Card off the table. | Any ingredient on any player's Bar (including yours) goes into **your hand**. Bars under a Paper Umbrella are protected. |
-| **Paper Umbrella** | Protects from seagulls. Adds a point to cocktails. Once played, must remain. | Play it onto your Bar. While it's there, Seagulls can't touch **any** of your Bar ingredients. When you next serve a cocktail, the umbrella garnishes it: **+1 point**, and the umbrella stays on that drink (protection ends; a new umbrella can be played). It can never be discarded or moved. |
+| **Paper Umbrella** | Protects from seagulls. Adds a point to cocktails. Once played, must remain. | Play it onto your Bar. While it's there, Seagulls can't touch **any** of your Bar ingredients. When you next serve a cocktail, the umbrella garnishes it: **+1 point**, and the umbrella stays on that drink (protection ends when your last umbrella is spent). **Umbrellas stack** — play a second and your bar holds two garnishes; each serve spends at most one. They can never be discarded or moved. |
 | **Guest Bartender** | You may demand a specific ingredient from one player. If they have it, that card is now yours. | Name an ingredient and a player; they must hand one over **from their hand** if they hold it. Go fish. |
 | **Tiki Torchlight** | Reveal 3 cards from the main deck and add one to your hand | The other two go to the discard pile, face up. If Storm Surge is revealed, it triggers immediately. |
 | **Pirate Plunder** | Steal a random card from an opponent's hand. | Then the opponent draws a replacement from the deck (per the designer's card explanations). |

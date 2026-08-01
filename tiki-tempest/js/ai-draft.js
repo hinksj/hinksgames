@@ -33,7 +33,7 @@
         var target = st.players.some(function (pl) { return pl.i !== p.i && pl.bar.length && !pl.umbrella; });
         return target ? 2.1 : 0.5;
       }
-      case 'umbrella': return p.bar.length >= 2 && !p.umbrella ? 1.9 : 1.1;
+      case 'umbrella': return p.bar.length >= 2 && !p.umbrellas.length ? 1.9 : 1.1;
       case 'double': return p.banked.some(function (b) { return CARDS[b].fx === 'double'; }) ? 0.8 : 2.2;
       case 'demand': return p.banked.some(function (b) { return CARDS[b].fx === 'demand'; }) ? 0.6 : 1.9;
       case 'breeze': return 1.6;
@@ -82,7 +82,7 @@
       case 'seagull': {
         var pick = null, pv = -1;
         st.players.forEach(function (pl) {
-          if (pl.umbrella) return;
+          if (pl.umbrellas.length) return;
           pl.bar.forEach(function (id) {
             var v = ingValue(st, by, CARDS[id].ing) + (pl.i === pend.by ? -0.5 : 0.5);
             if (v > pv) { pv = v; pick = { player: pl.i, card: id }; }

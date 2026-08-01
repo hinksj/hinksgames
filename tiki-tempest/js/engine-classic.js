@@ -38,7 +38,7 @@
       round: 0, finalRound: false, surgeStruck: false,
       players: opts.names.map(function (p, i) {
         return { i: i, name: p.name, isAI: !!p.isAI,
-          hand: [], bar: [], beers: [], served: [], umbrella: null,
+          hand: [], bar: [], beers: [], served: [], umbrellas: [],
           score: 0, roundScore: 0, servedTotal: 0 };
       }),
       deck: [], discard: [], removed: [],
@@ -82,7 +82,7 @@
     }
     st.players.forEach(function (p) {
       p.beers.forEach(function (id) { out[id] = 1; }); // beers stay shelved
-      p.hand = []; p.bar = []; p.served = []; p.umbrella = null;
+      p.hand = []; p.bar = []; p.served = []; p.umbrellas = [];
       p.roundScore = 0;
     });
     st.deck = shuffleSt(st, st.deckIds.filter(function (id) { return !out[id]; }));
@@ -172,11 +172,10 @@
       entry.doubled = true;
       entry.pts *= 2;
     }
-    if (p.umbrella) {
+    if (p.umbrellas.length) {
       entry.umbrella = true;
       entry.pts += 1;
-      st.removed.push(p.umbrella); // garnish stays on the drink, out of the deck
-      p.umbrella = null;
+      st.removed.push(p.umbrellas.pop()); // one garnish per drink, out of the deck
     }
     p.served.push(entry);
     p.servedTotal++;
@@ -192,14 +191,14 @@
     removeFrom(p.hand, id);
     switch (c.fx) {
       case 'umbrella':
-        if (p.umbrella) { st.discard.push(p.umbrella); } // replace (old one washed away)
-        p.umbrella = id; // stays out of the deck while in play
-        log(st, p.name + "'s bar is under the paper umbrella");
+        p.umbrellas.push(id); // umbrellas stack; each stays out of the deck while in play
+        log(st, p.name + "'s bar is under " + p.umbrellas.length + ' paper umbrella' +
+          (p.umbrellas.length > 1 ? 's' : ''));
         return;
       case 'seagull': {
         st.discard.push(id);
         var any = st.players.some(function (pl) {
-          return pl.bar.length && !pl.umbrella;
+          return pl.bar.length && !pl.umbrellas.length;
         });
         if (!any) { log(st, 'No unprotected ingredients on any bar — the gull flies off.'); return; }
         st.pending = { type: 'seagull', by: p.i };
@@ -273,7 +272,7 @@
     st.players.forEach(function (p) {
       p.roundScore = p.served.reduce(function (n, e) { return n + e.pts; }, 0);
       p.score += p.roundScore;
-      if (p.umbrella) { st.discard.push(p.umbrella); p.umbrella = null; } // washes away
+      while (p.umbrellas.length) st.discard.push(p.umbrellas.pop()); // wash away
     });
     st.lastRoundWhy = why;
     var isLast = st.finalRound || st.round >= st.rounds;
@@ -397,7 +396,7 @@
     seagull: function (st, pend, a) {
       var tp = st.players[a.player];
       if (!tp) throw new Error('bad player');
-      if (tp.umbrella) throw new Error('that bar is under an umbrella');
+      if (tp.umbrellas.length) throw new Error('that bar is under an umbrella');
       if (tp.bar.indexOf(a.card) < 0) throw new Error('card not on that bar');
       removeFrom(tp.bar, a.card);
       st.players[pend.by].hand.push(a.card);

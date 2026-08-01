@@ -27,7 +27,7 @@ function pull(st, id) {
     var i = zones[z].indexOf(id);
     if (i >= 0) { zones[z].splice(i, 1); return true; }
   }
-  st.players.forEach(function (p) { if (p.umbrella === id) p.umbrella = null; });
+  st.players.forEach(function (p) { var u = (p.umbrellas || []).indexOf(id); if (u >= 0) p.umbrellas.splice(u, 1); });
   return false;
 }
 function give(st, seat, id) { pull(st, id); st.players[seat].hand.push(id); }
@@ -85,7 +85,7 @@ section('— Thieving Seagull: steals from bars, blocked by umbrella —');
   toBar(st, 1, 'ing-rum-1');
   toBar(st, 2, 'ing-lime-1');
   pull(st, 'sp-paper-umbrella-1');
-  st.players[2].umbrella = 'sp-paper-umbrella-1'; // P2's bar is protected
+  st.players[2].umbrellas.push('sp-paper-umbrella-1'); // P2's bar is protected
   resetPhase(st);
   pickRound(st, 'sp-thieving-seagull-1');
   ok(st.pending && st.pending.type === 'seagull' && st.pending.by === 0, 'seagull pending for player 0');
@@ -170,7 +170,7 @@ section('— Make It a Double + Paper Umbrella on a serve —');
   var st = fresh(8);
   toBank(st, 0, 'sp-make-it-a-double-1');
   pull(st, 'sp-paper-umbrella-1');
-  st.players[0].umbrella = 'sp-paper-umbrella-1';
+  st.players[0].umbrellas.push('sp-paper-umbrella-1');
   toBar(st, 0, 'ing-rum-1'); toBar(st, 0, 'ing-rum-2'); toBar(st, 0, 'ing-pineapple-1');
   pull(st, 'rec-caribbean-sunset-1');
   st.menu[0] = 'rec-caribbean-sunset-1';
@@ -178,7 +178,7 @@ section('— Make It a Double + Paper Umbrella on a serve —');
   E.apply(st, { t: 'serve', seat: 0, recipe: 'rec-caribbean-sunset-1', double: true });
   var e = st.players[0].served[0];
   ok(e && e.pts === 9, 'Sunset doubled then garnished: 4*2+1 = ' + (e && e.pts));
-  ok(st.players[0].umbrella === null, 'umbrella garnish consumed the umbrella');
+  ok(st.players[0].umbrellas.length === 0, 'umbrella garnish consumed the umbrella');
   ok(st.players[0].banked.length === 0, 'double consumed');
   ok(st.menu.length === data.MENU_SIZE, 'menu refilled');
 }());

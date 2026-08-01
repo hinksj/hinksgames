@@ -19,7 +19,7 @@ function conserved(st) {
   var n = st.deck.length + st.discard.length + st.removed.length;
   st.players.forEach(function (p) {
     n += p.hand.length + p.bar.length + p.beers.length + (p.banked ? p.banked.length : 0);
-    if (p.umbrella) n++;
+    n += (p.umbrellas || []).length;
   });
   if (st.pending && st.pending.type === 'torch') n += st.pending.cards.length;
   if (st.mode === 'draft' && st.picks) {

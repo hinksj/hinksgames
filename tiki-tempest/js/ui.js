@@ -169,7 +169,7 @@
       var fan = '';
       for (var k = 0; k < Math.min(p.hand.length, 12); k++) fan += '<img src="' + data.BACK_MAIN + '" alt="">';
       var barImgs = p.bar.map(function (id) {
-        var stealable = seagullMine && !p.umbrella;
+        var stealable = seagullMine && !p.umbrellas.length;
         return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + '"' +
           (stealable ? ' class="steal" data-p="' + p.i + '" data-c="' + id + '"' : '') + '>';
       }).join('');
@@ -179,7 +179,8 @@
       d.innerHTML =
         '<div class="nm"><span class="seatdot" style="background:' + SEAT_COLORS[p.i % 6] + '"></span>' +
         esc(p.name) + (p.i === ui.mySeat ? ' <span class="you">(you)</span>' : '') +
-        (p.umbrella ? ' <span class="umb" title="Bar protected by Paper Umbrella">☂️</span>' : '') +
+        (p.umbrellas && p.umbrellas.length ? ' <span class="umb" title="Bar protected by ' +
+          p.umbrellas.length + ' Paper Umbrella(s)">' + new Array(p.umbrellas.length + 1).join('☂️') + '</span>' : '') +
         (st.mode === 'draft' && st.phase === 'pick' && p.hand.length && st.picks[p.i] !== undefined
           ? ' <span class="umb" title="Pick locked in">✔</span>' : '') + '</div>' +
         '<div class="backfan" title="' + p.hand.length + ' cards in hand">' + fan + '</div>' +
@@ -234,8 +235,8 @@
       var need = r.needs[k], got = Math.min(have[k] || 0, need);
       var cls = got >= need ? 'got' : (got > 0 ? 'part' : '');
       var txt = need + ' ' + ING_NAME[k] + (got > 0 && got < need ? ' (' + got + ')' : '');
-      return cls ? '<span class="' + cls + '">' + esc(txt) + '</span>' : esc(txt);
-    }).join(' + ') + ' · ' + r.pts + ' pts';
+      return '<div class="ri ' + cls + '">' + esc(txt) + '</div>';
+    }).join('') + '<div class="ptsline">' + r.pts + ' pts</div>';
   }
   function renderMenu(st) {
     var el = $('menuCards');
@@ -289,8 +290,14 @@
       else if (line.indexOf('🔔') >= 0 || line.indexOf('📖') >= 0) { toast(line, 5500); sfx('round'); }
       // fizzled effects look like bugs if they only whisper in the log
       else if (line.indexOf('The seagull finds') === 0 || line.indexOf('The torch gutters') === 0 ||
-               line.indexOf('No hands worth plundering') === 0) {
+               line.indexOf('No hands worth plundering') === 0 || line.indexOf("doesn't have it") >= 0) {
         toast('💨 ' + line, 4500); sfx('skip');
+      }
+      else if (line.indexOf(me().name + ' sets aside Guest Bartender') === 0) {
+        toast('🍸 Guest Bartender set aside — on a later pick, select TWO cards and hit Play BOTH', 6000);
+      }
+      else if (line.indexOf(me().name + ' sets aside Make It a Double') === 0) {
+        toast('✌️ Make It a Double set aside — spend it when you serve a cocktail', 6000);
       }
       var idx = line.indexOf(me().name);
       var tableWide = ['👐', '—', '🌴', '🌊', '🔔', '⛈', '🏆', '📖'].indexOf(line.charAt(0)) >= 0 ||
@@ -396,7 +403,9 @@
     });
     // my bar
     var p = me();
-    $('barCards').innerHTML = (p.umbrella ? '<span class="umbBadge" title="Paper Umbrella protects your bar">☂️</span>' : '') +
+    $('barCards').innerHTML = (p.umbrellas && p.umbrellas.length
+      ? '<span class="umbBadge" title="' + p.umbrellas.length + ' Paper Umbrella(s) protect your bar">' +
+        new Array(p.umbrellas.length + 1).join('☂️') + '</span>' : '') +
       p.bar.map(function (id) {
         return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + '">';
       }).join('') + (p.bar.length ? '' : '<span style="color:#8a5a34"> empty — stock ingredients here</span>');

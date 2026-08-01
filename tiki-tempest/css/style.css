@@ -114,8 +114,11 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
 #menuCards .mrec img { width: 110px; border-radius: 8px; box-shadow: 0 3px 10px #000a; display: block; }
 #menuCards .mrec .rcp .got { color: var(--cyan); }
 #menuCards .mrec .rcp .part { color: #ffe9a8; }
-#menuCards .mrec .rcp { font-size: 11px; color: var(--gold); text-align: center;
-  line-height: 1.25; margin-bottom: 3px; min-height: 29px; }
+#menuCards .mrec .rcp { font-size: 11px; color: var(--gold); text-align: left;
+  line-height: 1.25; margin-bottom: 3px; min-height: 70px;
+  display: flex; flex-direction: column; justify-content: flex-end; }
+#menuCards .mrec .rcp .ri { white-space: nowrap; }
+#menuCards .mrec .rcp .ptsline { color: var(--dim); font-size: 10px; }
 #menuCards .mrec.servable { cursor: pointer; }
 #menuCards .mrec.servable img { outline: 3px solid var(--gold); animation: glowPulse 1.2s ease-in-out infinite alternate; }
 
@@ -198,7 +201,7 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
   .opp .backfan img { width: 17px; height: 26px; }
   #menuCards .mrec { width: 82px; }
   #menuCards .mrec img { width: 82px; }
-  #menuCards .mrec .rcp { min-height: 24px; font-size: 10px; }
+  #menuCards .mrec .rcp { min-height: 62px; font-size: 10px; }
   #log { height: 110px; }
   .opp .zone { min-height: 14px; }
   .opp .zone img { width: 22px; }

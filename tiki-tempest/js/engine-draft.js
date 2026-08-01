@@ -43,7 +43,7 @@
       round: 0, finalRound: false,
       players: opts.names.map(function (p, i) {
         return { i: i, name: p.name, isAI: !!p.isAI,
-          hand: [], bar: [], beers: [], served: [], banked: [], umbrella: null,
+          hand: [], bar: [], beers: [], served: [], banked: [], umbrellas: [],
           score: 0, roundScore: 0, servedTotal: 0 };
       }),
       deck: [], discard: [], removed: [],
@@ -85,7 +85,7 @@
     }
     st.players.forEach(function (p) {
       p.beers.forEach(function (id) { out[id] = 1; });
-      p.hand = []; p.bar = []; p.served = []; p.banked = []; p.umbrella = null;
+      p.hand = []; p.bar = []; p.served = []; p.banked = []; p.umbrellas = [];
       p.roundScore = 0;
     });
     st.deck = shuffleSt(st, st.deckIds.filter(function (id) { return !out[id]; }));
@@ -198,9 +198,9 @@
     // specials
     switch (c.fx) {
       case 'umbrella':
-        if (p.umbrella) st.discard.push(p.umbrella);
-        p.umbrella = id;
-        log(st, p.name + "'s bar goes under the paper umbrella ☂️");
+        p.umbrellas.push(id); // umbrellas stack
+        log(st, p.name + "'s bar goes under " + p.umbrellas.length + ' paper umbrella' +
+          (p.umbrellas.length > 1 ? 's' : '') + ' ☂️');
         return;
       case 'double':
       case 'demand': // Guest Bartender is banked: spend later to keep 2 cards at once
@@ -261,7 +261,7 @@
     var by = st.players[fx.by];
     switch (fx.type) {
       case 'seagull': {
-        var any = st.players.some(function (pl) { return pl.bar.length && !pl.umbrella; });
+        var any = st.players.some(function (pl) { return pl.bar.length && !pl.umbrellas.length; });
         if (!any) { log(st, 'The seagull finds every bar covered — it flies off.'); return false; }
         st.pending = { type: 'seagull', by: fx.by };
         return true;
@@ -357,11 +357,10 @@
       entry.doubled = true;
       entry.pts *= 2;
     }
-    if (p.umbrella) {
+    if (p.umbrellas.length) {
       entry.umbrella = true;
       entry.pts += 1;
-      st.removed.push(p.umbrella);
-      p.umbrella = null;
+      st.removed.push(p.umbrellas.pop()); // one garnish per drink
     }
     p.served.push(entry);
     p.servedTotal++;
@@ -377,7 +376,7 @@
     st.players.forEach(function (p) {
       p.roundScore = p.served.reduce(function (n, e) { return n + e.pts; }, 0);
       p.score += p.roundScore;
-      if (p.umbrella) { st.discard.push(p.umbrella); p.umbrella = null; }
+      while (p.umbrellas.length) st.discard.push(p.umbrellas.pop());
       while (p.banked.length) st.discard.push(p.banked.pop());
       leftover += p.hand.length;
       while (p.hand.length) st.discard.push(p.hand.pop());
@@ -465,7 +464,7 @@
     seagull: function (st, pend, a) {
       var tp = st.players[a.player];
       if (!tp) throw new Error('bad player');
-      if (tp.umbrella) throw new Error('that bar is under an umbrella');
+      if (tp.umbrellas.length) throw new Error('that bar is under an umbrella');
       if (tp.bar.indexOf(a.card) < 0) throw new Error('card not on that bar');
       removeFrom(tp.bar, a.card);
       st.players[pend.by].bar.push(a.card);
