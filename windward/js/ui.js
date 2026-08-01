@@ -90,6 +90,34 @@ W.UI = {
     return `<img class="cportrait" src="assets/art/portrait_${pre}${v}.png" onerror="this.style.display='none'">`;
   },
 
+  // ship thumbnails at consistent RELATIVE scale — a cutter is small because
+  // a cutter is small; players learn the rates by eye
+  SHIP_SCALE: { cutter: 0.5, sloop: 0.62, brig: 0.78, frigate: 0.95, shipofline: 1.2 },
+
+  shipThumb(cls) {
+    const w = Math.round(170 * (this.SHIP_SCALE[cls] || 0.7));
+    const h = Math.round(w * 0.34);
+    return `<canvas class="shipthumb" data-cls="${cls}" width="${w}" height="${h}"></canvas>`;
+  },
+
+  drawThumbs(el) {
+    if (!el || !el.querySelectorAll || !W.Render || !W.Render.spr) return;
+    el.querySelectorAll('canvas.shipthumb').forEach(cv => {
+      try {
+        const cls = cv.dataset.cls;
+        const art = (W.Fleet.CLASSES[cls] || { art: cls }).art || cls;
+        const spr = W.Render.spr('hull_' + art);
+        const ctx2 = cv.getContext('2d');
+        if (!spr || !ctx2) return;
+        const cal = W.Render.HULL_CAL[art] || { sy: 0.15, sb: 0.64 };
+        const iw = spr.naturalWidth, ih = spr.naturalHeight;
+        const srcY = ih * cal.sy, srcH = ih * (cal.sb - cal.sy);
+        const dh = Math.min(cv.height, cv.width * srcH / iw);
+        ctx2.drawImage(spr, 0, srcY, iw, srcH, 0, cv.height - dh, cv.width, dh);
+      } catch (e) { /* thumbnail is decoration */ }
+    });
+  },
+
   captPortrait(name, size) {
     let h = 0;
     for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
@@ -349,6 +377,7 @@ W.UI = {
       m.appendChild(btns);
     }
     root.appendChild(m);
+    this.drawThumbs(m);
     return m;
   },
   closeModal() {
@@ -499,6 +528,11 @@ W.UI = {
         <div class="gterm"><b>"Ensign"</b> — the flag that says who you are. Upside-down, it says <i>help</i>.</div>
         <div class="gterm"><b>"Bosun" / "purser"</b> — the officer who runs the deck; the one who runs the stores and the money.</div>
         <div class="gterm"><b>"Run aground"</b> — stuck on a sandbar or reef. Winching her off by her own anchor is called kedging, and nobody enjoys it.</div></div>
+        <div class="gsec"><h4>THE RATES, AT SCALE</h4>
+        ${Object.entries(W.Fleet.CLASSES).map(([cls, c]) =>
+          `<div class="gterm" style="display:flex;align-items:flex-end;gap:10px">${this.shipThumb(cls)}
+           <span><b>${c.name}</b> — ${c.guns} guns, ${c.hull} hull, ${W.Fleet.COMPLEMENTS[cls]} hands</span></div>`).join('')}
+        <div class="gcap">Drawn to a common scale: what you see is what she is.</div></div>
         <div class="gsec"><h4>THE FLEET ACTION (Line of Battle)</h4>
         <div class="gterm"><b>Orders</b> — every ship gets a target and a tactic in the muster; each order is drawn as a dashed course on the plan, and the battle then fights itself in rounds.</div>
         <div class="gterm"><b>Fighting spirit</b> — the gold bar. Broadsides, rakes, and a fallen captain break it; a ship whose spirit breaks <b>strikes her colors</b> (surrenders). Struck enemies are prizes.</div>
@@ -899,6 +933,7 @@ W.UI = {
       const t = F.TRAITS[s.captain.trait];
       const st = F.SHIP_TRAITS[s.trait];
       body += `<div class="storerow">${this.captPortrait(s.captain.name)}<b>${i + 1}. ${s.name}</b>
+        ${this.shipThumb(s.cls)}
         <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, ${s.hullMax} hull,
         ${spiritWord(s.morale)} crew · <i>${st.name}</i> (${st.desc})
         · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
@@ -930,10 +965,12 @@ W.UI = {
       const mu = F.matchup(s);
       const handsPct = Math.round(100 * s.hands / s.complement);
       body += `<div class="storerow">${this.captPortrait(s.captain.name)}<b>${i + 1}. ${s.name}</b>
+        ${this.shipThumb(s.cls)}
         <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, hull ${Math.ceil(s.hull)}/${s.hullMax},
         crew ${handsPct}%${handsPct < 60 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
         · <i>${F.SHIP_TRAITS[s.trait].name}</i>
-        · Capt. ${s.captain.name}${s.captain.distinguished ? ' ★' : ''}, <i>${t.name}</i>: ${t.desc}<br>
+        · Capt. ${s.captain.name}${s.captain.distinguished ? ' ★' : ''},
+        <i>${F.captTraitsText(s.captain)}</i>: ${t.desc}${s.captain.learned ? ' ' + F.TRAITS[s.captain.learned].desc : ''}<br>
         <label>Target <select data-tgt="${i}">${tgtOpts(s.order.target)}</select></label>
         <label style="margin-left:8px">Tactic <select data-tac="${i}">${tacOpts(s.order.tactic)}</select></label>
         ${mu ? `<br><i class="wchips">She throws ~${Math.round(mu.hers * 24)} lb of metal to your
@@ -1044,14 +1081,15 @@ W.UI = {
   openRefit() {
     const F = W.Fleet, c = F.campaign, s = F.summary;
     if (s && !s.settled) F.settleAction();
-    const capNames = () => c.captains.map(x => x.name).join(', ') || 'none';
+    const capNames = () => c.captains.map(x =>
+      `${x.name}${x.distinguished ? ' ★' : ''} (${F.captTraitsText(x)})`).join(', ') || 'none';
     let body = `<p class="goldnote">⚜ ${c.gold} in the purse · ${c.hands} hands in the pool ·
       captains ashore: ${capNames()}</p>`;
     if (s && s.prizeShips && s.prizeShips.length) {
       body += '<h4>PRIZES TAKEN</h4>';
       s.prizeShips.forEach((cls, i) => {
         const canTake = F.ships.length < 4 && c.captains.length > 0;
-        body += `<div class="storerow"><b>${F.CLASSES[cls].name}</b>
+        body += `<div class="storerow">${this.shipThumb(cls)}<b>${F.CLASSES[cls].name}</b>
           <span class="sdesc">Take her into service (needs a captain ashore and a prize crew from
           the pool) or send her in for ⚜ ${F.PRIZE_VALUE[cls]}.</span>
           <button data-take="${i}" ${canTake ? '' : 'disabled'}>Take into service</button>
@@ -1060,18 +1098,20 @@ W.UI = {
     }
     body += '<h4>THE SQUADRON</h4>';
     F.ships.forEach((sh, i) => {
-      const allCapts = [sh.captain.name]
-        .concat(F.ships.filter(x => x !== sh).map(x => x.captain.name))
-        .concat(c.captains.map(x => x.name));
-      const capOpts = allCapts.map(n =>
-        `<option${n === sh.captain.name ? ' selected' : ''}>${n}</option>`).join('');
-      body += `<div class="storerow">${this.captPortrait(sh.captain.name, 'sm')}<b>${sh.name}</b>
+      const allCapts = [sh.captain]
+        .concat(F.ships.filter(x => x !== sh).map(x => x.captain))
+        .concat(c.captains);
+      const capOpts = allCapts.map(cp =>
+        `<option value="${cp.name}"${cp.name === sh.captain.name ? ' selected' : ''}>` +
+        `${cp.name}${cp.distinguished ? ' ★' : ''} — ${F.captTraitsText(cp)}</option>`).join('');
+      body += `<div class="storerow">${this.captPortrait(sh.captain.name, 'sm')}${this.shipThumb(sh.cls)}<b>${sh.name}</b>
         <span class="sdesc">${F.CLASSES[sh.cls].name} ·
           hull ${Math.ceil(sh.hull)}/${sh.hullMax} ·
           guns ${sh.guns}/${sh.gunsMax}${sh.guns < sh.gunsMax ? ' <b style="color:#a02418">(dismounted)</b>' : ''} ·
           hands ${sh.hands}/${sh.complement}${sh.hands < sh.complement * 0.6 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
           · Capt. <select data-capt="${i}">${capOpts}</select>
-          ${sh.captain.alive ? '' : ' †'}</span>
+          ${sh.captain.alive ? '' : ' †'}
+          ${sh.captain.learned ? `<i class="wchips">(${F.TRAITS[sh.captain.trait].name} + ${F.TRAITS[sh.captain.learned].name})</i>` : ''}</span>
         <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>repair +5 (⚜10)</button>
         ${sh.guns < sh.gunsMax ? `<button data-gun="${i}" ${c.gold < 8 ? 'disabled' : ''}>remount gun (⚜8)</button>` : ''}
         ${sh.gunsMax < (F.CLASSES[sh.cls].guns + 2) ? `<button data-buygun="${i}" ${c.gold < 45 ? 'disabled' : ''} title="Pierce her side for one more gun — permanent">add a gun (⚜45)</button>` : ''}

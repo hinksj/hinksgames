@@ -146,7 +146,7 @@ W.Fleet = {
     });
     this.ships.forEach((s, i) => {
       s.order = { tactic: 'engage', target: Math.min(i, this.enemy.length - 1) };
-      s.struck = false; s.sunk = false; s.rakeDone = false;
+      s.struck = false; s.sunk = false; s.rakeDone = false; s.deeds = {};
       // spirit rises with a full, rested complement — and sags with a thin one
       s.morale = Math.round(50 + 22 * (s.hands / s.complement));
     });
@@ -180,7 +180,7 @@ W.Fleet = {
   },
 
   begin() {
-    const capW = this.ships.filter(s => s.captain.trait === 'weatherly' && s.captain.alive).length;
+    const capW = this.ships.filter(s => s.captain.alive && this.capHas(s.captain, 'weatherly')).length;
     const mineW = this.ships.filter(s => s.trait === 'weatherly').length;
     const mineC = this.ships.filter(s => s.trait === 'crank').length;
     const theirW = this.enemy.filter(s => s.trait === 'weatherly').length;
@@ -224,7 +224,7 @@ W.Fleet = {
     if (ship.side === 'player') {
       w *= 1.16 * (0.55 + 0.45 * W.clamp(ship.hands / ship.complement, 0, 1));
     }
-    if (ship.captain && ship.captain.trait === 'gunnery' && ship.captain.alive) w *= 1.2;
+    if (ship.captain && this.capHas(ship.captain, 'gunnery')) w *= 1.2;
     if (ship.captain && ship.captain.distinguished) w *= 1.08;
     if (ship.trait === 'dry') w *= 1.1;
     if (ship.trait === 'crank') w *= 0.9;
@@ -262,6 +262,16 @@ W.Fleet = {
       screen: 'She gives up her own gunnery to take fire meant for the flag.',
     };
     return { mine, hers, verdict, hint: hints[myShip.order.tactic] || '' };
+  },
+
+  capHas(capt, trait) {
+    return !!capt && (capt.trait === trait || capt.learned === trait);
+  },
+
+  captTraitsText(capt) {
+    const parts = [this.TRAITS[capt.trait] ? this.TRAITS[capt.trait].name : ''];
+    if (capt.learned && this.TRAITS[capt.learned]) parts.push(this.TRAITS[capt.learned].name);
+    return parts.filter(Boolean).join(' + ');
   },
 
   // a live target for a ship whose ordered opponent is already out of it
@@ -343,7 +353,7 @@ W.Fleet = {
       let odds = (b.morale < 55 ? 0.22 : 0.07) * (aIsMine && this.closerRounds > 0 ? 1.5 : 1);
       if (b.cls === 'shipofline') odds *= 0.3; // her sides are a cliff
       if (!aIsMine) odds *= 0.6; // your people are drilled to repel them
-      if (a.captain.trait === 'boarder' && a.captain.alive) odds *= 2;
+      if (a.captain.alive && this.capHas(a.captain, 'boarder')) odds *= 2;
       if (W.chance(odds)) {
         b.struck = true;
         this.say(`${a.name} grapples and boards ${b.name} — her colors come down!`);
@@ -408,7 +418,7 @@ W.Fleet = {
       dmg *= 1.16; // drill tells
       dmg *= 0.55 + 0.45 * W.clamp(a.hands / a.complement, 0, 1); // short-handed guns fire slow
     }
-    if (a.captain.trait === 'gunnery' && a.captain.alive) dmg *= 1.2;
+    if (a.captain.alive && this.capHas(a.captain, 'gunnery')) dmg *= 1.2;
     if (a.captain.distinguished) dmg *= 1.08;
     if (a.trait === 'dry') dmg *= 1.1;
     if (a.trait === 'crank') dmg *= 0.9;
@@ -447,12 +457,13 @@ W.Fleet = {
     let moraleHit = dmg * 1.2;
     if (rake) {
       moraleHit += 22;
+      if (aIsMine && a.deeds) a.deeds.raked = true;
       this.say(`${a.name} cuts the line and rakes ${b.name} stem to stern!`);
       this.floatAt(b, 'RAKED!', '#a02418');
     }
     if (tac === 'range') moraleHit += 4; // harried without reply
     b.morale -= moraleHit;
-    const floor = (b.captain.trait === 'ironsides' && b.captain.alive) ? 20 : 0;
+    const floor = (b.captain.alive && this.capHas(b.captain, 'ironsides')) ? 20 : 0;
     b.morale = Math.max(floor, b.morale);
     if (b.hull < b.hullMax * 0.5 && b.captain.alive && W.chance(0.04)) {
       b.captain.alive = false;
@@ -828,6 +839,23 @@ W.Fleet = {
         c.captains.push(s.captain);
       }
     }
+    // what an action teaches, a good officer keeps
+    for (const s of this.ships) {
+      if (s.struck || s.sunk || !s.captain.alive || s.captain.learned) continue;
+      const d = s.deeds || {};
+      const candidates = [];
+      if (d.boarded) candidates.push('boarder');
+      if (d.raked) candidates.push('gunnery');
+      if (s.hull < s.hullMax * 0.35) candidates.push('ironsides');
+      if (this.gauge && this.summary.win) candidates.push('weatherly');
+      const pool = candidates.filter(tr => tr !== s.captain.trait);
+      if (pool.length && W.chance(0.45)) {
+        s.captain.learned = W.pick(pool);
+        this.say(`Captain ${s.captain.name} comes out of it a better officer — ` +
+          `${this.TRAITS[s.captain.learned].name}.`);
+      }
+    }
+
     // captains who took their ordered prize are mentioned in the Gazette
     for (const s of this.ships) {
       if (s.struck || s.sunk || !s.captain.alive || s.captain.distinguished) continue;

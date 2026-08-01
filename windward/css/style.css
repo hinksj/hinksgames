@@ -109,6 +109,7 @@ body {
   margin-right: 4px;
 }
 .captportrait.sm { width: 36px; height: 36px; flex-basis: 36px; }
+canvas.shipthumb { flex: 0 0 auto; align-self: center; }
 .crewitem .crace { color: #6d8aa3; font-size: 11px; margin-left: 5px; }
 .crewitem .chp { height: 5px; background: #1a2635; border-radius: 2px; margin: 4px 0 2px; overflow: hidden; }
 .crewitem .chpfill { height: 100%; background: #63d68a; }
