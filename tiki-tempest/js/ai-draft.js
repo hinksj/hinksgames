@@ -35,7 +35,7 @@
       }
       case 'umbrella': return p.bar.length >= 2 && !p.umbrellas.length ? 1.9 : 1.1;
       case 'double': return p.banked.some(function (b) { return CARDS[b].fx === 'double'; }) ? 0.8 : 2.2;
-      case 'demand': return p.banked.some(function (b) { return CARDS[b].fx === 'demand'; }) ? 0.6 : 1.9;
+      case 'demand': return 1.9;
       case 'breeze': return 1.6;
       case 'torch': return st.deck.length ? 1.7 : 0.3;
       case 'plunder': return 1.7;
@@ -92,6 +92,19 @@
       }
       case 'torch':
         return { t: 'resolve', keep: bestOf(st, by, pend.cards).card };
+      case 'demand': {
+        var richest = -1, ri = -1;
+        st.players.forEach(function (pl) {
+          if (pl.i === pend.by || !pl.hand.length) return;
+          if (pl.hand.length > richest) { richest = pl.hand.length; ri = pl.i; }
+        });
+        var wantIng = 'rum', wv = -1;
+        data.INGREDIENTS.forEach(function (ing) {
+          var v = ingValue(st, by, ing.id);
+          if (v > wv) { wv = v; wantIng = ing.id; }
+        });
+        return ri >= 0 ? { t: 'resolve', target: ri, ing: wantIng } : null;
+      }
       case 'passAll': {
         for (var i = 0; i < st.players.length; i++) {
           if (pend.need[i] && pend.chosen[i] === undefined) {
@@ -123,15 +136,7 @@
         }
       }
       var first = bestOf(st, p, p.hand);
-      var action = { t: 'pick', seat: p.i, card: first.card };
-      // spend a banked Guest Bartender when two strong cards pass by together
-      var hasGB = p.banked.some(function (id) { return CARDS[id].fx === 'demand'; });
-      if (hasGB && p.hand.length >= 3) {
-        var rest = p.hand.filter(function (id) { return id !== first.card; });
-        var second = bestOf(st, p, rest);
-        if (second.value >= 1.8 && first.value >= 1.8) action.second = second.card;
-      }
-      return action;
+      return { t: 'pick', seat: p.i, card: first.card };
     }
     return null;
   }

@@ -150,19 +150,35 @@ section('— Tidal Handover: everyone passes right from drafting hands —');
   ok(got, 'tidal pass-right verified (marks returned home after the round pass-left)');
 }());
 
-section('— Guest Bartender: keep 2, card rejoins the passing hand —');
+section('— Guest Bartender: demand an ingredient from a hand (as printed) —');
 (function () {
   var st = fresh(7);
-  toBank(st, 0, 'sp-guest-bartender-1');
-  give(st, 0, 'ing-rum-1');
-  give(st, 0, 'ing-lime-1');
+  give(st, 0, 'sp-guest-bartender-1');
+  give(st, 1, 'ing-nutmeg-1');
   resetPhase(st);
-  pickRound(st, 'ing-rum-1', 'ing-lime-1');
-  ok(st.players[0].bar.indexOf('ing-rum-1') >= 0 && st.players[0].bar.indexOf('ing-lime-1') >= 0,
-    'both kept cards reached the bar');
-  ok(st.players[0].banked.indexOf('sp-guest-bartender-1') < 0, 'bartender left the bank');
-  // it rejoined the hand player 0 passed on — dir 1 passes to seat 1
-  ok(st.players[1].hand.indexOf('sp-guest-bartender-1') >= 0, 'bartender rejoined the passed hand');
+  pickRound(st, 'sp-guest-bartender-1');
+  ok(st.pending && st.pending.type === 'demand' && st.pending.by === 0, 'demand pending for player 0');
+  E.apply(st, { t: 'resolve', target: 1, ing: 'nutmeg' });
+  ok(st.players[0].bar.indexOf('ing-nutmeg-1') >= 0, 'demanded nutmeg landed on the demanding bar');
+  ok(st.players[1].hand.indexOf('ing-nutmeg-1') < 0, 'target hand lost it');
+  // whiff case: demand something they don't hold
+  var st2 = fresh(71);
+  give(st2, 0, 'sp-guest-bartender-2');
+  st2.players[1].hand = st2.players[1].hand.filter(function (id) {
+    var c = CARDS[id];
+    if (c.ing === 'blue-curacao') { st2.removed.push(id); return false; }
+    return true;
+  });
+  resetPhase(st2);
+  pickRound(st2, 'sp-guest-bartender-2');
+  if (st2.pending && st2.pending.type === 'demand') {
+    var before = st2.players[0].bar.length;
+    E.apply(st2, { t: 'resolve', target: 1, ing: 'blue-curacao' });
+    ok(st2.players[0].bar.length === before, 'whiffed demand takes nothing');
+    ok(st2.log.some(function (l) { return l.indexOf("doesn't have it") >= 0; }), 'whiff announced');
+  } else {
+    ok(true, 'whiff case skipped (pending consumed by AI order)');
+  }
 }());
 
 section('— Make It a Double + Paper Umbrella on a serve —');

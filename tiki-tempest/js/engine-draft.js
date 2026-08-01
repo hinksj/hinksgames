@@ -203,9 +203,12 @@
           (p.umbrellas.length > 1 ? 's' : '') + ' ☂️');
         return;
       case 'double':
-      case 'demand': // Guest Bartender is banked: spend later to keep 2 cards at once
         p.banked.push(id);
         log(st, p.name + ' sets aside ' + c.name);
+        return;
+      case 'demand': // Guest Bartender, as printed: demand an ingredient from a hand
+        st.discard.push(id);
+        st.fxQueue.push({ type: 'demand', by: p.i });
         return;
       case 'lastcall':
         st.discard.push(id);
@@ -294,6 +297,12 @@
         var need = st.players.map(function (pl) { return pl.hand.length > 0; });
         if (!need.some(Boolean)) return false;
         st.pending = { type: 'passAll', by: fx.by, need: need, chosen: {} };
+        return true;
+      }
+      case 'demand': {
+        var anyHand = st.players.some(function (pl) { return pl.i !== fx.by && pl.hand.length; });
+        if (!anyHand) { log(st, 'No hands to demand from.'); return false; }
+        st.pending = { type: 'demand', by: fx.by };
         return true;
       }
     }
@@ -479,6 +488,20 @@
       log(st, p.name + ' takes a card from the torchlight');
       resolveKeep(st, p, a.keep);
       return true;
+    },
+    demand: function (st, pend, a) {
+      var tp = st.players[a.target];
+      if (!tp || a.target === pend.by) throw new Error('bad target');
+      var by = st.players[pend.by];
+      var held = tp.hand.filter(function (id) { return CARDS[id].ing === a.ing; })[0];
+      if (held) {
+        removeFrom(tp.hand, held);
+        by.bar.push(held); // straight onto the demanding player's bar
+        log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' — ' + tp.name +
+          ' hands it over to the bar!');
+      } else {
+        log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' — ' + tp.name + " doesn't have it.");
+      }
     },
     passAll: function (st, pend, a) { // tidal handover, on drafting hands
       var p = st.players[a.player];

@@ -293,9 +293,6 @@
                line.indexOf('No hands worth plundering') === 0 || line.indexOf("doesn't have it") >= 0) {
         toast('💨 ' + line, 4500); sfx('skip');
       }
-      else if (line.indexOf(me().name + ' sets aside Guest Bartender') === 0) {
-        toast('🍸 Guest Bartender set aside — on a later pick, select TWO cards and hit Play BOTH', 6000);
-      }
       else if (line.indexOf(me().name + ' sets aside Make It a Double') === 0) {
         toast('✌️ Make It a Double set aside — spend it when you serve a cocktail', 6000);
       }
@@ -481,23 +478,14 @@
           esc(waitingOn.join(', ') || 'the reveal') + '…</span>';
         return;
       }
-      var hasGB = mine.banked.some(function (b) { return CARDS[b].fx === 'demand'; });
       var kb = [];
-      kb.push(btn(ui.sel ? 'Play ' + CARDS[ui.sel].name : 'Play (select a card)', !!ui.sel && !ui.sel2, function () {
+      kb.push(btn(ui.sel ? 'Play ' + CARDS[ui.sel].name : 'Play (select a card)', !!ui.sel, function () {
         var c1 = ui.sel; ui.sel = null; ui.sel2 = null; ui.pinned = null; hideZoom();
         act({ t: 'pick', seat: ui.mySeat, card: c1 });
       }));
-      if (hasGB) {
-        kb.push(btn('Play BOTH (Guest Bartender)', !!(ui.sel && ui.sel2), function () {
-          var c1 = ui.sel, c2 = ui.sel2;
-          ui.sel = null; ui.sel2 = null; ui.pinned = null; hideZoom();
-          act({ t: 'pick', seat: ui.mySeat, card: c1, second: c2 });
-        }, 'Select two cards to play — the Bartender goes back into the passing hand'));
-      }
       var sp = document.createElement('span');
       sp.className = 'msg';
-      sp.textContent = 'Pick a card' + (hasGB ? ' (or two!)' : '') +
-        ' — everyone plays theirs at once · glowing menu drinks are servable';
+      sp.textContent = 'Pick a card — everyone plays theirs at once · glowing menu drinks are servable';
       el.appendChild(sp);
       kb.forEach(function (x) { el.appendChild(x); });
       return;

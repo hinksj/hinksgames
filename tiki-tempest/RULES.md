@@ -72,16 +72,17 @@ whenever it runs dry. Played picks resolve immediately:
 
 - **Ingredient** → face up onto your **Bar**.
 - **Beer** → your beer shelf (scores at game end, most +6 / fewest −3).
-- **Special** → resolves at once (see table), except **Make It a Double** and
-  **Guest Bartender**, which are **set aside** for later.
+- **Special** → resolves at once (see table), except **Make It a Double**,
+  which is **set aside** for later.
 
 **Serving is free, any time:** when your Bar covers a Menu recipe, serve it —
 pay the ingredients, take the card, refill the Menu. A set-aside Double can be
 spent as you serve. An umbrella'd bar garnishes the drink (+1) as usual.
 
-**Guest Bartender** (set aside) works like an extra pair of hands: on a later
-pick you may play **two** cards from the passing hand — and the Bartender card
-itself goes **into that hand** as you pass it on, off to help someone else.
+**Guest Bartender** works exactly as printed, even mid-draft: name an
+ingredient and a player — if it's in the hand they're holding, it goes straight
+onto **your bar**. (Pass-plus-draw keeps every hand full, so there's always
+someone to demand from.)
 
 **Draft rewordings of the printed effects** (everything else plays as printed):
 
