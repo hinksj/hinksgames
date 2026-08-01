@@ -208,6 +208,11 @@
     });
   });
   drawSoundBtn();
+  $('btnTour').addEventListener('click', function () {
+    $('btnSolo').click();
+    setTimeout(function () { if (G.tour) G.tour.start(); }, 700);
+  });
+  $('btnTourTop').addEventListener('click', function () { if (G.tour) G.tour.start(); });
   $('btnRules').addEventListener('click', function () { window.open('RULES.md', '_blank'); });
   $('btnQuit').addEventListener('click', function () { location.reload(); });
   function escName(s) { return String(s).replace(/[<>&]/g, ''); }

@@ -6,7 +6,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['data.js', 'sound.js', 'engine-classic.js', 'engine-draft.js', 'ai-classic.js', 'ai-draft.js', 'net.js', 'ui.js', 'main.js'];
+const FILES = ['data.js', 'sound.js', 'engine-classic.js', 'engine-draft.js', 'ai-classic.js', 'ai-draft.js', 'net.js', 'ui.js', 'tour.js', 'main.js'];
 
 function makeEl() {
   const el = {

@@ -228,8 +228,13 @@
   var ING_NAME = {};
   data.INGREDIENTS.forEach(function (ing) { ING_NAME[ing.id] = ing.name; });
   function recipeCaption(r) {
+    var have = {};
+    me().bar.forEach(function (id) { have[CARDS[id].ing] = (have[CARDS[id].ing] || 0) + 1; });
     return Object.keys(r.needs).map(function (k) {
-      return r.needs[k] + ' ' + ING_NAME[k];
+      var need = r.needs[k], got = Math.min(have[k] || 0, need);
+      var cls = got >= need ? 'got' : (got > 0 ? 'part' : '');
+      var txt = need + ' ' + ING_NAME[k] + (got > 0 && got < need ? ' (' + got + ')' : '');
+      return cls ? '<span class="' + cls + '">' + esc(txt) + '</span>' : esc(txt);
     }).join(' + ') + ' · ' + r.pts + ' pts';
   }
   function renderMenu(st) {
@@ -242,9 +247,9 @@
       var d = document.createElement('div');
       var servable = canAct && E.canServe(st, me(), recId);
       d.className = 'mrec' + (servable ? ' servable' : '');
-      d.innerHTML = '<img src="' + CARDS[recId].art + '" title="' +
-        esc(CARDS[recId].name + ' — ' + CARDS[recId].pts + ' pts') + '">' +
-        '<div class="rcp">' + esc(recipeCaption(CARDS[recId])) + '</div>';
+      d.innerHTML = '<div class="rcp">' + recipeCaption(CARDS[recId]) + '</div>' +
+        '<img src="' + CARDS[recId].art + '" title="' +
+        esc(CARDS[recId].name + ' — ' + CARDS[recId].pts + ' pts') + '">';
       if (servable) {
         d.title = 'Serve ' + CARDS[recId].name + '!';
         d.addEventListener('click', function () { wantServe(recId); });

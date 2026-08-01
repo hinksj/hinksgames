@@ -194,6 +194,14 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
   background: var(--panel); border: 1px solid var(--gold); color: var(--gold);
   border-radius: 10px; padding: 8px 18px; z-index: 1100; display: none; }
 
+@media (max-height: 880px) {
+  :root { --hand-w: 146px; --hand-h: 234px; --card-w: 80px; --card-h: 128px; }
+  #table { padding-bottom: 320px; }
+  .opp .backfan { height: 28px; }
+  .opp .backfan img { width: 18px; height: 28px; }
+  .meld .mc, .meld .mc img { width: 52px; height: 83px; }
+  #log { height: 110px; }
+}
 @media (max-width: 760px) {
   :root { --card-w: 64px; --card-h: 102px; --hand-w: 96px; --hand-h: 154px; }
   .hcard { margin-left: -26px; }
