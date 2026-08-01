@@ -474,21 +474,21 @@
       }
       var hasGB = mine.banked.some(function (b) { return CARDS[b].fx === 'demand'; });
       var kb = [];
-      kb.push(btn(ui.sel ? 'Keep ' + CARDS[ui.sel].name : 'Keep (select a card)', !!ui.sel && !ui.sel2, function () {
+      kb.push(btn(ui.sel ? 'Play ' + CARDS[ui.sel].name : 'Play (select a card)', !!ui.sel && !ui.sel2, function () {
         var c1 = ui.sel; ui.sel = null; ui.sel2 = null; ui.pinned = null; hideZoom();
         act({ t: 'pick', seat: ui.mySeat, card: c1 });
       }));
       if (hasGB) {
-        kb.push(btn('Keep BOTH (Guest Bartender)', !!(ui.sel && ui.sel2), function () {
+        kb.push(btn('Play BOTH (Guest Bartender)', !!(ui.sel && ui.sel2), function () {
           var c1 = ui.sel, c2 = ui.sel2;
           ui.sel = null; ui.sel2 = null; ui.pinned = null; hideZoom();
           act({ t: 'pick', seat: ui.mySeat, card: c1, second: c2 });
-        }, 'Select two cards — the Bartender goes back into the passing hand'));
+        }, 'Select two cards to play — the Bartender goes back into the passing hand'));
       }
       var sp = document.createElement('span');
       sp.className = 'msg';
-      sp.textContent = 'Pick a card to keep' + (hasGB ? ' (or two!)' : '') +
-        ' · serve glowing menu drinks any time';
+      sp.textContent = 'Pick a card' + (hasGB ? ' (or two!)' : '') +
+        ' — everyone plays theirs at once · glowing menu drinks are servable';
       el.appendChild(sp);
       kb.forEach(function (x) { el.appendChild(x); });
       return;

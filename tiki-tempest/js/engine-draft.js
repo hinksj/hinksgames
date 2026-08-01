@@ -164,7 +164,7 @@
     st.phase = 'reveal';
     var lines = st.players.filter(function (p) { return st.picks[p.i]; }).map(function (p) {
       var pk = st.picks[p.i];
-      return p.name + ' keeps ' + CARDS[pk.card].name +
+      return p.name + ' plays ' + CARDS[pk.card].name +
         (pk.second ? ' + ' + CARDS[pk.second].name : '');
     });
     log(st, '👐 ' + lines.join(' · '));

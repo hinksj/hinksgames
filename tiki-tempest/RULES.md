@@ -35,7 +35,8 @@ bar — closes them down. In the spirit of Sushi Go!, with a storm rolling in.*
 ## Two Ways to Play
 
 - **Draft** *(default — closest to the game's Sushi Go! inspiration)*: everyone
-  picks one card from their hand simultaneously and passes the rest. Rules
+  picks one card at the same time, all picks are played face-up together, and
+  the hands pass on. Rules
   below in **Draft Mode**; best over **3 rounds**.
 - **Classic**: bartender turns — draw 2, play up to 2. Rules in **Classic
   Mode**; best over **2 rounds**.
@@ -60,12 +61,14 @@ cards at 2 players, 9 at 3, 8 at 4, 7 at 5**. (Storm Surge dealt into an
 opening hand is reshuffled into the deck, as printed.) The rest of the deck
 stays as a face-down stock.
 
-**Each pass:** all players simultaneously choose **one card to keep**, reveal
-together, then pass the rest of their hand on — **left** in round 1, **right**
+**Each pass:** all players pick **one card** at the same time; every pick is
+revealed together and **played on the spot** — nothing stays hidden, the
+simultaneity just means nobody reacts to anyone else's choice. Then everyone
+passes the rest of their hand on — **left** in round 1, **right**
 in round 2, alternating — and **everyone draws one card from the stock** into
 their new hand (pass *plus* draw: hands stay full, every pick is a real
 choice). A round is **14 picks**; the stock reshuffles from the discard pile
-whenever it runs dry. Kept cards resolve immediately:
+whenever it runs dry. Played picks resolve immediately:
 
 - **Ingredient** → face up onto your **Bar**.
 - **Beer** → your beer shelf (scores at game end, most +6 / fewest −3).
@@ -77,7 +80,7 @@ pay the ingredients, take the card, refill the Menu. A set-aside Double can be
 spent as you serve. An umbrella'd bar garnishes the drink (+1) as usual.
 
 **Guest Bartender** (set aside) works like an extra pair of hands: on a later
-pick you may keep **two** cards from the passing hand — and the Bartender card
+pick you may play **two** cards from the passing hand — and the Bartender card
 itself goes **into that hand** as you pass it on, off to help someone else.
 
 **Draft rewordings of the printed effects** (everything else plays as printed):
