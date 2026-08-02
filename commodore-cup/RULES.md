@@ -230,21 +230,25 @@ incomplete. This ruleset finalizes them:
    hoarding, and Member Discount can't fish spent actions back.
 7. **Play to 50** (not 100): with 1-point suit cards, typical round scores run
    10–20, so 50 lands the advertised 30–45 minutes.
-8. **The membership elects you** — a 2024 design goal ("to become Commodore
+8. **Interpretations ratified** (designer review, Aug 2026): every place the
+   digital game interprets rather than transcribes the printed cards —
+   random steals, Member Discount taking any card from the pile, targeting
+   clarifications — was reviewed against the card text and confirmed.
+9. **The membership elects you** — a 2024 design goal ("to become Commodore
    you should need not only points but the support of members") that the
    drafts never wired up. Club Support (members courted, minimum 5 to win)
    makes the member deck mandatory but *when* to brave it strategic — and
    means the negative members are votes too.
-9. **Members are collected, not reshuffled** (playtest, July 2026): courted
+10. **Members are collected, not reshuffled** (playtest, July 2026): courted
    members stay on the table all game and the 25-card deck depletes, so the
    membership is a visible, contested resource. Extending a meld also arms
    the Membership Drive — late-round turns still earn courting rights.
-10. **Courting scales with melding** (playtest): originally capped at one
+11. **Courting scales with melding** (playtest): originally capped at one
    member per turn; now each new set or run earns its own Drive. Simulation
    shows double-meld turns are rare enough that the aggregate balance doesn't
    move — but the turn where you lay two melds deserves two knocks on the
    member deck.
-11. **v1.1 balance** (simulated playtest): specials dropped from +2 to +1 —
+12. **v1.1 balance** (simulated playtest): specials dropped from +2 to +1 —
    at +2 the winner was farming ~19 points just for firing them, rivaling
    melds; their effects are the real reward. Meld **size bonuses** (+2 for a
    set's 4th card, +1 per run card past the third) reward building the harder

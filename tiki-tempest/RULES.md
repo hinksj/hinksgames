@@ -213,5 +213,10 @@ Decisions made to finish it, and why:
    clauses including "once played, must remain."
 6. **Pirate Plunder's replacement draw** comes from the card-explanations doc
    ("the opponent draws a new card from the deck").
-7. **Balance knobs** for playtesting: turns per round (10), rounds (2),
+7. **Interpretations ratified** (designer review, Aug 2026): the seagull's
+   loot destination, umbrella stacking, Plunder's replacement draw, and the
+   draft-mode rewordings were reviewed against the printed cards and
+   confirmed; Guest Bartender and Party Foul (Commodore) were corrected to
+   the literal card text during that review.
+8. **Balance knobs** for playtesting: turns per round (10), rounds (2),
    plays per turn (2), beer bonus (+10/−5).
