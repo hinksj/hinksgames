@@ -36,6 +36,7 @@
     var st = {
       mode: 'draft',
       deckIds: opts.deckIds || data.MAIN_DECK,
+      aiLevel: opts.aiLevel || 'regular',
       handBase: opts.handBase || data.HAND_BASE,
       passes: opts.passes || data.PASSES_PER_ROUND,
       seed: opts.seed || Math.floor(Math.random() * 1e9),

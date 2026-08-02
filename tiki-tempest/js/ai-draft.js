@@ -24,7 +24,7 @@
     st.players.forEach(function (pl) { if (pl.i !== p.i) most = Math.max(most, pl.beers.length); });
     return mine <= most ? 1.15 : 0.7; // worth a pick when behind, not a strategy
   }
-  function cardValue(st, p, id) {
+  function cardValueBase(st, p, id) {
     var c = CARDS[id];
     if (c.kind === 'ing') return 0.6 + ingValue(st, p, c.ing) + (c.rare ? 0.3 : 0);
     if (c.kind === 'beer') return beerRank(st, p);
@@ -50,6 +50,22 @@
     }
     return 1;
   }
+  function cardValue(st, p, id) {
+    var v = cardValueBase(st, p, id);
+    // Regular bots have human moods; Hard bots are stone sober
+    if (st.aiLevel !== 'hard') v += (Math.random() - 0.5) * 0.5;
+    return v;
+  }
+  function leaderSeat(st, excl, needCards) {
+    var best = -Infinity, bi = -1;
+    st.players.forEach(function (pl) {
+      if (pl.i === excl) return;
+      if (needCards && !pl.hand.length) return;
+      var sc = pl.score + pl.roundScore;
+      if (sc > best) { best = sc; bi = pl.i; }
+    });
+    return bi;
+  }
   function worstHandCard(st, p, hand) {
     var worst = null, wv = Infinity;
     hand.forEach(function (id) {
@@ -72,6 +88,10 @@
     var by = st.players[pend.by];
     switch (pend.type) {
       case 'chooseTarget': { // plunder
+        if (st.aiLevel === 'hard') {
+          var ls = leaderSeat(st, pend.by, true);
+          if (ls >= 0) return { t: 'resolve', target: ls };
+        }
         var best = -1, bi = -1;
         st.players.forEach(function (pl) {
           if (pl.i === pend.by || !pl.hand.length) return;
@@ -84,7 +104,8 @@
         st.players.forEach(function (pl) {
           if (pl.umbrellas.length) return;
           pl.bar.forEach(function (id) {
-            var v = ingValue(st, by, CARDS[id].ing) + (pl.i === pend.by ? -0.5 : 0.5);
+            var v = ingValue(st, by, CARDS[id].ing) + (pl.i === pend.by ? -0.5 : 0.5) +
+              (st.aiLevel === 'hard' && pl.i === leaderSeat(st, pend.by, false) ? 1.0 : 0);
             if (v > pv) { pv = v; pick = { player: pl.i, card: id }; }
           });
         });
@@ -94,7 +115,8 @@
         return { t: 'resolve', keep: bestOf(st, by, pend.cards).card };
       case 'demand': {
         var richest = -1, ri = -1;
-        st.players.forEach(function (pl) {
+        if (st.aiLevel === 'hard') ri = leaderSeat(st, pend.by, true);
+        if (ri < 0) st.players.forEach(function (pl) {
           if (pl.i === pend.by || !pl.hand.length) return;
           if (pl.hand.length > richest) { richest = pl.hand.length; ri = pl.i; }
         });
@@ -134,7 +156,7 @@
       // locked their pick this pass (no reflex races against the machine)
       for (var mi = 0; mi < st.menu.length; mi++) {
         if (E.canServe(st, p, st.menu[mi])) {
-          var contested = st.players.some(function (pl) {
+          var contested = st.aiLevel !== 'hard' && st.players.some(function (pl) {
             return !pl.isAI && pl.hand.length && st.picks[pl.i] === undefined &&
               E.canServe(st, pl, st.menu[mi]);
           });

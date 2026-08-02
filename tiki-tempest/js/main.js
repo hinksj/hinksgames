@@ -5,6 +5,7 @@
   function chosenEngine() { return $('mMode').value === 'classic' ? G.engineClassic : G.engineDraft; }
   function gameOpts(names) {
     return { names: names, rounds: parseInt($('mRounds').value, 10),
+      aiLevel: $('mAI').value,
       deckIds: G.data.DECKS[$('mDeck').value] || G.data.MAIN_DECK };
   }
   var $ = function (id) { return document.getElementById(id); };

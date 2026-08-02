@@ -33,6 +33,7 @@
     var st = {
       mode: 'classic',
       deckIds: opts.deckIds || data.MAIN_DECK,
+      aiLevel: opts.aiLevel || 'regular',
       seed: opts.seed || Math.floor(Math.random() * 1e9),
       rounds: opts.rounds || data.ROUNDS_DEFAULT,
       round: 0, finalRound: false, surgeStruck: false,

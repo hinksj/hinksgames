@@ -17,7 +17,7 @@
     return { miss: miss, total: total };
   }
   function ingValue(st, p, ing) {
-    var v = 0;
+    var v = st.aiLevel !== 'hard' ? (Math.random() - 0.5) * 0.4 : 0;
     st.menu.forEach(function (recId) {
       var m = missing(st, p, recId);
       if (m.miss[ing]) v += (CARDS[recId].pts / Math.max(1, m.total));
