@@ -56,20 +56,20 @@ W.Fleet = {
 
   // hulls have characters of their own, visible to both sides
   SHIP_TRAITS: {
-    weatherly: { name: 'Weatherly',  desc: 'A sweet sailer — better odds of the weather gauge.' },
+    weatherly: { name: 'Weatherly',  desc: 'A sweet sailer upwind: better odds of opening the battle with the weather gauge (the upwind position — every broadside from it hits harder).' },
     oak:       { name: 'Stout Oak',  desc: 'Thick-sided: shrugs off a share of every hit.' },
-    chasers:   { name: 'Bow-chasers', desc: 'Keeps firing well on the way in — cutting the line costs her less.' },
-    flyer:     { name: 'A Flyer',    desc: 'Fast: reaches her station a round sooner (rakes on round 2).' },
-    dry:       { name: 'Dry Powder', desc: 'A well-kept magazine: +10% throw-weight.' },
-    crank:     { name: 'Crank & Wet', desc: 'A poor, leaky sailer: −10% throw-weight and no help to the gauge.' },
+    chasers:   { name: 'Bow-chasers', desc: 'Guns that fire forward: she keeps most of her gunnery while sailing in to cut the enemy line.' },
+    flyer:     { name: 'A Flyer',    desc: 'Fast: she reaches the enemy sooner, so her stern-rake lands seconds earlier in the fight.' },
+    dry:       { name: 'Dry Powder', desc: 'A well-kept magazine: her broadsides hit 10% harder.' },
+    crank:     { name: 'Crank & Wet', desc: 'Tender and leaky: her broadsides hit 10% softer, and she is no help in winning the upwind position. Cheap for a reason.' },
   },
 
   // per-ship orders — the real vocabulary of the plan
   TACTICS: {
     engage: { name: 'Engage her',    desc: 'Lie alongside the target and trade broadsides. The honest duel.' },
-    cut:    { name: 'Cut the line',  desc: 'Cross her stern for a devastating rake (3rd round) — but eat fire on the way in.' },
+    cut:    { name: 'Cut the line',  desc: 'Cross her stern for a devastating rake, about ten seconds in — but eat fire on the way there.' },
     range:  { name: 'Hold the range', desc: 'Stand off and harry her rigging. Little harm done to you — or quickly to her.' },
-    board:  { name: 'Board her',     desc: 'Close fast and carry her by the sword, from the 2nd round.' },
+    board:  { name: 'Board her',     desc: 'Close fast and carry her by the sword — the ships touch a few seconds in.' },
     screen: { name: 'Screen the flag', desc: 'Stay by the flagship and take fire meant for her. Little of your own gunnery.' },
   },
 
@@ -495,7 +495,7 @@ W.Fleet = {
   intentWord(tactic) {
     return {
       engage: 'means to lie alongside and trade broadsides',
-      cut: 'means to cut YOUR line — expect a rake by the third round',
+      cut: 'means to cut YOUR line — expect her rake early in the action',
       range: 'will keep her distance and harry',
       board: 'means to close and board',
     }[tactic] || 'holds her course';
@@ -514,8 +514,8 @@ W.Fleet = {
     else verdict = 'she outguns you badly — do not trade broadsides';
     const hints = {
       engage: '',
-      cut: 'Two rounds of fire on the way in, then the rake. Best against the heavy and slow.',
-      range: 'Safe early — but she will have closed the distance by the fifth round.',
+      cut: 'She eats fire on the way in, then rakes. Best against the heavy and slow.',
+      range: 'Safe early — but she closes the distance as the action wears on.',
       board: foe.morale <= 60 ? 'Her crew is green; a boarding may carry her early.'
         : 'Her crew is steady; boarding will be bloody work.',
       screen: 'She gives up her own gunnery to take fire meant for the flag.',
