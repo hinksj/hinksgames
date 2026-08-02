@@ -942,20 +942,23 @@ W.Render = {
     const tgt = this.enemyAnchor(W.clamp(o.target | 0, 0, 2));
     switch (o.tactic) {
       case 'cut':
-        return { dur: 5, pts: [start,
-          { x: 340, y: start.y - 8 },
-          { x: tgt.x - 190, y: tgt.y - 60 + (i % 2) * 34 },
-          { x: tgt.x - 46, y: tgt.y + 4 }] };
+        // the classic: pierce the gap astern of her, rake as you cross, come
+        // up her far side — timed so the crossing lands as the rake fires
+        return { dur: s && s.trait === 'flyer' ? 2.6 : 3.8, pts: [start,
+          { x: 370, y: start.y - 10 },
+          { x: tgt.x - 34, y: tgt.y - 58 },
+          { x: tgt.x + 54, y: tgt.y + 26 }] };
       case 'range':
         return { dur: 3, pts: [start,
           { x: 220, y: start.y + 6 },
           { x: 300, y: start.y + 14 },
           { x: 330, y: start.y + 18 }] };
       case 'board':
-        return { dur: 3, pts: [start,
+        // run straight in until the hulls touch
+        return { dur: 2.7, pts: [start,
           { x: 330, y: start.y },
-          { x: tgt.x - 160, y: tgt.y - 8 },
-          { x: tgt.x - 44, y: tgt.y }] };
+          { x: tgt.x - 150, y: tgt.y - 6 },
+          { x: tgt.x - 28, y: tgt.y }] };
       case 'screen': {
         const fp = i === 0 ? { x: 330, y: 200 } : this.routeFor(0).pts[3];
         return { dur: 3.5, pts: [start,
