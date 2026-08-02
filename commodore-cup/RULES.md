@@ -118,7 +118,7 @@ Card text as printed. Clarifications in the right column govern edge cases.
 
 | Card | Printed effect | Clarification |
 |---|---|---|
-| **Party Foul** | Discard one extra card. | Choose **any player** (yourself included); they immediately discard one card of their choice. |
+| **Party Foul** | Discard one extra card. | Exactly as printed: **you** discard one extra card of your choice — useful for racing toward going out. |
 | **Smooth Talker** | Draw 2 cards. | From the draw pile. |
 | **Reciprocity** | Use club reciprocals to steal a card from another player's hand. | Take one card at random (unseen) from an opponent's hand. |
 | **Harbor Mixup** | Swap hands with another player. | Entire hands, as they stand. |
@@ -222,10 +222,10 @@ incomplete. This ruleset finalizes them:
 4. **Card text on the printed cards is canon** where drafts and spreadsheet
    disagree (e.g. Podium Pete is +5/peek as printed, not the spreadsheet's
    +10/draw; Starboard Steve is +2/hand-a-card, not −2/skip).
-5. **Party Foul** is printed as "Discard one extra card"; the design intent in
-   the spreadsheet was "forces a discard." The rule — target any player,
-   including yourself — honors both readings: aim it at an opponent to strip a
-   future meld card, or at yourself to race toward going out.
+5. **Party Foul** plays exactly as printed — you discard one extra card
+   (designer's ruling, Aug 2026, over the spreadsheet's drafted "forces a
+   discard"). In this scoring, shedding a card is a real move: it races you
+   toward going out and the Toast.
 6. **Specials score +2 and stay in front of you** — rewarding use over
    hoarding, and Member Discount can't fish spent actions back.
 7. **Play to 50** (not 100): with 1-point suit cards, typical round scores run

@@ -139,6 +139,7 @@
         return good;
       }
       case 'forceDiscard': return true;
+      case 'selfDiscard': return p.hand.length > 4; // shed junk when the hand is fat
       case 'swapHands': {
         var t = richestHand(st, me);
         return t >= 0 && st.players[t].hand.length > p.hand.length + 1;

@@ -43,8 +43,8 @@
   // Special actions. `fx` is the machine-readable effect; text is as printed.
   var SPECIALS = [
     { id: 'party-foul', name: 'Party Foul', text: 'Discard one extra card.',
-      clarify: 'Choose any player (yourself included); they discard one card of their choice.',
-      fx: { type: 'forceDiscard', targets: 'any' } },
+      clarify: 'You discard one extra card of your choice — as printed.',
+      fx: { type: 'selfDiscard', n: 1 } },
     { id: 'smooth-talker', name: 'Smooth Talker', text: 'Draw 2 cards.',
       fx: { type: 'draw', n: 2 } },
     { id: 'reciprocity', name: 'Reciprocity',
