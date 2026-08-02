@@ -409,12 +409,17 @@
       var by = st.players[pend.by];
       var held = tp.hand.filter(function (id) { return CARDS[id].ing === a.ing; })[0];
       if (held) {
-        removeFrom(tp.hand, held);
-        by.hand.push(held);
-        log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' — ' + tp.name + ' hands it over!');
+        st.pending = { type: 'handOver', by: a.target, from: pend.by, card: held };
+        log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' from ' + tp.name + '…');
       } else {
         log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' — ' + tp.name + " doesn't have it.");
       }
+    },
+    handOver: function (st, pend) {
+      var tp = st.players[pend.by], by = st.players[pend.from];
+      removeFrom(tp.hand, pend.card);
+      by.hand.push(pend.card);
+      log(st, tp.name + ' hands it over 😩 — ' + CARDS[pend.card].name + ' goes to ' + by.name);
     },
     torch: function (st, pend, a) {
       if (pend.cards.indexOf(a.keep) < 0) throw new Error('bad keep');

@@ -101,6 +101,8 @@
         });
         return { t: 'resolve', keep: keep };
       }
+      case 'handOver':
+        return { t: 'resolve' };
       case 'passAll': {
         for (var i = 0; i < st.players.length; i++) {
           if (pend.need[i] && pend.chosen[i] === undefined) {

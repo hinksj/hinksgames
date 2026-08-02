@@ -495,13 +495,18 @@
       var by = st.players[pend.by];
       var held = tp.hand.filter(function (id) { return CARDS[id].ing === a.ing; })[0];
       if (held) {
-        removeFrom(tp.hand, held);
-        by.bar.push(held); // straight onto the demanding player's bar
-        log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' — ' + tp.name +
-          ' hands it over to the bar!');
+        // the victim must hand it over themselves — a moment of sweet suffering
+        st.pending = { type: 'handOver', by: a.target, from: pend.by, card: held };
+        log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' from ' + tp.name + '…');
       } else {
         log(st, by.name + ' demands ' + a.ing.replace(/-/g, ' ') + ' — ' + tp.name + " doesn't have it.");
       }
+    },
+    handOver: function (st, pend) {
+      var tp = st.players[pend.by], by = st.players[pend.from];
+      removeFrom(tp.hand, pend.card);
+      by.bar.push(pend.card); // straight onto the demanding player's bar
+      log(st, tp.name + ' hands it over 😩 — ' + CARDS[pend.card].name + ' goes to ' + by.name + "'s bar");
     },
     passAll: function (st, pend, a) { // tidal handover, on drafting hands
       var p = st.players[a.player];

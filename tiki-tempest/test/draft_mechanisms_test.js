@@ -159,6 +159,9 @@ section('— Guest Bartender: demand an ingredient from a hand (as printed) —'
   pickRound(st, 'sp-guest-bartender-1');
   ok(st.pending && st.pending.type === 'demand' && st.pending.by === 0, 'demand pending for player 0');
   E.apply(st, { t: 'resolve', target: 1, ing: 'nutmeg' });
+  ok(st.pending && st.pending.type === 'handOver' && st.pending.by === 1,
+    'victim must hand it over (pending for the target)');
+  E.apply(st, { t: 'resolve' });
   ok(st.players[0].bar.indexOf('ing-nutmeg-1') >= 0, 'demanded nutmeg landed on the demanding bar');
   ok(st.players[1].hand.indexOf('ing-nutmeg-1') < 0, 'target hand lost it');
   // whiff case: demand something they don't hold

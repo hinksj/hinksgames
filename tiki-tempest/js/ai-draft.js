@@ -105,6 +105,8 @@
         });
         return ri >= 0 ? { t: 'resolve', target: ri, ing: wantIng } : null;
       }
+      case 'handOver':
+        return { t: 'resolve' };
       case 'passAll': {
         for (var i = 0; i < st.players.length; i++) {
           if (pend.need[i] && pend.chosen[i] === undefined) {

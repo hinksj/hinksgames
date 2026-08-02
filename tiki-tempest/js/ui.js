@@ -362,6 +362,7 @@
     if (line.indexOf('🌊') === 0 || line.indexOf('🌴') === 0) return 'special';
     if (line.indexOf('seagull swipes') >= 0) return 'special';
     if (line.indexOf(' plunders ') >= 0) return 'special';
+    if (line.indexOf('hands it over') >= 0) return 'bad';
     if (line.indexOf(' demands ') >= 0) return 'special';
     if (line.indexOf('torchlight') >= 0) return 'draw';
     if (line.indexOf(' sets aside ') >= 0) return 'pluck';
@@ -677,6 +678,19 @@
         whoEl.appendChild(x);
       });
       modal.className = 'open';
+      return;
+    }
+    if (pend.type === 'handOver') {
+      var demander = st.players[pend.from];
+      box.innerHTML = '<h3>' + esc(demander.name) + ' demands your ' + esc(CARDS[pend.card].name) + '!</h3>' +
+        '<div class="sub">the Guest Bartender is very persuasive</div>' +
+        '<div class="bigcard"><img style="width:200px;border-radius:12px" src="' + CARDS[pend.card].art + '"></div>' +
+        '<div class="choices"><button class="big gold" id="mHand">Hand it over 😩</button></div>';
+      modal.className = 'open';
+      $('mHand').addEventListener('click', function () {
+        sfx('bad');
+        act({ t: 'resolve' });
+      });
       return;
     }
     if (pend.type === 'torch') {
