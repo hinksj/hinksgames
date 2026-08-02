@@ -921,6 +921,44 @@ W.Render = {
     };
   },
 
+  enemyRouteFor(i) {
+    const F = W.Fleet;
+    const e = (F.enemy || [])[i];
+    const a = this.enemyAnchor(i);
+    if (!e) return { dur: 4.5, pts: [a, a, a, a] };
+    const o = e.order || { tactic: 'engage', target: 0 };
+    const pIdx = W.clamp(o.target | 0, 0, Math.max(0, (F.ships || []).length - 1));
+    // aim where her target will be, not where he started
+    const aim = (F.ships && F.ships[pIdx]) ? this.routeFor(pIdx).pts[3] : { x: 400, y: a.y };
+    switch (o.tactic) {
+      case 'cut':
+        // she means to break YOUR line: out of her station, across his bow,
+        // down his unengaged side — her crossing lands with her rake
+        return { dur: e.trait === 'flyer' ? 2.6 : 3.8, pts: [a,
+          { x: a.x - 110, y: a.y - 14 },
+          { x: aim.x + 34, y: aim.y - 56 },
+          { x: aim.x - 56, y: aim.y + 22 }] };
+      case 'board':
+        // straight at him until the hulls touch
+        return { dur: 2.7, pts: [a,
+          { x: a.x - 90, y: a.y + 6 },
+          { x: aim.x + 130, y: aim.y + 4 },
+          { x: aim.x + 30, y: aim.y }] };
+      case 'range':
+        // she keeps her distance, edging away down the line
+        return { dur: 3.2, pts: [a,
+          { x: a.x + 26, y: a.y + 14 },
+          { x: a.x + 48, y: a.y + 30 },
+          { x: a.x + 62, y: a.y + 46 }] };
+      default:
+        // stand on in line ahead, edging down toward the action
+        return { dur: 4.5, pts: [a,
+          { x: a.x - 8, y: a.y + 18 },
+          { x: a.x - 18, y: a.y + 36 },
+          { x: a.x - 28, y: a.y + 54 }] };
+    }
+  },
+
   enemyAnchor(i) {
     const n = (W.Fleet.enemy || []).length || 3;
     const gap = n > 3 ? 96 : 122;
@@ -974,14 +1012,43 @@ W.Render = {
     }
   },
 
+  // a ship's own clock stops when she strikes or sinks; until then both
+  // sides are under way
+  shipProg(s) {
+    const F = W.Fleet;
+    let bt = F.battleT || 0;
+    if (s.struck && s.struckAt != null) bt = Math.min(bt, s.struckAt);
+    if (s.sunk && s.sunkAt != null) bt = Math.min(bt, s.sunkAt);
+    return bt / F.ROUND_S;
+  },
+
+  // colors down: she falls out of the line and drifts to leeward
+  wreckDrift(s, p) {
+    const F = W.Fleet;
+    if (s.struck && s.struckAt != null) {
+      const d = Math.min(26, Math.max(0, (F.battleT || 0) - s.struckAt) * 1.1);
+      p.x += d * 0.8;
+      p.y += d * 0.5;
+    }
+    return p;
+  },
+
   fleetPos(ship) {
     const F = W.Fleet;
-    const prog = this.fleetProgress();
     if (ship.side === 'enemy') {
       const i = F.enemy.indexOf(ship);
       if (i < 0) return null;
-      const a = this.enemyAnchor(i);
-      return { x: a.x + Math.sin(this.t * 0.6 + i) * 2, y: a.y + Math.min(24, prog * 4), h: Math.PI / 2 };
+      if (F.phase === 'muster') {
+        const a = this.enemyAnchor(i);
+        return { x: a.x, y: a.y, h: Math.PI / 2 };
+      }
+      const r = this.enemyRouteFor(i);
+      const tt = W.clamp(this.shipProg(ship) / r.dur, 0, 0.999);
+      const pos = this.bez(r.pts, tt);
+      const ahead = this.bez(r.pts, Math.min(0.9999, tt + 0.01));
+      const h = Math.atan2(ahead.y - pos.y, ahead.x - pos.x);
+      const bob = tt >= 0.99 ? Math.sin(this.t * 0.6 + i) * 2 : 0;
+      return this.wreckDrift(ship, { x: pos.x + bob, y: pos.y, h });
     }
     const i = F.ships.indexOf(ship);
     if (i < 0) return null;
@@ -990,12 +1057,12 @@ W.Render = {
       return { x: s.x, y: s.y, h: 0 };
     }
     const r = this.routeFor(i);
-    const tt = W.clamp(prog / r.dur, 0, 0.999);
+    const tt = W.clamp(this.shipProg(ship) / r.dur, 0, 0.999);
     const pos = this.bez(r.pts, tt);
     const ahead = this.bez(r.pts, Math.min(0.9999, tt + 0.01));
     const h = Math.atan2(ahead.y - pos.y, ahead.x - pos.x);
     const bobX = tt >= 0.99 ? Math.sin(this.t * 0.8 + i) * 2 : 0;
-    return { x: pos.x + bobX, y: pos.y, h };
+    return this.wreckDrift(ship, { x: pos.x + bobX, y: pos.y, h });
   },
 
   drawShipMarker(ctx, p, len, ink, struck, sunk, sails, s) {
@@ -1148,6 +1215,35 @@ W.Render = {
     }
     ctx.setLineDash([]);
 
+    // the enemy's courses: the wake she has sailed is fact; her intention
+    // is sketched ahead only when your lookouts have read her
+    if (F.phase !== 'muster') {
+      F.enemy.forEach((e, i) => {
+        if (e.sunk) return;
+        const r = this.enemyRouteFor(i);
+        const tt = W.clamp(this.shipProg(e) / r.dur, 0, 0.999);
+        ctx.strokeStyle = 'rgba(160,36,24,0.4)';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        for (let k = 0; k <= 24; k++) {
+          const pt = this.bez(r.pts, (k / 24) * tt);
+          if (k === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+        if (e.intel && !e.struck && tt < 0.95) {
+          ctx.setLineDash([4, 7]);
+          ctx.strokeStyle = 'rgba(160,36,24,0.28)';
+          ctx.beginPath();
+          for (let k = 0; k <= 16; k++) {
+            const pt = this.bez(r.pts, tt + (k / 16) * (0.999 - tt));
+            if (k === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+    }
+
     // ships as inked markers with labels and twin bars (hull, morale)
     const LEN = { cutter: 34, sloop: 40, brig: 46, frigate: 54 };
     for (const list of [F.ships, F.enemy]) {
@@ -1259,7 +1355,7 @@ W.Render = {
     ctx.textAlign = 'right';
     ctx.font = 'italic 11.5px "IM Fell English", Georgia';
     ctx.fillStyle = 'rgba(74,53,23,0.75)';
-    ctx.fillText('red bar: hull · gold bar: fighting spirit · dashed: planned course · thin red line: her target', 985, 448);
+    ctx.fillText('red bar: hull · gold bar: spirit · dashed: planned course · solid red: her course as sailed · thin red line: her target', 985, 448);
 
     // header + the running log, in the log-keeper's hand
     ctx.textAlign = 'center';

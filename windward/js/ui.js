@@ -935,6 +935,17 @@ W.UI = {
       out += `<circle cx="${a.x * sx}" cy="${a.y * sy}" r="7" fill="none" stroke="#a02418" stroke-width="1.5"/>` +
         `<text x="${a.x * sx}" y="${a.y * sy + 3.5}" font-size="9" text-anchor="middle" fill="#a02418">${i + 1}</text>`;
     }
+    // what the lookouts know of HER intentions, sketched faint
+    F.enemy.forEach((e, i) => {
+      if (!e.intel) return;
+      const r = R.enemyRouteFor(i);
+      let d = '';
+      for (let k = 0; k <= 20; k++) {
+        const p = R.bez(r.pts, k / 20);
+        d += (k ? ' L ' : 'M ') + (p.x * sx).toFixed(1) + ' ' + (p.y * sy).toFixed(1);
+      }
+      out += `<path d="${d}" fill="none" stroke="#a02418" stroke-width="1.1" stroke-dasharray="3 4" opacity="0.65"/>`;
+    });
     F.ships.forEach((s, i) => {
       const r = R.routeFor(i);
       let d = '';
