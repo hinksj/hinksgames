@@ -193,11 +193,10 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
 #modal td:first-child, #modal th:first-child { text-align: left; }
 #modal .total { color: var(--gold); font-weight: 700; }
 
-#zoom { position: fixed; top: 12px; z-index: 900; display: none; pointer-events: none; }
+#zoom { position: fixed; top: 54px; left: 50%; transform: translateX(-50%);
+  z-index: 900; display: none; pointer-events: none; text-align: center; }
 #zoom.show { display: block; }
-#zoom.show.right { right: 14px; }
-#zoom.show.left { left: 14px; }
-#zoom .zcap { background: var(--panel); border: 1px solid var(--panel-line);
+#zoom .zcap { display: inline-block; text-align: left; background: var(--panel); border: 1px solid var(--panel-line);
   border-radius: 10px; padding: 6px 12px; margin-top: 8px; color: var(--text);
   font-size: 13px; line-height: 1.4; max-width: min(380px, 30vw); }
 #zoom .zcap b { color: var(--gold); }

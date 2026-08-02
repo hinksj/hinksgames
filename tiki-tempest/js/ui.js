@@ -53,7 +53,7 @@
       (entry.doubled ? ' · DOUBLED!' : '') + (entry.umbrella ? ' ☂️' : '') + '</div></div>';
     srEl.className = 'show';
     clearTimeout(srTimer);
-    srTimer = setTimeout(function () { srEl.className = ''; }, 3000);
+    srTimer = setTimeout(function () { srEl.className = ''; }, 6500);
   }
   function checkServeReveals(st) {
     var counts = st.players.map(function (p) { return p.servedTotal; });
@@ -150,7 +150,7 @@
       ui.pumping = false;
       var a = ai.decide(st);
       if (a) act(a);
-    }, st.pending ? 350 : 550);
+    }, st.pending ? 600 : 950); // unhurried — humans need to SEE the table
   }
   ui.pumpNow = function () { render(); pump(); };
   ui.eng = function () { return E; };
@@ -729,7 +729,7 @@
     t.textContent = msg;
     t.style.display = 'block';
     clearTimeout(toast._t);
-    toast._t = setTimeout(function () { t.style.display = 'none'; }, ms || 2600);
+    toast._t = setTimeout(function () { t.style.display = 'none'; }, ms || 3800);
   }
   ui.toast = toast;
   function esc(s) {

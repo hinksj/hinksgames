@@ -184,7 +184,28 @@
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('click', function () { if (music.on) startMusic(); });
   }
+  function duck(on) {
+    if (music.bus) music.bus.gain.value = on ? 0.1 : 0.5;
+    if (audio) audio.volume = on ? 0.08 : 0.45;
+  }
+  var stingEl = null;
   G.music = {
+    // one-shot character theme: ducks the soundtrack while it plays.
+    // 404s fail silently, so themes go live the moment the file exists.
+    sting: function (url) {
+      if (typeof Audio === 'undefined' || muted) return;
+      if (stingEl) { stingEl.pause(); duck(false); }
+      var a = new Audio(url);
+      stingEl = a;
+      a.volume = 0.6;
+      a.addEventListener('canplay', function () {
+        duck(true);
+        a.play().catch(function () { duck(false); });
+      });
+      a.addEventListener('ended', function () { duck(false); });
+      a.addEventListener('error', function () {});
+      setTimeout(function () { if (stingEl === a && !a.paused) { a.pause(); duck(false); } }, 20000);
+    },
     toggle: function () {
       music.on = !music.on;
       try { localStorage.setItem('cc-music', music.on ? '1' : '0'); } catch (e) {}

@@ -52,8 +52,13 @@
       '<div class="cap">' + esc(who) + ' courts ' + esc(c.name) + ' — ' +
       (c.pts >= 0 ? '+' : '') + c.pts + ' points</div></div>';
     mrEl.className = 'show';
+    // if a theme song exists for this character, it plays (drop files in
+    // assets/music/themes/<member-slug>.mp3 — no manifest needed)
+    if (G.music && G.music.sting) {
+      G.music.sting('assets/music/themes/' + cardId.replace(/^mb-/, '') + '.mp3');
+    }
     clearTimeout(mrTimer);
-    mrTimer = setTimeout(hideMemberReveal, 3400);
+    mrTimer = setTimeout(hideMemberReveal, 12000); // linger — the characters deserve reading
   }
   function hideMemberReveal() {
     if (mrEl) mrEl.className = '';
@@ -68,6 +73,22 @@
       }
     }
     ui.knownMembers = counts;
+  }
+
+  // ---------- hand-swap spectacle: card backs fly across the table ----------
+  var swEl = null;
+  function swapAnim(caption) {
+    if (!swEl) {
+      swEl = document.createElement('div');
+      swEl.id = 'swapFx';
+      document.body.appendChild(swEl);
+    }
+    var backs = '<img src="' + data.BACK_GENERAL + '"><img src="' + data.BACK_GENERAL +
+      '"><img src="' + data.BACK_GENERAL + '">';
+    swEl.innerHTML = '<div class="sw a">' + backs + '</div><div class="sw b">' + backs + '</div>' +
+      '<div class="swcap">' + esc(caption) + '</div>';
+    swEl.className = 'show';
+    setTimeout(function () { swEl.className = ''; }, 2600);
   }
 
   // hover or select any card to see it full size (the printed text is small at table scale)
@@ -166,7 +187,7 @@
       ui.pumping = false;
       var a = G.ai.decide(st);
       if (a) act(a);
-    }, st.pending ? 350 : 550);
+    }, st.pending ? 600 : 950); // unhurried — humans need to SEE the table
   }
 
   // ---------- rendering ----------
@@ -331,6 +352,10 @@
           line.indexOf('— Round') !== 0) {
         toast('⚠️ ' + line, 5000);
         sfx('alert');
+      } else if (line.indexOf(' swaps hands with ') >= 0) {
+        swapAnim(line);
+        var s2 = soundForLine(line);
+        if (s2) sfx(s2);
       } else if (line.indexOf('Cards slide') === 0) {
         toast('🔁 ' + line + ' — your new card is glowing', 4200);
         sfx('special');
@@ -634,7 +659,7 @@
     t.textContent = msg;
     t.style.display = 'block';
     clearTimeout(toast._t);
-    toast._t = setTimeout(function () { t.style.display = 'none'; }, ms || 2600);
+    toast._t = setTimeout(function () { t.style.display = 'none'; }, ms || 3800);
   }
   ui.toast = toast;
 
