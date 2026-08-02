@@ -308,6 +308,20 @@
     render();
   }
 
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  // paint every player-name mention in its seat color
+  function colorizeLine(line) {
+    var html = esc(line);
+    var ps = ui.st.players.slice().sort(function (a, b) { return b.name.length - a.name.length; });
+    ps.forEach(function (p) {
+      var nameEsc = esc(p.name);
+      var re = new RegExp('(^|[^\\w])(' + escRe(nameEsc) + ')(?=[^\\w]|$)', 'g');
+      html = html.replace(re, function (m, pre, nm) {
+        return pre + '<span style="color:' + SEAT_COLORS[p.i % 6] + ';font-weight:600">' + nm + '</span>';
+      });
+    });
+    return html;
+  }
   function renderLog(st) {
     var el = $('log');
     if (ui.logLen > st.log.length) { el.innerHTML = ''; ui.logLen = 0; }
@@ -316,13 +330,13 @@
       var line = st.log[i];
       if (line.indexOf('💬') === 0) {
         d.className = 'chatline';
-        d.textContent = line;
+        d.innerHTML = colorizeLine(line);
         el.appendChild(d);
         if (line.indexOf('💬 ' + me().name + ':') !== 0) { toast(line, 4000); sfx('pluck'); }
         continue;
       }
       if (line.indexOf(me().name) === 0) d.className = 'me';
-      d.textContent = line;
+      d.innerHTML = colorizeLine(line);
       el.appendChild(d);
       // table-shaking events get a banner for everyone, not just a log line
       if (line.indexOf('⛈') >= 0) { toast(line, 6500); sfx('bad'); }
