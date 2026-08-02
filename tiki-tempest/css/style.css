@@ -196,6 +196,9 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
 #zoom { position: fixed; top: 54px; left: 50%; transform: translateX(-50%);
   z-index: 900; display: none; pointer-events: none; text-align: center; }
 #zoom.show { display: block; }
+#zoom.pinned { left: auto; right: 12px; transform: none; }
+#zoom.pinned img { max-width: 17vw; }
+#zoom.pinned .zcap { max-width: 17vw; font-size: 12px; }
 #zoom .zcap { display: inline-block; text-align: left; background: var(--panel); border: 1px solid var(--panel-line);
   border-radius: 10px; padding: 6px 12px; margin-top: 8px; color: var(--text);
   font-size: 13px; line-height: 1.4; max-width: min(380px, 30vw); }

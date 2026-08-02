@@ -95,7 +95,7 @@
   var zoomEl = null;
   var ART2CARD = {};
   Object.keys(CARDS).forEach(function (id) { ART2CARD[CARDS[id].art] = CARDS[id]; });
-  function showZoom(src, side) {
+  function showZoom(src, side, pinned) {
     if (!zoomEl) return;
     var c = ART2CARD[src];
     var cap = '';
@@ -104,7 +104,9 @@
         '</b>' + (c.text ? ' — ' + esc(c.text) : '') + '</div>';
     }
     zoomEl.innerHTML = '<img src="' + src + '">' + cap;
-    zoomEl.className = 'show ' + side;
+    // hover: big and centered; pinned (a selected card): docked right so the
+    // table stays visible and clickable for melds / the menu
+    zoomEl.className = 'show' + (pinned ? ' pinned' : '');
   }
   function hideZoom() { if (zoomEl) zoomEl.className = ''; }
   function bindZoom() {
@@ -119,12 +121,12 @@
       if (!t || t.tagName !== 'IMG') return;
       var src = t.getAttribute('src') || '';
       if (src.indexOf('assets/cards/') !== 0 || src.indexOf('back-') >= 0) return;
-      showZoom(src, e.clientX > window.innerWidth / 2 ? 'left' : 'right');
+      showZoom(src, e.clientX > window.innerWidth / 2 ? 'left' : 'right', !!ui.pinned);
     });
     document.addEventListener('mouseout', function (e) {
       if (e.target && e.target.tagName === 'IMG') {
         // fall back to the pinned (selected) card instead of hiding
-        if (ui.pinned) showZoom(ui.pinned, 'right');
+        if (ui.pinned) showZoom(ui.pinned, 'right', true);
         else hideZoom();
       }
     });
@@ -475,7 +477,7 @@
     else ui.sel.push(id);
     // pin a large preview of the newest selected card (works on touch too)
     ui.pinned = ui.sel.length ? CARDS[ui.sel[ui.sel.length - 1]].art : null;
-    if (ui.pinned) showZoom(ui.pinned, 'right'); else hideZoom();
+    if (ui.pinned) showZoom(ui.pinned, 'right', true); else hideZoom();
     render();
   }
 
