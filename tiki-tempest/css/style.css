@@ -72,7 +72,7 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
 #menu a { color: var(--cyan); }
 
 /* ---------- table ---------- */
-#table { display: none; max-width: 1220px; margin: 0 auto; padding: 10px 14px 400px; }
+#table { display: none; max-width: 1220px; margin: 0 auto; padding: 10px 14px 350px; }
 #topbar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 4px 2px 8px; }
 #topbar .script { font-size: 26px; color: var(--pink); }
 #topbar .round { color: var(--cyan); }
@@ -140,7 +140,11 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
 #myArea { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none;
   background: linear-gradient(180deg, transparent, #140a04 24%);
   padding: 22px 14px 10px; z-index: 20; }
-#myBar { max-width: 1220px; margin: 0 auto; pointer-events: auto; }
+#myBar { max-width: 1220px; margin: 0 auto; pointer-events: auto;
+  display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; }
+#myBar > #prompt { margin: 0 0 4px; }
+#myBar > #barRow { flex: 1; justify-content: flex-start; margin-bottom: 4px; min-height: 56px; }
+#myBar > #handRow, #myBar > #myStatus { flex-basis: 100%; }
 #prompt { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
   gap: 8px; width: fit-content; max-width: 100%; margin: 0 auto 8px; min-height: 30px; }
 #prompt:not(:empty) { background: var(--panel); border: 1px solid var(--panel-line);

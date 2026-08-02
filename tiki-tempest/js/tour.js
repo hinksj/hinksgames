@@ -4,7 +4,7 @@
   'use strict';
   var steps = [
     { sel: null, title: 'Welcome to the bar! \ud83c\udf79', text: 'Tiki Tempest: stock ingredients, serve cocktails off the shared menu, shelve beers for the end-game count \u2014 and watch the sky. This tour shows the table while the game plays on.' },
-    { sel: '#handRow', title: 'Your hand', text: 'In Draft mode everyone picks ONE card at the same time \u2014 all picks flip face-up together and are played. Then hands rotate and top up from the stock. Click a card, then hit Play. (Classic mode deals turns instead: draw 2, play 2.)' },
+    { sel: '#handRow', title: 'Your hand', text: 'In Draft mode everyone picks ONE card at the same time \u2014 all picks flip face-up together and are played. Then hands rotate and top up from the stock. Click a card, then confirm \u2014 Stock for ingredients, Shelve for beers, Play for specials. (Classic mode deals turns instead: draw 2, play 2.)' },
     { sel: '#prompt', title: 'The action bar', text: 'Instructions and buttons appear here \u2014 Play, and in Classic mode Stock bar / Shelve beer / Play special / End turn.' },
     { sel: '#menuRow', title: 'The Drink Menu', text: 'The recipes everyone is racing for. The text above each card shows what it needs \u2014 and lights up as YOUR bar fills. A glowing card is servable RIGHT NOW: click it! Serving is always free.' },
     { sel: '#barRow', title: 'Your bar', text: 'Kept ingredients gather here to pay for cocktails. A \u2602\ufe0f Paper Umbrella shields your whole bar from Thieving Seagulls until it garnishes your next drink (+1).' },

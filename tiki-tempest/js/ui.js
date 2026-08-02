@@ -374,18 +374,25 @@
   // ---------- hand ----------
   function orderedHand() {
     var hand = myHand();
+    if (ui.st.mode === 'draft') {
+      // draft hands churn every pass — keep them permanently sorted
+      ui.handOrder = hand.slice().sort(cmpCards);
+      return ui.handOrder;
+    }
     var order = ui.handOrder.filter(function (id) { return hand.indexOf(id) >= 0; });
     hand.forEach(function (id) { if (order.indexOf(id) < 0) order.push(id); });
     ui.handOrder = order;
     return order;
   }
   var KIND_ORDER = { ing: 0, beer: 1, special: 2 };
+  function cmpCards(a, b) {
+    var ca = CARDS[a], cb = CARDS[b];
+    if (ca.kind !== cb.kind) return KIND_ORDER[ca.kind] - KIND_ORDER[cb.kind];
+    if (ca.name !== cb.name) return ca.name < cb.name ? -1 : 1;
+    return a < b ? -1 : 1;
+  }
   function sortHand() {
-    ui.handOrder = orderedHand().slice().sort(function (a, b) {
-      var ca = CARDS[a], cb = CARDS[b];
-      if (ca.kind !== cb.kind) return KIND_ORDER[ca.kind] - KIND_ORDER[cb.kind];
-      return ca.name < cb.name ? -1 : 1;
-    });
+    ui.handOrder = orderedHand().slice().sort(cmpCards);
     render();
   }
 
@@ -422,7 +429,7 @@
       d.innerHTML = '<img draggable="false" src="' + c.art + '" title="' +
         esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
       d.addEventListener('click', function () { onHandClick(st, id, chooseMode); });
-      d.draggable = true;
+      d.draggable = st.mode !== 'draft'; // draft auto-sorts; no manual order to keep
       d.addEventListener('dragstart', function (e) {
         ui.drag = id; hideZoom();
         if (e.dataTransfer) e.dataTransfer.setData('text/plain', id);
@@ -451,8 +458,10 @@
     $('myStatus').innerHTML =
       '<div>' + esc(p.name) + ' — ' + p.score + ' pts · 🍺' + p.beers.length + ' beers · ' +
       p.servedTotal + ' drinks served · ' +
-      '<button class="ghost" id="sortBtn">sort hand</button>' +
-      '<span style="opacity:.6"> · drag to rearrange</span></div>' +
+      (st.mode === 'draft'
+        ? '<span style="opacity:.6">hand auto-sorts</span>'
+        : '<button class="ghost" id="sortBtn">sort hand</button>' +
+          '<span style="opacity:.6"> · drag to rearrange</span>') + '</div>' +
       '<div>' + (p.banked || []).map(function (id) {
         return '<img style="width:30px;border-radius:3px;margin-left:3px;vertical-align:middle;outline:2px solid var(--gold)" src="' +
           CARDS[id].art + '" title="' + esc(CARDS[id].name + ' (set aside)') + '">';
@@ -460,7 +469,7 @@
         return '<img style="width:30px;border-radius:3px;margin-left:3px;vertical-align:middle" src="' +
           CARDS[e.card].art + '" title="' + esc(CARDS[e.card].name + ' — ' + e.pts + ' pts') + '">';
       }).join('') + '</div>';
-    $('sortBtn').addEventListener('click', sortHand);
+    if ($('sortBtn') && st.mode !== 'draft') $('sortBtn').addEventListener('click', sortHand);
   }
 
   function onHandClick(st, id, chooseMode) {
@@ -521,13 +530,18 @@
         return;
       }
       var kb = [];
-      kb.push(btn(ui.sel ? 'Play ' + CARDS[ui.sel].name : 'Play (select a card)', !!ui.sel, function () {
+      var verb = 'Play';
+      if (ui.sel) {
+        var sk = CARDS[ui.sel].kind;
+        verb = sk === 'ing' ? 'Stock' : (sk === 'beer' ? 'Shelve' : 'Play');
+      }
+      kb.push(btn(ui.sel ? verb + ' ' + CARDS[ui.sel].name : 'Select a card…', !!ui.sel, function () {
         var c1 = ui.sel; ui.sel = null; ui.sel2 = null; ui.pinned = null; hideZoom();
         act({ t: 'pick', seat: ui.mySeat, card: c1 });
       }));
       var sp = document.createElement('span');
       sp.className = 'msg';
-      sp.textContent = 'Pick a card — everyone plays theirs at once · glowing menu drinks are servable';
+      sp.textContent = 'Pick a card · glowing drinks are servable';
       el.appendChild(sp);
       kb.forEach(function (x) { el.appendChild(x); });
       return;
