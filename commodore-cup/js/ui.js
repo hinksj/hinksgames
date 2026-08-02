@@ -28,7 +28,7 @@
     ui.send = (opts && opts.send) || null;
     ui.onLocalAction = (opts && opts.onLocalAction) || null;
     ui.roomCode = (opts && opts.room) || '';
-    ui.sel = []; ui.logLen = 0;
+    ui.sel = []; ui.logLen = 0; ui.knownMembers = null;
     $('menu').style.display = 'none';
     $('table').style.display = 'block';
     $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
@@ -37,6 +37,38 @@
     render();
     pump();
   };
+
+  // ---------- member reveal: courted members sweep in big ----------
+  var mrEl = null, mrTimer = null;
+  function memberReveal(cardId, who) {
+    if (!mrEl) {
+      mrEl = document.createElement('div');
+      mrEl.id = 'memberReveal';
+      mrEl.addEventListener('click', hideMemberReveal);
+      document.body.appendChild(mrEl);
+    }
+    var c = CARDS[cardId];
+    mrEl.innerHTML = '<div class="mr"><img src="' + c.art + '">' +
+      '<div class="cap">' + esc(who) + ' courts ' + esc(c.name) + ' — ' +
+      (c.pts >= 0 ? '+' : '') + c.pts + ' points</div></div>';
+    mrEl.className = 'show';
+    clearTimeout(mrTimer);
+    mrTimer = setTimeout(hideMemberReveal, 3400);
+  }
+  function hideMemberReveal() {
+    if (mrEl) mrEl.className = '';
+    clearTimeout(mrTimer);
+  }
+  function checkMemberReveals(st) {
+    var counts = st.players.map(function (p) { return p.members.length; });
+    if (!ui.knownMembers) { ui.knownMembers = counts; return; }
+    for (var i = 0; i < st.players.length; i++) {
+      if (counts[i] > (ui.knownMembers[i] || 0)) {
+        memberReveal(st.players[i].members[st.players[i].members.length - 1], st.players[i].name);
+      }
+    }
+    ui.knownMembers = counts;
+  }
 
   // hover or select any card to see it full size (the printed text is small at table scale)
   var zoomEl = null;
@@ -141,6 +173,7 @@
       sfx('turn');
     }
     $('tRound').textContent = 'round ' + st.round + ' · first to ' + st.target;
+    checkMemberReveals(st);
     renderOpponents(st);
     renderPiles(st);
     renderMelds(st);

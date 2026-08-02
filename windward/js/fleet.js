@@ -3,7 +3,7 @@
 // LINE OF BATTLE (prototype) — the fleet layer.
 // An admiral's agency lives in the plan: every ship gets her own TARGET and
 // TACTIC, the plan is drawn as routes on the chart, and once the guns speak
-// your only voice is two signal hoists — everything else is your captains.
+// your only voice is three signal hoists — everything else is your captains.
 
 W.Fleet = {
   active: false,
@@ -12,16 +12,17 @@ W.Fleet = {
   ships: [], enemy: [],
   planName: null, gauge: false,
   round: 0, roundT: 0, log: [],
-  signals: 2, pendingSignal: null, closerT: 0, battleT: 0,
+  signals: 3, pendingSignal: null, closerT: 0, wearT: 0, battleT: 0,
+  concentrateT: 0, concentrateTarget: null,
   crisisUsed: false, pendingCrisis: false, crisisTimer: 0,
   result: null, summary: null,
 
   CLASSES: {
-    cutter:     { name: 'Cutter',        hull: 16, guns: 5,  art: 'cutter' },
-    sloop:      { name: 'Sloop',         hull: 22, guns: 7,  art: 'sloop' },
-    brig:       { name: 'Brig',          hull: 28, guns: 9,  art: 'brig' },
-    frigate:    { name: 'Frigate',       hull: 36, guns: 13, art: 'frigate' },
-    shipofline: { name: 'Ship of the Line', hull: 48, guns: 18, art: 'leviathan' },
+    cutter:     { name: 'Cutter',        hull: 32, guns: 5,  art: 'cutter' },
+    sloop:      { name: 'Sloop',         hull: 44, guns: 7,  art: 'sloop' },
+    brig:       { name: 'Brig',          hull: 56, guns: 9,  art: 'brig' },
+    frigate:    { name: 'Frigate',       hull: 72, guns: 13, art: 'frigate' },
+    shipofline: { name: 'Ship of the Line', hull: 96, guns: 18, art: 'leviathan' },
   },
 
   // the cruise: five actions, refit between each, prizes and losses persist
@@ -32,6 +33,16 @@ W.Fleet = {
     ['cutter', 'frigate', 'frigate'],
     ['frigate', 'frigate', 'shipofline'],
   ],
+  PRIZE_NAMES: ['Curlew', 'Tern', 'Cormorant', 'Firedrake', 'Meridian', 'Vigilant',
+    'Dauntless', 'Sea Otter', 'Larkspur', 'Kestrel', 'Halcyon', 'Amaranth',
+    'Nonsuch', 'Paragon', 'Swiftsure', 'Bonaventure'],
+
+  suggestName() {
+    const used = new Set((this.ships || []).map(s => s.name.replace(' (flag)', '')));
+    const free = this.PRIZE_NAMES.filter(n => !used.has(n));
+    return free.length ? W.pick(free) : 'Prize';
+  },
+
   ENEMY_NAMES: ['Alarm', 'Vulture', 'Basilisk', 'Harpy', 'Cerberus', 'Gorgon',
     'Spite', 'Tisiphone', 'Redoubt', 'Growler'],
   campaign: null,
@@ -99,6 +110,38 @@ W.Fleet = {
 
   newSkirmish() { this.startCampaign(); },
 
+  COMMISSION_BUDGET: 220,
+
+  buildCommission() {
+    const traits = Object.keys(this.TRAITS);
+    const shipTraits = Object.keys(this.SHIP_TRAITS);
+    const yard = ['cutter', 'sloop', 'sloop', 'brig', 'brig', 'frigate'].map(cls => ({
+      cls, trait: W.pick(shipTraits), price: this.PRIZE_VALUE[cls],
+    }));
+    const slate = [];
+    while (slate.length < 4) {
+      const tr = traits[slate.length % traits.length];
+      slate.push({ name: W.nameFor(), trait: tr, alive: true });
+    }
+    return { budget: this.COMMISSION_BUDGET, yard, slate };
+  },
+
+  // specs: [{cls, trait, name, captain}] — first is the flag, yours to command
+  startCustom(specs, goldLeft, ashore) {
+    this.campaign = {
+      stage: 1, gold: Math.max(0, Math.round(goldLeft)), hands: 30,
+      captains: (ashore || []).slice(0, 1),
+      lieutenantOffer: false,
+    };
+    this.ships = specs.map((sp, i) => {
+      const ship = this.makeShip(sp.cls, i === 0 ? `${sp.name} (flag)` : sp.name,
+        sp.captain.name, sp.captain.trait, 'player', sp.trait);
+      ship.captain = sp.captain;
+      return ship;
+    });
+    this.setupAction();
+  },
+
   startCampaign() {
     this.campaign = {
       stage: 1, gold: 40, hands: 30,
@@ -155,7 +198,8 @@ W.Fleet = {
     this.fortuneRolled = false; this.flagShifted = false;
     this.ships.concat(this.enemy || []).forEach(s => { s.reload = null; });
     this.log = [];
-    this.signals = 2; this.pendingSignal = null; this.closerT = 0;
+    this.signals = 3; this.pendingSignal = null; this.closerT = 0;
+    this.wearT = 0; this.concentrateT = 0; this.concentrateTarget = null;
     this.crisisUsed = false; this.pendingCrisis = false; this.crisisModalShown = false;
     this.flagShifted = false;
     this.result = null; this.summary = null;
@@ -219,14 +263,19 @@ W.Fleet = {
   alive(list) { return list.filter(s => !s.struck && !s.sunk); },
 
   // signal hoists: your only voice once battle is joined
-  hoist(kind) {
+  hoist(kind, target) {
     if (this.signals <= 0 || this.pendingSignal || this.phase !== 'battle') return false;
     this.signals--;
     this.pendingSignal = kind;
+    this.pendingSignalTarget = target || null;
     this.signalAt = this.battleT + 1.5;
-    this.say(kind === 'closer'
-      ? 'The flags climb the halyard: ENGAGE THE ENEMY MORE CLOSELY.'
-      : 'The flags climb the halyard: DISCONTINUE THE ACTION.');
+    const words = {
+      closer: 'ENGAGE THE ENEMY MORE CLOSELY',
+      breakoff: 'DISCONTINUE THE ACTION',
+      wear: 'WEAR TOGETHER',
+      concentrate: target ? `CONCENTRATE ON THE ${target.name.toUpperCase()}` : 'CONCENTRATE FIRE',
+    };
+    this.say(`The flags climb the halyard: ${words[kind] || kind}.`);
     return true;
   },
 
@@ -273,14 +322,33 @@ W.Fleet = {
     // signals take a moment to be read down the line
     if (this.pendingSignal && this.battleT >= this.signalAt) {
       const sig = this.pendingSignal;
+      const tgt = this.pendingSignalTarget;
       this.pendingSignal = null;
+      this.pendingSignalTarget = null;
       if (sig === 'breakoff') {
         this.say('The squadron hauls off in good order.');
         return this.finishBattle('withdraw');
       }
-      this.closerT = 9;
-      this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 5); });
-      this.say('The line cheers and crowds sail.');
+      if (sig === 'closer') {
+        this.closerT = 9;
+        this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 5); });
+        this.say('The line cheers and crowds sail.');
+      } else if (sig === 'wear') {
+        this.wearT = 9;
+        this.say('The line wears together, showing them her best side and her fewest timbers.');
+      } else if (sig === 'concentrate' && tgt && !tgt.struck && !tgt.sunk) {
+        this.concentrateT = 12;
+        this.concentrateTarget = tgt;
+        this.say(`Every captain reads it the same way: all guns on the ${tgt.name}.`);
+      }
+    }
+    if (this.wearT > 0) this.wearT -= dt;
+    if (this.concentrateT > 0) {
+      this.concentrateT -= dt;
+      if (this.concentrateTarget && (this.concentrateTarget.struck || this.concentrateTarget.sunk)) {
+        this.concentrateT = 0;
+        this.concentrateTarget = null;
+      }
     }
 
     // each ship fires the moment her guns are ready
@@ -302,7 +370,14 @@ W.Fleet = {
   },
 
   targetFor(s) {
-    if (s.side === 'player') return this.targetOf(s);
+    if (s.side === 'player') {
+      if (this.concentrateT > 0 && this.concentrateTarget &&
+          !this.concentrateTarget.struck && !this.concentrateTarget.sunk &&
+          s.order.tactic !== 'screen') {
+        return this.concentrateTarget;
+      }
+      return this.targetOf(s);
+    }
     let mark = this.ships[s.order ? s.order.target : 0];
     if (!mark || mark.struck || mark.sunk) {
       mark = this.alive(this.ships).find(x => this.targetOf(x) === s) || this.alive(this.ships)[0];
@@ -472,7 +547,7 @@ W.Fleet = {
     const tac = a.order ? a.order.tactic : 'engage';
     const victimTac = b.order ? b.order.tactic : 'engage';
 
-    let dmg = a.guns * W.rand(0.75, 1.25) * 0.42 * (this.reloadTime(a) / this.ROUND_S);
+    let dmg = a.guns * W.rand(0.75, 1.25) * 0.33 * (this.reloadTime(a) / this.ROUND_S);
     if (aIsMine) dmg *= 1.16; // drill tells (short-handedness now slows the reload instead)
     if (a.captain.alive && this.capHas(a.captain, 'gunnery')) dmg *= 1.2;
     if (a.captain.distinguished) dmg *= 1.08;
@@ -480,6 +555,8 @@ W.Fleet = {
     if (a.trait === 'crank') dmg *= 0.9;
     if (a.spineBroken) dmg *= 0.75; // a great ship fighting alone, half-hearted
     if (aIsMine && this.closerT > 0) dmg *= 1.18;
+    if (aIsMine && this.wearT > 0) dmg *= 0.9;
+    if (!aIsMine && this.wearT > 0) dmg *= 0.78; // the line shows her best side
     if (this.gauge) dmg *= aIsMine ? 1.1 : 0.92;
     if (this._doubled && this._doubled.has(a)) dmg *= 1.2;
 
@@ -509,19 +586,21 @@ W.Fleet = {
     if (b === this.ships[0] && b.side === 'player') {
       this.flagLastHit = { cls: a.cls, tactic: tac };
     }
-    let moraleHit = dmg * 1.2;
+    let moraleHit = dmg * 0.7;
     if (rake) {
-      moraleHit += 22;
+      moraleHit += 15;
       if (aIsMine && a.deeds) a.deeds.raked = true;
       this.say(`${a.name} cuts the line and rakes ${b.name} stem to stern!`);
       this.floatAt(b, 'RAKED!', '#a02418');
     }
-    if (tac === 'range') moraleHit += 4; // harried without reply
+    if (tac === 'range') moraleHit += 2.5; // harried without reply
     b.morale -= moraleHit;
     const floor = (b.captain.alive && this.capHas(b.captain, 'ironsides')) ? 20 : 0;
     b.morale = Math.max(floor, b.morale);
-    if (b.hull < b.hullMax * 0.5 && b.captain.alive && W.chance(0.04)) {
+    if (b.hull < b.hullMax * 0.5 && b.captain.alive && b.captain.name !== 'You' &&
+        W.chance(0.03)) {
       b.captain.alive = false;
+      if (b.side === 'player') this.chron(`Captain ${b.captain.name} of ${b.name} killed in action.`);
       b.morale -= 18;
       this.say(`${b.name}'s captain is down!`);
     }
@@ -547,7 +626,7 @@ W.Fleet = {
   checkStrikes(list) {
     for (const s of list) {
       if (s.struck || s.sunk) continue;
-      if (s.morale <= 25 && W.chance(0.4)) {
+      if (s.morale <= 25 && W.chance(0.16)) {
         this.markStruck(s);
         this.say(`${s.name}'s crew has had enough — she strikes!`);
         this.floatAt(s, 'STRUCK', '#5a4020');
@@ -747,9 +826,9 @@ W.Fleet = {
       if (this.crisisKind === 'boarders') {
         flag.morale -= 18;
         flag.hands = Math.max(10, flag.hands - 10);
-        flag.hull -= 2;
+        flag.hull -= 4;
       } else if (this.crisisKind === 'flood') {
-        flag.hull -= 5;
+        flag.hull -= 10;
         flag.hands = Math.max(10, flag.hands - 6);
       } else if (this.crisisKind === 'mast') {
         flag.morale -= 12;
@@ -759,11 +838,11 @@ W.Fleet = {
           flag.sunk = true;
           this.say('The magazine goes. There is a white flash, and then there is no flagship.');
         } else {
-          flag.hull -= 8;
+          flag.hull -= 16;
           flag.morale -= 15;
         }
       } else {
-        flag.hull -= 6;
+        flag.hull -= 12;
         flag.morale -= 15;
       }
       if (flag.hull <= 0) { flag.struck = true; this.say('The flagship strikes her colors!'); }
@@ -899,8 +978,21 @@ W.Fleet = {
     const c = this.campaign;
     c.gold = Math.round(c.gold) + this.summary.gold;
     for (const s of this.ships) {
-      if (s.sunk && s.captain.alive && W.chance(0.4)) {
-        c.captains.push(s.captain);
+      if (!s.captain.alive || s.captain.name === 'You') continue;
+      if (s.sunk) {
+        if (W.chance(0.55)) {
+          c.captains.push(s.captain);
+          this.chron(`Captain ${s.captain.name} pulled from the water; he waits ashore for a command.`);
+        } else {
+          this.chron(`Captain ${s.captain.name} went down with ${s.name}.`);
+        }
+      } else if (s.struck) {
+        if (W.chance(0.7)) {
+          c.captains.push(s.captain);
+          this.chron(`Captain ${s.captain.name}, exchanged under cartel, waits ashore for a command.`);
+        } else {
+          this.chron(`Captain ${s.captain.name} carried into an enemy port, a prisoner.`);
+        }
       }
     }
     // what an action teaches, a good officer keeps
@@ -942,18 +1034,46 @@ W.Fleet = {
     this.saveCruise();
   },
 
-  takePrize(cls) {
+  takePrize(cls, name) {
     const c = this.campaign;
     if (this.ships.length >= 4 || !c.captains.length) return false;
     const capt = c.captains.shift();
-    const ship = this.makeShip(cls, `Prize ${this.CLASSES[cls].name}`,
-      capt.name, capt.trait, 'player');
+    const nm = (name || '').trim() || `Prize ${this.CLASSES[cls].name}`;
+    const ship = this.makeShip(cls, nm, capt.name, capt.trait, 'player');
     ship.captain = capt;
     ship.hull = Math.round(ship.hullMax * 0.45);
     ship.hands = 0; // she sails when you give her a prize crew
     this.ships.push(ship);
-    this.chron(`Took a ${this.CLASSES[cls].name} into service under Captain ${capt.name}.`);
+    this.chron(`Took a ${this.CLASSES[cls].name} into service, christened ${nm}, under Captain ${capt.name}.`);
     return true;
+  },
+
+  // she is the better ship: send one of your own into port and shift her
+  // people — captain, hands, and all — into the prize
+  swapPrize(cls, idx, name) {
+    const c = this.campaign;
+    const old = this.ships[idx];
+    if (!old) return false;
+    const nm = (name || '').trim() || `Prize ${this.CLASSES[cls].name}`;
+    const wasFlag = idx === 0;
+    const ship = this.makeShip(cls, wasFlag ? `${nm} (flag)` : nm,
+      old.captain.name, old.captain.trait, 'player');
+    ship.captain = old.captain;
+    ship.hull = Math.round(ship.hullMax * 0.45);
+    ship.hands = Math.min(ship.complement, old.hands);
+    if (old.hands > ship.hands) c.hands += old.hands - ship.hands;
+    const credit = Math.round((this.PRIZE_VALUE[old.cls] || 50) *
+      (0.35 + 0.4 * W.clamp(old.hull / old.hullMax, 0, 1)));
+    c.gold += credit;
+    this.ships[idx] = ship;
+    this.chron(`Sent ${old.name} into port (the yard pays ⚜${credit}) and shifted her people ` +
+      `into a prize ${this.CLASSES[cls].name}, christened ${nm}.`);
+    return true;
+  },
+
+  shipValue(s) {
+    return Math.round((this.PRIZE_VALUE[s.cls] || 50) *
+      (0.35 + 0.4 * W.clamp(s.hull / s.hullMax, 0, 1)));
   },
 
   sellPrize(cls) {
@@ -973,10 +1093,10 @@ W.Fleet = {
   repairShip(s, pts) {
     const c = this.campaign;
     // whole points, whole coins — the purser keeps no fractions
-    pts = Math.min(pts, Math.ceil(s.hullMax - s.hull), Math.floor(c.gold / 2));
+    pts = Math.min(pts, Math.ceil(s.hullMax - s.hull), c.gold);
     pts = Math.floor(pts);
     if (pts <= 0) return false;
-    c.gold -= pts * 2;
+    c.gold -= pts;
     s.hull = Math.min(s.hullMax, s.hull + pts);
     return true;
   },

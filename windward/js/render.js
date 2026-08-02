@@ -1221,6 +1221,37 @@ W.Render = {
     ctx.globalAlpha = 1;
     W.fx = W.fx.filter(f => f.t < 1.6);
 
+    // signal targeting: while the concentrate hoist waits on a target, ring the choices
+    const selConc = W.UI && W.UI.sel && W.UI.sel.concentrate;
+    if (selConc) {
+      for (const e of F.enemy) {
+        if (e.struck || e.sunk) continue;
+        const p = this.fleetPos(e);
+        if (!p) continue;
+        ctx.strokeStyle = 'rgba(160,36,24,0.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 30 + Math.sin(this.t * 5) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#a02418';
+      ctx.font = 'bold 14px "IM Fell English", Georgia';
+      ctx.fillText('Click the ship the line should concentrate on — click open water to belay.', 500, 44);
+    }
+    if (F.concentrateT > 0 && F.concentrateTarget && !F.concentrateTarget.struck && !F.concentrateTarget.sunk) {
+      const p = this.fleetPos(F.concentrateTarget);
+      if (p) {
+        ctx.strokeStyle = 'rgba(160,36,24,0.6)';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 32, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
     // legend, so the plan explains itself
     ctx.textAlign = 'right';
     ctx.font = 'italic 11.5px "IM Fell English", Georgia';
@@ -1244,6 +1275,17 @@ W.Render = {
       ctx.fillText(l, 30, 396 + i * 16);
     });
     this.drawParts(dt);
+  },
+
+  fleetHitTest(x, y) {
+    const F = W.Fleet;
+    if (!F.active || !F.enemy) return null;
+    for (const e of F.enemy) {
+      if (e.struck || e.sunk) continue;
+      const p = this.fleetPos(e);
+      if (p && Math.hypot(x - p.x, y - p.y) < 34) return e;
+    }
+    return null;
   },
 
   drawEnemyHeader(E) {

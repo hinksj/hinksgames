@@ -70,10 +70,12 @@ console.log('mixed orders: OK');
   W.Fleet.applyPreset('gauge');
   W.Fleet.begin();
   let t = 0;
+  let hoisted = false;
   while (!W.Fleet.result && t < 600) {
     W.Fleet.tick(0.1);
-    if (W.Fleet.round >= 2 && W.Fleet.signals === 2) {
+    if (!hoisted && W.Fleet.round >= 2 && !W.Fleet.pendingSignal) {
       assert.ok(W.Fleet.hoist('breakoff'), 'hoist refused');
+      hoisted = true;
     }
     if (W.Fleet.pendingCrisis) {
       W.Fleet.startCrisis();

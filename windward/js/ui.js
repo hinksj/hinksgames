@@ -1,7 +1,7 @@
 'use strict';
 
 W.UI = {
-  sel: { crew: null, wep: null },
+  sel: { crew: null, wep: null, concentrate: false },
   els: {},
   crewSig: '', powerSig: '', wepRefs: [],
 
@@ -14,6 +14,7 @@ W.UI = {
       crewlist: $('crewlist'), power: $('powerpanel'), weapons: $('weaponpanel'),
       escape: $('escapebtn'), modal: $('modal-root'), canvas: $('game'),
       fleetui: $('fleetui'), sigCloser: $('sigCloser'), sigBreak: $('sigBreak'), sigCount: $('sigCount'),
+      sigConc: $('sigConc'), sigWear: $('sigWear'),
     };
 
     // rich tooltips: any element with data-tip shows a styled explainer box
@@ -62,10 +63,20 @@ W.UI = {
     if (this.els.sigCloser) {
       this.els.sigCloser.addEventListener('click', () => W.Fleet.hoist('closer'));
       this.els.sigBreak.addEventListener('click', () => W.Fleet.hoist('breakoff'));
-      this.els.sigCloser.dataset.tip = '<b>Engage the enemy more closely</b> — for the next three rounds ' +
-        'the whole line fights harder and boards more boldly. One of your two hoists.';
+      if (this.els.sigConc) this.els.sigConc.addEventListener('click', () => {
+        this.sel.concentrate = !this.sel.concentrate;
+      });
+      if (this.els.sigWear) this.els.sigWear.addEventListener('click', () => W.Fleet.hoist('wear'));
+      this.els.sigCloser.dataset.tip = '<b>Engage the enemy more closely</b> — for a while the whole ' +
+        'line loads faster and fights harder. One of your three hoists.';
+      if (this.els.sigConc) this.els.sigConc.dataset.tip = '<b>Concentrate fire</b> — pick one enemy ' +
+        'ship; every captain lays his guns on her until she yields (ships screening the flag keep ' +
+        'their station). One of your three hoists.';
+      if (this.els.sigWear) this.els.sigWear.dataset.tip = '<b>Wear together</b> — the line turns as ' +
+        'one, showing the enemy her stoutest timbers. Their fire tells for less a while; yours a ' +
+        'little too. One of your three hoists.';
       this.els.sigBreak.dataset.tip = '<b>Discontinue the action</b> — the squadron withdraws in good ' +
-        'order next round. No prizes, no rout. One of your two hoists.';
+        'order. No prizes, no rout. One of your three hoists.';
     }
     this.els.canvas.addEventListener('click', (e) => this.onCanvasClick(e));
     this.els.escape.addEventListener('click', () => {
@@ -76,7 +87,7 @@ W.UI = {
         e.preventDefault();
         if (['combat', 'crisis', 'fleet'].includes(W.state.mode)) W.paused = !W.paused;
       } else if (e.key === 'Escape') {
-        this.sel.wep = null; this.sel.crew = null;
+        this.sel.wep = null; this.sel.crew = null; this.sel.concentrate = false;
       } else if ('1234'.includes(e.key) && W.state.mode === 'combat') {
         const w = W.player.weapons[+e.key - 1];
         if (w) this.sel.wep = w;
@@ -135,6 +146,14 @@ W.UI = {
 
   onCanvasClick(e) {
     const { x, y } = this.canvasXY(e);
+    if (W.state.mode === 'fleet') {
+      if (this.sel.concentrate) {
+        const foe = W.Render.fleetHitTest(x, y);
+        if (foe) W.Fleet.hoist('concentrate', foe);
+        this.sel.concentrate = false;
+      }
+      return;
+    }
     const crew = W.Render.crewHitTest(x, y);
     const hit = W.Render.hitTest(x, y);
 
@@ -174,7 +193,15 @@ W.UI = {
         const spent = W.Fleet.signals <= 0 || !!W.Fleet.pendingSignal;
         els.sigCloser.disabled = spent;
         els.sigBreak.disabled = spent;
+        if (els.sigConc) {
+          els.sigConc.disabled = spent;
+          els.sigConc.classList.toggle('arming', this.sel.concentrate);
+          els.sigConc.textContent = this.sel.concentrate ? '⚑ Click her on the plan…' : '⚑ Concentrate on…';
+        }
+        if (els.sigWear) els.sigWear.disabled = spent;
         els.sigCount.textContent = `hoists left: ${W.Fleet.signals}`;
+      } else {
+        this.sel.concentrate = false;
       }
     }
     if (!W.player) return;
@@ -405,7 +432,7 @@ W.UI = {
     }
     buttons.push({
       label: '⚔ Line of Battle — a commodore\'s cruise (prototype)',
-      fn: () => { this.closeModal(); W.Fleet.clearCruise(); W.Fleet.newSkirmish(); this.openMuster(); },
+      fn: () => { this.closeModal(); W.Fleet.clearCruise(); this.openCommission(); },
     });
     buttons.push({ label: 'How to Play', fn: () => this.openHowto(() => this.openTitle()) });
     buttons.push({ label: "Captain's Glossary", fn: () => this.openGlossary(() => this.openTitle()) });
@@ -537,7 +564,7 @@ W.UI = {
         <div class="gterm"><b>Orders</b> — every ship gets a target and a tactic in the muster; each order is drawn as a dashed course on the plan, and the battle then fights itself in rounds.</div>
         <div class="gterm"><b>Fighting spirit</b> — the gold bar. Broadsides, rakes, and a fallen captain break it; a ship whose spirit breaks <b>strikes her colors</b> (surrenders). Struck enemies are prizes.</div>
         <div class="gterm"><b>The weather gauge</b> — the upwind position, rolled as battle joins. Holding it makes everything you do bite a little harder.</div>
-        <div class="gterm"><b>Signal hoists</b> — your only voice mid-battle, two per action: ENGAGE MORE CLOSELY (three fierce rounds) and DISCONTINUE THE ACTION (withdraw in good order — no prizes, no rout).</div>
+        <div class="gterm"><b>Signal hoists</b> — your only voice mid-battle, three per action, chosen from the signal book: ENGAGE MORE CLOSELY (the line fights harder), CONCENTRATE ON ONE SHIP (every gun on her), WEAR TOGETHER (a defensive turn), and DISCONTINUE THE ACTION (withdraw in good order — no prizes, no rout).</div>
         <div class="gterm"><b>The crisis</b> — if the flagship is badly hurt, you take command below decks: the full ship interior, fires and flooding, your own hands on it.</div></div>
         <div class="gsec"><h4>THE LONG GAME</h4>
         <div class="gterm"><b>⚜ Doubloons</b> — money, from prizes and events. Spent at free ports.</div>
@@ -949,7 +976,7 @@ W.UI = {
           your ships ①②③ setting out from the left.</div></div>
         <div class="gterm" style="flex:1"><b>How an action works:</b> you give the orders, then
         the battle fights itself in rounds — once the guns speak your only voice is
-        <b>two signal hoists</b> (top-right of the battle). Ships surrender — <i>strike</i> —
+        <b>three signal hoists</b> (top-right of the battle). Ships surrender — <i>strike</i> —
         when their <b>fighting spirit</b> (the gold bar) breaks, not only when their hull gives;
         struck enemies are your prizes. The <b>weather gauge</b> — the upwind position, rolled
         as battle joins — puts a thumb on the scale for whoever holds it. If the flagship gets
@@ -1044,7 +1071,7 @@ W.UI = {
         body: `<p>The last of your ships is taken or gone under, at action ${s.stage} of
           ${W.Fleet.STAGES.length}. The Admiralty will write letters. The sea will not read them.</p>${report}`,
         buttons: [
-          { label: 'Begin a new cruise', fn: () => { this.closeModal(); W.Fleet.startCampaign(); this.openMuster(); } },
+          { label: 'Begin a new cruise', fn: () => { this.closeModal(); this.openCommission(); } },
           { label: 'Back to the title', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
         ],
       });
@@ -1060,7 +1087,7 @@ W.UI = {
           flying, and the Gazette will make a legend of it.</p>
           <p class="goldnote">Final purse: ⚜ ${W.Fleet.campaign.gold + s.gold}</p>${report}`,
         buttons: [
-          { label: 'Begin a new cruise', fn: () => { this.closeModal(); W.Fleet.startCampaign(); this.openMuster(); } },
+          { label: 'Begin a new cruise', fn: () => { this.closeModal(); this.openCommission(); } },
           { label: 'Back to the title', fn: () => { W.Fleet.close(); W.state.mode = 'title'; this.openTitle(); } },
         ],
       });
@@ -1086,6 +1113,106 @@ W.UI = {
     });
   },
 
+  // fitting out: the Admiralty's allowance, a yard of hulls, a slate of captains
+  openCommission() {
+    const F = W.Fleet;
+    if (!this.commission) {
+      this.commission = F.buildCommission();
+      this.commission.bought = [];
+      this.commission.ownTrait = 'gunnery';
+    }
+    const cm = this.commission;
+    const spent = cm.bought.reduce((a, b) => a + cm.yard[b.yardIdx].price, 0);
+    const left = cm.budget - spent;
+    const traitOpts = (sel) => Object.keys(F.TRAITS).map(k =>
+      `<option value="${k}"${k === sel ? ' selected' : ''}>${F.TRAITS[k].name}</option>`).join('');
+    const takenCapts = new Set(cm.bought.map(b => b.captName).filter(Boolean));
+    let body = `<p class="goldnote">The Admiralty allows you <b>⚜ ${cm.budget}</b> to fit out a
+      squadron of two to four ships. What you do not spend sails with you as the purse.
+      <b>⚜ ${left}</b> remains.</p>
+      <p><b>Your own commission</b> — you command the first ship you buy. Your gift as a captain:
+      <select data-owntrait>${traitOpts(cm.ownTrait)}</select></p>
+      <h4>THE YARD</h4>`;
+    cm.yard.forEach((h, i) => {
+      const b = cm.bought.find(x => x.yardIdx === i);
+      const isFlag = b && cm.bought[0] === b;
+      body += `<div class="storerow">${this.shipThumb(h.cls)}<b>${F.CLASSES[h.cls].name}</b>
+        <span class="sdesc">${F.SHIP_TRAITS[h.trait].name} — ${F.SHIP_TRAITS[h.trait].desc}
+        · ⚜${h.price}</span>`;
+      if (b) {
+        body += `<span class="ctlgrp">${isFlag ? '<b>⚑ your flag</b>' : ''}
+          name <input data-shipname="${i}" value="${b.name}" maxlength="18" style="width:110px">`;
+        if (!isFlag) {
+          const capOpts = cm.slate.map(cp =>
+            `<option value="${cp.name}"${cp.name === b.captName ? ' selected' : ''}` +
+            `${takenCapts.has(cp.name) && cp.name !== b.captName ? ' disabled' : ''}>` +
+            `${cp.name} — ${F.TRAITS[cp.trait].name}</option>`).join('');
+          body += ` Capt. <select data-shipcapt="${i}"><option value="">choose…</option>${capOpts}</select>`;
+        }
+        body += `</span><button data-return="${i}">Return her</button>`;
+      } else {
+        const afford = h.price <= left && cm.bought.length < 4;
+        body += `<button data-buy="${i}" ${afford ? '' : 'disabled'}>Buy ⚜${h.price}</button>`;
+      }
+      body += '</div>';
+    });
+    body += `<p class="sdesc">Captains not given a ship: the first waits ashore for a prize;
+      the rest find other berths. Every ship sails with a full complement.</p>`;
+    const flagOk = cm.bought.length >= 2 && cm.bought.length <= 4;
+    const captsOk = cm.bought.slice(1).every(b => b.captName);
+    const m = this.modal({
+      wide: true,
+      title: '⚓ Fitting Out — a commodore\'s commission',
+      sub: 'Pick your hulls and your officers. Ships, hands, and captains persist for the whole cruise.',
+      body,
+      buttons: [
+        { label: flagOk && captsOk ? '⚑ Put to sea' : '⚑ Put to sea (need 2–4 ships, every ship a captain)',
+          fn: () => {
+            if (!flagOk || !captsOk) return;
+            const specs = cm.bought.map((b, i) => {
+              const h = cm.yard[b.yardIdx];
+              const captain = i === 0
+                ? { name: 'You', trait: cm.ownTrait, alive: true }
+                : cm.slate.find(cp => cp.name === b.captName);
+              return { cls: h.cls, trait: h.trait, name: b.name, captain };
+            });
+            const ashore = cm.slate.filter(cp => !takenCapts.has(cp.name));
+            this.commission = null;
+            this.closeModal();
+            F.startCustom(specs, cm.budget - spent, ashore);
+            this.openMuster();
+          } },
+        { label: 'Take the standing squadron (quick start)',
+          fn: () => { this.commission = null; this.closeModal(); F.startCampaign(); this.openMuster(); } },
+        { label: 'Back', fn: () => { this.commission = null; this.closeModal(); this.openTitle(); } },
+      ],
+    });
+    this.drawThumbs(m);
+    const own = m.querySelector('[data-owntrait]');
+    if (own) own.addEventListener('change', () => { cm.ownTrait = own.value; });
+    m.querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.buy;
+      let nm = F.suggestName(), guard = 0;
+      while (cm.bought.some(x => x.name === nm) && guard++ < 20) nm = F.suggestName();
+      cm.bought.push({ yardIdx: i, name: nm, captName: '' });
+      this.openCommission();
+    }));
+    m.querySelectorAll('[data-return]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.return;
+      cm.bought = cm.bought.filter(x => x.yardIdx !== i);
+      this.openCommission();
+    }));
+    m.querySelectorAll('[data-shipname]').forEach(inp => inp.addEventListener('input', () => {
+      const b = cm.bought.find(x => x.yardIdx === +inp.dataset.shipname);
+      if (b) b.name = inp.value;
+    }));
+    m.querySelectorAll('[data-shipcapt]').forEach(sel => sel.addEventListener('change', () => {
+      const b = cm.bought.find(x => x.yardIdx === +sel.dataset.shipcapt);
+      if (b) b.captName = sel.value;
+      this.openCommission();
+    }));
+  },
+
   // between actions: repairs, prize decisions, captains, and the muster of hands
   openRefit() {
     const F = W.Fleet, c = F.campaign, s = F.summary;
@@ -1098,11 +1225,21 @@ W.UI = {
       body += '<h4>PRIZES TAKEN</h4>';
       s.prizeShips.forEach((cls, i) => {
         const canTake = F.ships.length < 4 && c.captains.length > 0;
+        // swap in: hand one of your own ships to the yard and shift her people aboard
+        const swapOpts = F.ships.map((sh, si) =>
+          `<option value="${si}">${sh.name} (yard pays ⚜${F.shipValue(sh)})</option>`).join('');
         body += `<div class="storerow">${this.shipThumb(cls)}<b>${F.CLASSES[cls].name}</b>
-          <span class="sdesc">Take her into service (needs a captain ashore and a prize crew from
-          the pool) or send her in for ⚜ ${F.PRIZE_VALUE[cls]}.</span>
-          <button data-take="${i}" ${canTake ? '' : 'disabled'}>Take into service</button>
-          <button data-sell="${i}">Send her in</button></div>`;
+          <span class="sdesc">Christen her: <input data-pname="${i}" value="${F.suggestName()}"
+            maxlength="18" style="width:110px"> — then take her into service (needs a captain
+          ashore and a prize crew), <b>trade up</b> (send one of yours into port; her captain and
+          hands shift into the prize), or send her in for ⚜ ${F.PRIZE_VALUE[cls]}.</span>
+          <button data-take="${i}" ${canTake ? '' : 'disabled'}
+            data-tip="<b>Take into service</b> — a captain from the pool ashore commands her. She joins at 45% hull with no hands until you give her some.">Take into service</button>
+          <span class="ctlgrp" data-tip="<b>Trade up</b> — the chosen ship goes into port and the yard pays for her; her captain and hands carry over. The prize starts at 45% hull.">
+            <select data-swapsel="${i}">${swapOpts}</select>
+            <button data-swap="${i}">Trade up</button>
+          </span>
+          <button data-sell="${i}" data-tip="<b>Send her in</b> — sell the prize to the Admiralty for coin.">Send her in ⚜${F.PRIZE_VALUE[cls]}</button></div>`;
       });
     }
     body += '<h4>THE SQUADRON</h4>';
@@ -1122,10 +1259,10 @@ W.UI = {
           ${sh.captain.alive ? '' : ' †'}
           ${sh.captain.learned ? `<i class="wchips">(${F.TRAITS[sh.captain.trait].name} + ${F.TRAITS[sh.captain.learned].name})</i>` : ''}</span>
         <span class="rowctl">
-          <span class="ctlgrp" data-tip="<b>Hull repairs</b> — ⚜2 per point. <i>full</i> repairs as much as the purse allows.">
+          <span class="ctlgrp" data-tip="<b>Hull repairs</b> — ⚜1 per point. <i>full</i> repairs as much as the purse allows.">
             <i>repair</i>
-            <button data-rep1="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+1</button>
-            <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+5</button>
+            <button data-rep1="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+1 ⚜1</button>
+            <button data-rep="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>+5 ⚜5</button>
             <button data-repfull="${i}" ${sh.hull >= sh.hullMax || c.gold < 2 ? 'disabled' : ''}>full</button>
           </span>
           <span class="ctlgrp" data-tip="<b>Hands</b> — move crew between ship and shore pool, free. <i>fill</i> tops up her complement. Short-handed ships serve their guns slowly.">
@@ -1198,7 +1335,17 @@ W.UI = {
     }));
     m.querySelectorAll('[data-take]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.take;
-      if (F.takePrize(s.prizeShips[i])) s.prizeShips.splice(i, 1);
+      const nameEl = m.querySelector(`[data-pname="${i}"]`);
+      if (F.takePrize(s.prizeShips[i], nameEl && nameEl.value)) s.prizeShips.splice(i, 1);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-swap]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.swap;
+      const selEl = m.querySelector(`[data-swapsel="${i}"]`);
+      const nameEl = m.querySelector(`[data-pname="${i}"]`);
+      if (F.swapPrize(s.prizeShips[i], selEl ? +selEl.value : 0, nameEl && nameEl.value)) {
+        s.prizeShips.splice(i, 1);
+      }
       this.openRefit();
     }));
     m.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => {
