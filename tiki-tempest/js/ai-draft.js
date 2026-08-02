@@ -127,9 +127,16 @@
     for (var i = 0; i < st.players.length; i++) {
       var p = st.players[i];
       if (!p.isAI || !p.hand.length || st.picks[p.i] !== undefined) continue;
-      // serve everything possible before picking
+      // serve everything possible before picking — but with bar manners:
+      // never snipe a cocktail a human could serve RIGHT NOW before they've
+      // locked their pick this pass (no reflex races against the machine)
       for (var mi = 0; mi < st.menu.length; mi++) {
         if (E.canServe(st, p, st.menu[mi])) {
+          var contested = st.players.some(function (pl) {
+            return !pl.isAI && pl.hand.length && st.picks[pl.i] === undefined &&
+              E.canServe(st, pl, st.menu[mi]);
+          });
+          if (contested) continue; // the human gets their moment
           var hasDouble = p.banked.some(function (id) { return CARDS[id].fx === 'double'; });
           return { t: 'serve', seat: p.i, recipe: st.menu[mi],
             double: hasDouble && CARDS[st.menu[mi]].pts >= 6 };

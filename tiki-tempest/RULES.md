@@ -78,6 +78,8 @@ whenever it runs dry. Played picks resolve immediately:
 **Serving is free, any time:** when your Bar covers a Menu recipe, serve it —
 pay the ingredients, take the card, refill the Menu. A set-aside Double can be
 spent as you serve. An umbrella'd bar garnishes the drink (+1) as usual.
+*(Online, AI rivals have bar manners: they will never grab a cocktail you can
+currently serve until you've locked in your pick — no racing the machine.)*
 
 **Guest Bartender** works exactly as printed, even mid-draft: name an
 ingredient and a player — if it's in the hand they're holding, it goes straight
