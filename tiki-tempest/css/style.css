@@ -133,7 +133,8 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
 #chatBox button { padding: 6px 12px; }
 #log .chatline { color: var(--cyan); }
 #log { background: #00000055; border: 1px solid #6a3d1c; border-radius: 10px;
-  padding: 8px 12px; height: 190px; overflow-y: auto; font-size: 13px; color: var(--dim); }
+  padding: 8px 12px; overflow-y: auto; font-size: 13px; color: var(--dim);
+  height: clamp(200px, calc(100vh - 620px), 480px); }
 #log .me { color: var(--text); }
 
 /* ---------- my area ---------- */
@@ -233,7 +234,7 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
   #menuCards .mrec { width: 82px; }
   #menuCards .mrec img { width: 82px; }
   #menuCards .mrec .rcp { min-height: 62px; font-size: 10px; }
-  #log { height: 110px; }
+  #log { height: 150px; }
   .opp .zone { min-height: 14px; }
   .opp .zone img { width: 22px; }
   #topbar .script { font-size: 20px; }
