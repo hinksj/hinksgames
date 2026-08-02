@@ -21,6 +21,8 @@
     st.melds.forEach(function (m) {
       if (E.canExtend(m, id)) u += 2;
     });
+    // Regular bots have human-grade judgment wobble; Hard bots don't
+    if (st.aiLevel !== 'hard') u += (Math.random() - 0.5) * 0.7;
     return u;
   }
   function worstCard(st, hand) {
@@ -187,10 +189,14 @@
       }
     }
 
-    for (var j = 0; j < me.hand.length; j++) {
-      for (var k = 0; k < st.melds.length; k++) {
-        if (E.canExtend(st.melds[k], me.hand[j])) {
-          return { t: 'extend', meldId: st.melds[k].id, card: me.hand[j] };
+    // Regular bots overlook extension chances about a third of the time,
+    // the way humans scanning a busy table do
+    if (st.aiLevel === 'hard' || Math.random() > 0.33) {
+      for (var j = 0; j < me.hand.length; j++) {
+        for (var k = 0; k < st.melds.length; k++) {
+          if (E.canExtend(st.melds[k], me.hand[j])) {
+            return { t: 'extend', meldId: st.melds[k].id, card: me.hand[j] };
+          }
         }
       }
     }

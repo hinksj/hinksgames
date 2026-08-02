@@ -29,6 +29,7 @@
     var st = {
       seed: opts.seed || Math.floor(Math.random() * 1e9),
       target: opts.target || data.TARGET_DEFAULT,
+      aiLevel: opts.aiLevel || 'regular',
       round: 0,
       // the 25-card member deck serves the whole game; at big tables not
       // everyone can reach 5 backers, so the bar drops (6 players -> 4)

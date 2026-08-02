@@ -20,7 +20,8 @@
     var bots = parseInt($('mBots').value, 10);
     var names = [{ name: myName(), isAI: false }].concat(
       botNames(bots).map(function (n) { return { name: n, isAI: true }; }));
-    var st = E.newGame({ names: names, target: parseInt($('mTarget').value, 10) });
+    var st = E.newGame({ names: names, target: parseInt($('mTarget').value, 10),
+      aiLevel: $('mAI').value });
     ui.begin(st, 0, {});
   });
 
@@ -109,7 +110,8 @@
     lobby.guests.forEach(function (g) { names.push({ name: g.name, isAI: false }); });
     botNames(Math.max(0, maxBots)).forEach(function (n) { names.push({ name: n, isAI: true }); });
     if (names.length < 2) { ui.toast('Need at least one guest or AI rival.'); lobby.started = false; return; }
-    var st = E.newGame({ names: names, target: parseInt($('mTarget').value, 10) });
+    var st = E.newGame({ names: names, target: parseInt($('mTarget').value, 10),
+      aiLevel: $('mAI').value });
     lobby.guests.forEach(function (g, i) {
       net.seatOf.set(g.conn, i + 1);
       net.sendTo(g.conn, { type: 'start', seat: i + 1, room: room, state: st });
