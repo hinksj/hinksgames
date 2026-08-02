@@ -3,7 +3,7 @@
 *The 1980s vaporwave yacht-club card game, designed and printed in 2024 — now
 playable in a browser, solo against AI rivals or online with friends.*
 
-Melds, martinis, members: draw and meld suit cards (sets of matching letters,
+Melds, members, mischief: draw and meld suit cards (sets of matching letters,
 runs within a suit), fire off one-of-a-kind Special Actions, and — after a fresh
 meld — press your luck courting the club's 25 Members, who bring +8 glory or a
 −6 bar tab but always add to your **Club Support**. First to **50 points with

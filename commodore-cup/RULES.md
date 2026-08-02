@@ -1,6 +1,6 @@
 # COMMODORE CUP — Official Rules (v1.0)
 
-*A 1980s yacht-club card game of melds, martinis, and members. First skipper to
+*A 1980s yacht-club card game of melds, members, and mischief. First skipper to
 50 points hoists the burgee and becomes **Commodore of the Club**.*
 
 **Players:** 2–6 &nbsp;•&nbsp; **Time:** 30–45 min &nbsp;•&nbsp; **Ages:** 12+
