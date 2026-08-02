@@ -56,6 +56,10 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
   transform: rotate(-6deg); }
 #menu .cardfan img:nth-child(2) { transform: rotate(-1deg) translateY(-8px); }
 #menu .cardfan img:nth-child(3) { transform: rotate(4deg); }
+#gallery { margin: 4px 0 18px; min-height: 240px; }
+#gallery img { width: 200px; border-radius: 14px; border: 1px solid #ffffff22;
+  box-shadow: 0 14px 44px #000c; opacity: 0; transition: opacity 0.7s ease; }
+#gallery img.on { opacity: 1; }
 #menu .panel { background: var(--panel); border: 1px solid var(--panel-line);
   border-radius: 14px; padding: 20px; margin: 14px 0; text-align: left; }
 #menu label { color: var(--dim); display: block; margin: 10px 0 4px; }
@@ -91,7 +95,7 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 .opp .nm { font-weight: 600; }
 .opp .nm .you { color: var(--cyan); font-weight: 400; }
 .opp .meta { color: var(--dim); font-size: 13px; }
-.opp .memberchips img { width: 26px; border-radius: 3px; margin-right: 3px; vertical-align: middle; }
+.opp .memberchips img { width: 32px; border-radius: 3px; margin-right: 3px; vertical-align: middle; }
 
 #centerRow { display: flex; gap: 16px; align-items: flex-start; margin: 10px 0; }
 #piles { display: flex; gap: 12px; }
@@ -145,8 +149,11 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 #handRow { display: flex; justify-content: center; align-items: flex-end; isolation: isolate; }
 .hcard { position: relative; transition: transform 0.12s; cursor: pointer; margin-left: -52px; }
 .hcard:first-child { margin-left: 0; }
-.hcard img { width: var(--hand-w); height: var(--hand-h); object-fit: cover; border-radius: 9px;
-  box-shadow: -4px 3px 14px #000c; display: block; }
+.hcard img { width: var(--hand-w); height: var(--hand-h); object-fit: cover; border-radius: 10px;
+  box-shadow: 0 2px 5px #0009, -8px 12px 26px #000b; display: block;
+  transform: rotate(var(--rot, 0deg)) translateY(var(--arc, 0px));
+  transition: transform 0.16s ease; }
+.hcard:hover img, .hcard.sel img { transform: rotate(0deg) translateY(-4px); }
 .hcard:hover { transform: translateY(-16px); z-index: 500 !important; }
 .hcard.sel { transform: translateY(-26px); z-index: 490 !important; }
 .hcard.sel img { outline: 3px solid var(--gold); }
@@ -187,6 +194,10 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 #zoom.show { display: block; }
 #zoom.show.right { right: 14px; }
 #zoom.show.left { left: 14px; }
+#zoom .zcap { background: var(--panel); border: 1px solid var(--panel-line);
+  border-radius: 10px; padding: 6px 12px; margin-top: 8px; color: var(--text);
+  font-size: 13px; line-height: 1.4; max-width: min(380px, 30vw); }
+#zoom .zcap b { color: var(--gold); }
 #zoom img { width: auto; max-width: 30vw;
   max-height: min(62vh, calc(100vh - 400px));
   border-radius: 14px; box-shadow: 0 14px 56px #000e; border: 1px solid #ffffff33; }

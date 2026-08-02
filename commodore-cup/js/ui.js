@@ -72,9 +72,17 @@
 
   // hover or select any card to see it full size (the printed text is small at table scale)
   var zoomEl = null;
+  var ART2CARD = {};
+  Object.keys(CARDS).forEach(function (id) { ART2CARD[CARDS[id].art] = CARDS[id]; });
   function showZoom(src, side) {
     if (!zoomEl) return;
-    zoomEl.innerHTML = '<img src="' + src + '">';
+    var c = ART2CARD[src];
+    var cap = '';
+    if (c && (c.text || c.pts !== undefined)) {
+      cap = '<div class="zcap"><b>' + esc(c.name) + (c.pts !== undefined ? ' (' + (c.pts >= 0 ? '+' : '') + c.pts + ')' : '') +
+        '</b>' + (c.text ? ' — ' + esc(c.text) : '') + '</div>';
+    }
+    zoomEl.innerHTML = '<img src="' + src + '">' + cap;
     zoomEl.className = 'show ' + side;
   }
   function hideZoom() { if (zoomEl) zoomEl.className = ''; }
@@ -375,7 +383,12 @@
       var d = document.createElement('div');
       var fresh = ui.newCards[id] && now - ui.newCards[id] < 3500;
       d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '') + (fresh ? ' fresh' : '');
-      d.style.zIndex = String(200 - idx); // tuck rightward: corner letters stay visible
+      d.style.zIndex = String(200 - idx);
+      if (d.style.setProperty) {
+        var mid = (hand.length - 1) / 2;
+        d.style.setProperty('--rot', ((idx - mid) * Math.min(2.4, 16 / Math.max(1, hand.length))).toFixed(2) + 'deg');
+        d.style.setProperty('--arc', (Math.pow(Math.abs(idx - mid), 1.6) * 2.1).toFixed(1) + 'px');
+      } // tuck rightward: corner letters stay visible
       d.innerHTML = '<img draggable="false" src="' + c.art + '" title="' +
         esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
       d.addEventListener('click', function () { onHandClick(st, id, chooseMode); });

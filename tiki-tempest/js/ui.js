@@ -23,7 +23,7 @@
     ui.send = (opts && opts.send) || null;
     ui.onLocalAction = (opts && opts.onLocalAction) || null;
     ui.roomCode = (opts && opts.room) || '';
-    ui.sel = null; ui.logLen = 0; ui.handOrder = [];
+    ui.sel = null; ui.logLen = 0; ui.handOrder = []; ui.knownServes = null;
     $('menu').style.display = 'none';
     $('table').style.display = 'block';
     $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
@@ -38,11 +38,47 @@
     render();
   };
 
+  // ---------- serve reveal: cocktails sweep in big ----------
+  var srEl = null, srTimer = null;
+  function serveReveal(entry, who) {
+    if (!srEl) {
+      srEl = document.createElement('div');
+      srEl.id = 'serveReveal';
+      srEl.addEventListener('click', function () { srEl.className = ''; });
+      document.body.appendChild(srEl);
+    }
+    var c = CARDS[entry.card];
+    srEl.innerHTML = '<div class="mr"><img src="' + c.art + '">' +
+      '<div class="cap">' + esc(who) + ' serves ' + esc(c.name) + ' — ' + entry.pts + ' points' +
+      (entry.doubled ? ' · DOUBLED!' : '') + (entry.umbrella ? ' ☂️' : '') + '</div></div>';
+    srEl.className = 'show';
+    clearTimeout(srTimer);
+    srTimer = setTimeout(function () { srEl.className = ''; }, 3000);
+  }
+  function checkServeReveals(st) {
+    var counts = st.players.map(function (p) { return p.servedTotal; });
+    if (!ui.knownServes) { ui.knownServes = counts; return; }
+    for (var i = 0; i < st.players.length; i++) {
+      if (counts[i] > (ui.knownServes[i] || 0) && st.players[i].served.length) {
+        serveReveal(st.players[i].served[st.players[i].served.length - 1], st.players[i].name);
+      }
+    }
+    ui.knownServes = counts;
+  }
+
   // ---------- zoom ----------
   var zoomEl = null;
+  var ART2CARD = {};
+  Object.keys(CARDS).forEach(function (id) { ART2CARD[CARDS[id].art] = CARDS[id]; });
   function showZoom(src, side) {
     if (!zoomEl) return;
-    zoomEl.innerHTML = '<img src="' + src + '">';
+    var c = ART2CARD[src];
+    var cap = '';
+    if (c && (c.text || c.pts !== undefined)) {
+      cap = '<div class="zcap"><b>' + esc(c.name) + (c.pts !== undefined ? ' (' + (c.pts >= 0 ? '+' : '') + c.pts + ')' : '') +
+        '</b>' + (c.text ? ' — ' + esc(c.text) : '') + '</div>';
+    }
+    zoomEl.innerHTML = '<img src="' + src + '">' + cap;
     zoomEl.className = 'show ' + side;
   }
   function hideZoom() { if (zoomEl) zoomEl.className = ''; }
@@ -147,6 +183,7 @@
       $('tRound').textContent = 'round ' + st.round + '/' + (st.finalRound ? st.round : st.rounds) +
         ' · ' + turnsLeft + ' turns till closing' + (st.finalRound ? ' · LAST CALL' : '');
     }
+    checkServeReveals(st);
     renderOpponents(st);
     renderPiles(st);
     renderMenu(st);
@@ -377,6 +414,11 @@
       d.className = 'hcard' + (ui.sel === id || ui.sel2 === id ? ' sel' : '') +
         (fresh ? ' fresh' : '') + (picked ? ' dim' : '');
       d.style.zIndex = String(200 - idx);
+      if (d.style.setProperty) {
+        var mid = (hand.length - 1) / 2;
+        d.style.setProperty('--rot', ((idx - mid) * Math.min(2.4, 16 / Math.max(1, hand.length))).toFixed(2) + 'deg');
+        d.style.setProperty('--arc', (Math.pow(Math.abs(idx - mid), 1.6) * 2.1).toFixed(1) + 'px');
+      }
       d.innerHTML = '<img draggable="false" src="' + c.art + '" title="' +
         esc(c.name + (c.text ? ' — ' + c.text : '')) + '">';
       d.addEventListener('click', function () { onHandClick(st, id, chooseMode); });

@@ -198,6 +198,31 @@
     });
   });
   drawSoundBtn();
+  // menu art gallery: slow rotation through the full card art
+  (function gallery() {
+    if (!window.requestAnimationFrame) return; // headless shims skip this
+    var img = $('galleryImg');
+    if (!img) return;
+    var arts = Object.keys(G.data.CARDS).map(function (id) { return G.data.CARDS[id].art; });
+    for (var i = arts.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arts[i]; arts[i] = arts[j]; arts[j] = t;
+    }
+    var at = 0;
+    function next() {
+      if ($('menu').style.display === 'none') return; // stop once a game starts
+      img.className = '';
+      setTimeout(function () {
+        img.src = arts[at % arts.length];
+        at++;
+        img.onload = function () { img.className = 'on'; };
+      }, 650);
+      setTimeout(next, 4600);
+    }
+    img.src = arts[0]; at = 1;
+    img.onload = function () { img.className = 'on'; };
+    setTimeout(next, 4600);
+  }());
   $('btnTour').addEventListener('click', function () {
     $('btnSolo').click();
     setTimeout(function () { if (G.tour) G.tour.start(); }, 700);
