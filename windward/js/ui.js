@@ -1073,6 +1073,21 @@ W.UI = {
     });
   },
 
+  gazetteBlock(won) {
+    const g = W.Fleet.gazette(won);
+    return `<div style="border:3px double #8a6a42;padding:10px 16px;margin:10px 0;background:#f2e7c8;color:#3a2a17">
+      <div style="text-align:center;font-weight:bold;letter-spacing:3px;font-size:12px">THE NAVAL GAZETTE</div>
+      <div style="text-align:center;font-size:19px;font-weight:bold;margin:4px 0">${g.head}</div>
+      ${g.lines.map(l => `<div style="font-size:13.5px;line-height:1.5">${l}</div>`).join('')}
+    </div>`;
+  },
+
+  foughtFor(rounds) {
+    const sec = Math.max(3, (rounds | 0) * 3);
+    return sec >= 60 ? `${Math.floor(sec / 60)} minute${sec >= 120 ? 's' : ''} ${sec % 60 ? (sec % 60) + ' seconds' : ''}`.trim()
+      : `${sec} seconds`;
+  },
+
   openFleetEnd() {
     const s = W.Fleet.summary;
     if (W.Sound) W.Sound.play(s.win ? 'stingWin' : (s.withdraw ? 'bell' : 'stingLoss'));
@@ -1084,7 +1099,7 @@ W.UI = {
         ${ch.map(e => `<div><b style="color:#8a6a42">S${e.stage}</b> — ${e.text}</div>`).join('')}</div>`;
     };
     if (s.flagLost) {
-      const report = chronicle();
+      const report = this.gazetteBlock(false) + chronicle();
       W.Fleet.clearCruise();
       this.modal({
         title: 'The Squadron Is Lost',
@@ -1098,13 +1113,13 @@ W.UI = {
       return;
     }
     if (s.win && s.finalStage) {
-      const report = chronicle();
+      const report = this.gazetteBlock(true) + chronicle();
       W.Fleet.clearCruise();
       this.modal({
         title: '⚑ The Cruise Is Made',
         body: `<p>Five actions, and the last of them against a ship of the line — beaten.
           You bring ${s.remaining} ship${s.remaining === 1 ? '' : 's'} home with prize-flags
-          flying, and the Gazette will make a legend of it.</p>
+          flying.</p>
           <p class="goldnote">Final purse: ⚜ ${W.Fleet.campaign.gold + s.gold}</p>${report}`,
         buttons: [
           { label: 'Begin a new cruise', fn: () => { this.closeModal(); this.openCommission(); } },
@@ -1117,13 +1132,13 @@ W.UI = {
       title: s.win ? '⚑ The Enemy Line Is Broken'
         : (s.withdraw ? 'Off in Good Order' : 'The Action Is Lost'),
       body: `<p>${s.win
-        ? `After ${s.rounds} rounds of it, the last of them yields. You take ${s.prizes}
+        ? `After ${this.foughtFor(s.rounds)} of it, the last of them yields. You take ${s.prizes}
            prize${s.prizes === 1 ? '' : 's'} and lose ${s.lost} of your own ships.`
         : (s.withdraw
-          ? `You discontinue the action after ${s.rounds} rounds and bring ${s.remaining}
+          ? `You discontinue the action after ${this.foughtFor(s.rounds)} and bring ${s.remaining}
              ship${s.remaining === 1 ? '' : 's'} off to fight another day. No prizes — and no widows
              you didn't have to make.`
-          : `After ${s.rounds} rounds, the action is lost. You bring ${s.remaining}
+          : `After ${this.foughtFor(s.rounds)}, the action is lost. You bring ${s.remaining}
              ship${s.remaining === 1 ? '' : 's'} out of it.`)}</p>
         ${s.win ? `<p class="goldnote">Prize money: ⚜ ${s.gold} (not yet banked — prototype)</p>` : ''}
         <p>${s.casualties ? `The butcher's bill: ${s.casualties} hands.` : ''}</p>`,
@@ -1243,12 +1258,74 @@ W.UI = {
   },
 
   // between actions: repairs, prize decisions, captains, and the muster of hands
+  // the cruise so far, as a course pricked out on the chart
+  cruiseChart() {
+    const F = W.Fleet, c = F.campaign;
+    if (!c) return '';
+    const n = F.STAGES.length;
+    const ch = c.chronicle || [];
+    const px = (i) => 50 + i * ((520 - 60) / (n - 1));
+    let out = '';
+    // a suggestion of coastline along the top, and soundings for flavor
+    out += `<path d="M 8 18 Q 90 6 180 16 T 340 12 T 512 18" fill="none" stroke="#8a6a42" stroke-width="1.2" opacity="0.55"/>`;
+    [70, 205, 330, 455].forEach((x, i) => {
+      out += `<text x="${x}" y="${30 + (i % 2) * 5}" font-size="7" fill="#8a6a42" opacity="0.6">${[12, 9, 14, 7][i]}</text>`;
+    });
+    // the course, dashed between stations
+    for (let i = 0; i < n - 1; i++) {
+      out += `<path d="M ${px(i)} 52 Q ${(px(i) + px(i + 1)) / 2} ${i % 2 ? 44 : 60} ${px(i + 1)} 52"
+        fill="none" stroke="#5a4020" stroke-width="1.2" stroke-dasharray="4 4" opacity="${i < c.stage - 1 ? 0.8 : 0.3}"/>`;
+    }
+    for (let i = 0; i < n; i++) {
+      const stage = i + 1;
+      const donePart = stage < c.stage;
+      const here = stage === c.stage;
+      const entries = ch.filter(e => e.stage === stage);
+      const prizes = entries.filter(e => /Took a|Sent in a/.test(e.text)).length;
+      const crisis = entries.some(e => /Crisis/.test(e.text));
+      const storm = entries.some(e => /storm passage/.test(e.text));
+      out += `<circle cx="${px(i)}" cy="52" r="5" fill="${donePart ? '#5a4020' : 'none'}"
+        stroke="#5a4020" stroke-width="1.4" opacity="${donePart || here ? 1 : 0.35}"/>`;
+      if (here) out += `<circle cx="${px(i)}" cy="52" r="9" fill="none" stroke="#a02418" stroke-width="1.4"/>`;
+      out += `<text x="${px(i)}" y="76" font-size="9" text-anchor="middle" fill="#5a4020"
+        opacity="${donePart || here ? 1 : 0.45}">${stage === n ? 'the last' : 'action ' + stage}</text>`;
+      let glyphs = '';
+      if (storm) glyphs += '≈';
+      if (prizes) glyphs += '⚑'.repeat(Math.min(prizes, 3));
+      if (crisis) glyphs += '⚠';
+      if (glyphs) out += `<text x="${px(i)}" y="40" font-size="9" text-anchor="middle" fill="#8a6a42">${glyphs}</text>`;
+    }
+    return `<svg viewBox="0 0 520 84" width="520" height="84"
+      style="background:#eadcb4;border:1px solid #8a6a42;border-radius:4px;display:block;margin:2px 0 8px"
+      data-tip="<b>The cruise</b> — your course, pricked out station by station. ⚑ prizes taken or sent in · ⚠ an emergency fought · ≈ a storm passage run.">${out}</svg>`;
+  },
+
+  openPortEvent() {
+    const F = W.Fleet, c = F.campaign;
+    const ev = F.PORT_EVENTS[c.portEvent];
+    if (!ev) { c.portEvent = null; return this.openRefit(); }
+    const done = (r) => this.modal({
+      title: `⚓ ${ev.name}`,
+      body: `<p>${r}</p>`,
+      buttons: [{ label: 'To the refit', fn: () => this.openRefit() }],
+    });
+    this.modal({
+      title: `⚓ In port — ${ev.name}`,
+      body: `<p>${ev.text}</p>`,
+      buttons: [
+        { label: ev.a.label, fn: () => done(F.portChoice('a')) },
+        { label: ev.b.label, fn: () => done(F.portChoice('b')) },
+      ],
+    });
+  },
+
   openRefit() {
     const F = W.Fleet, c = F.campaign, s = F.summary;
     if (s && !s.settled) F.settleAction();
+    if (c.portEvent) return this.openPortEvent();
     const capNames = () => c.captains.map(x =>
       `${x.name}${x.distinguished ? ' ★' : ''} (${F.captTraitsText(x)})`).join(', ') || 'none';
-    let body = `<p class="goldnote">⚜ ${c.gold} in the purse · ${c.hands} hands in the pool ·
+    let body = this.cruiseChart() + `<p class="goldnote">⚜ ${c.gold} in the purse · ${c.hands} hands in the pool ·
       captains ashore: ${capNames()}</p>`;
     if (s && s.prizeShips && s.prizeShips.length) {
       body += '<h4>PRIZES TAKEN</h4>';

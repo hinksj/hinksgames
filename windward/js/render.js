@@ -1296,26 +1296,89 @@ W.Render = {
       }
     }
 
+    // the fort, ruled square on its headland, when the action is under its guns
+    const FORT = { x: 892, y: 58 };
+    if (F.mod === 'roadstead') {
+      ctx.fillStyle = 'rgba(160,36,24,0.15)';
+      ctx.strokeStyle = 'rgba(160,36,24,0.7)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.rect(FORT.x - 13, FORT.y - 9, 26, 18);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(FORT.x - 13, FORT.y - 9); ctx.lineTo(FORT.x - 18, FORT.y - 14);
+      ctx.moveTo(FORT.x + 13, FORT.y - 9); ctx.lineTo(FORT.x + 18, FORT.y - 14);
+      ctx.stroke();
+      ctx.fillStyle = '#a02418';
+      ctx.font = 'italic 11px "IM Fell English", Georgia';
+      ctx.textAlign = 'center';
+      ctx.fillText('the fort', FORT.x, FORT.y + 24);
+    }
+
     // broadsides in flight: lobbed arcs of iron, drawn in ink
     for (const shot of (F.shots || [])) {
       if (shot.done) continue;
-      const pa = this.fleetPos(shot.a), pb = this.fleetPos(shot.b);
+      const pa = shot.fort ? FORT : this.fleetPos(shot.a);
+      const pb = this.fleetPos(shot.b);
       if (!pa || !pb) continue;
       const frac = W.clamp(shot.t / shot.dur, 0, 1);
       const x = W.lerp(pa.x, pb.x, frac);
-      const arc = -26 * Math.sin(frac * Math.PI);
+      const lob = shot.fort ? -44 : -26;
+      const arc = lob * Math.sin(frac * Math.PI);
       const y = W.lerp(pa.y, pb.y, frac) + arc;
       ctx.strokeStyle = 'rgba(58,42,23,0.35)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       const bfrac = Math.max(0, frac - 0.12);
-      ctx.moveTo(W.lerp(pa.x, pb.x, bfrac), W.lerp(pa.y, pb.y, bfrac) - 26 * Math.sin(bfrac * Math.PI));
+      ctx.moveTo(W.lerp(pa.x, pb.x, bfrac), W.lerp(pa.y, pb.y, bfrac) + lob * Math.sin(bfrac * Math.PI));
       ctx.lineTo(x, y);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(x, y, shot.a.cls === 'shipofline' ? 3.4 : 2.4, 0, Math.PI * 2);
-      ctx.fillStyle = shot.a.side === 'player' ? '#3a2a17' : '#a02418';
+      ctx.arc(x, y, shot.fort ? 3.2 : (shot.a.cls === 'shipofline' ? 3.4 : 2.4), 0, Math.PI * 2);
+      ctx.fillStyle = (shot.fort || shot.a.side !== 'player') ? '#a02418' : '#3a2a17';
       ctx.fill();
+    }
+
+    // the fireship, if one is down on the line: a small hull wrapped in flame
+    if (F.fireship) {
+      const fs = F.fireship;
+      const tp = this.fleetPos(fs.target);
+      if (tp) {
+        const k = W.clamp(((F.battleT || 0) - fs.t0) / fs.dur, 0, 1);
+        const spawn = { x: 985, y: W.clamp(tp.y + 46, 50, 430) };
+        const fx = W.lerp(spawn.x, tp.x + 14, k);
+        const fy = W.lerp(spawn.y, tp.y + 6, k);
+        const since = fs.doneAt != null ? (F.battleT || 0) - fs.doneAt : 0;
+        if (fs.done === 'burned') {
+          if (since < 1.6) {
+            ctx.globalAlpha = W.clamp(1 - since / 1.6, 0, 1);
+            ctx.fillStyle = '#e2683e';
+            ctx.beginPath();
+            ctx.arc(fx, fy, 8 + since * 16, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        } else if (!fs.done || since < 1.2) {
+          ctx.save();
+          ctx.translate(fx, fy);
+          ctx.fillStyle = '#3a2a17';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 11, 4, -0.15, 0, Math.PI * 2);
+          ctx.fill();
+          for (let fi = 0; fi < 3; fi++) {
+            const flick = Math.sin(this.t * 9 + fi * 2.1) * 2;
+            ctx.fillStyle = fi === 1 ? '#e9c46a' : '#e2683e';
+            ctx.beginPath();
+            ctx.arc(-6 + fi * 6, -5 + flick * 0.4, 3.2 + (fi === 1 ? 1.2 : 0), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+          ctx.fillStyle = '#c2482e';
+          ctx.font = 'italic 10.5px "IM Fell English", Georgia';
+          ctx.textAlign = 'center';
+          if (!fs.done) ctx.fillText('fireship', fx, fy + 16);
+        }
+      }
     }
 
     // who fights whom: a thin line from each of your ships to her target

@@ -203,9 +203,22 @@ W.Fleet = {
       // spirit rises with a full, rested complement — and sags with a thin one
       s.morale = Math.round(50 + 22 * (s.hands / s.complement));
     });
+    if (c && c.portMorale) {
+      this.ships.forEach(s => { s.morale = W.clamp(s.morale + c.portMorale, 10, 80); });
+      c.portMorale = 0;
+    }
+    if (c && c.portIntel) {
+      this.enemy.forEach(e => { e.intel = true; });
+      c.portIntel = false;
+    }
     this.planName = null;
     this.round = 0; this.roundT = 0; this.battleT = 0; this.checkT = 0;
-    this.fortuneRolled = false; this.flagShifted = false;
+    this.fortuneRolled = false; this.flagShifted = false; this.windShifted = false;
+    this.fortNextAt = 8;
+    this.fireship = null;
+    // late in a cruise the enemy grows inventive: sometimes a fireship waits
+    this.fireshipAt = (c.stage >= 3 && this.mod !== 'escort' && W.chance(0.25))
+      ? W.rand(12, 18) : null;
     this.ships.concat(this.enemy || []).forEach(s => { s.reload = null; });
     this.log = [];
     this.signals = 3; this.pendingSignal = null; this.closerT = 0;
@@ -435,6 +448,16 @@ W.Fleet = {
   },
 
   resolveShot(shot) {
+    if (shot.fort) {
+      const b = shot.b;
+      if (b.struck || b.sunk) return;
+      b.hull -= W.rand(3, 6);
+      b.morale -= 3;
+      this.floatAt(b, 'THE FORT', '#a02418');
+      if (W.Sound) W.Sound.play('cannon');
+      if (b.hull <= 0) this.markSunk(b);
+      return;
+    }
     const { a, b, doubled } = shot;
     if (a.struck || a.sunk || b.struck || b.sunk) return;
     this._doubled = new Set();
@@ -449,6 +472,76 @@ W.Fleet = {
 
     this.checkStrikes(this.ships);
     this.checkStrikes(this.enemy);
+
+    // a shore battery does not care whose colors fly closest
+    if (this.mod === 'roadstead' && this.battleT >= this.fortNextAt) {
+      this.fortNextAt = this.battleT + 9;
+      const tgt = W.pick(mine);
+      if (tgt) {
+        this.shots.push({ fort: true, b: tgt, t: 0, dur: 0.8 });
+        if (W.chance(0.4)) this.say(`The fort's long guns reach for the ${tgt.name.replace(' (flag)', '')}.`);
+      }
+    }
+
+    // a fireship bears down: burned out by good gunnery, or she grapples
+    if (this.fireshipAt != null && !this.fireship && this.battleT >= this.fireshipAt) {
+      const tgt = W.pick(mine);
+      if (tgt) {
+        this.fireship = { target: tgt, t0: this.battleT, dur: 6, done: null };
+        this.say(`FIRESHIP! The lookout's voice cracks — she bears down on the ${tgt.name.replace(' (flag)', '')}.`);
+        if (W.Sound) W.Sound.play('alarm');
+      }
+      this.fireshipAt = null;
+    }
+    if (this.fireship && !this.fireship.done && this.battleT >= this.fireship.t0 + this.fireship.dur) {
+      const fs = this.fireship;
+      const tgt = fs.target;
+      const shotDown = tgt.trait === 'chasers' ||
+        (tgt.captain.alive && this.capHas(tgt.captain, 'gunnery')) || W.chance(0.35);
+      fs.done = shotDown ? 'burned' : 'struck';
+      fs.doneAt = this.battleT;
+      if (shotDown || tgt.struck || tgt.sunk) {
+        this.say(`Her guns find the fireship's powder — she goes up short of the line, and the sea takes the rest.`);
+        this.floatAt(tgt, 'BURNED OUT', '#8a6a1a');
+      } else {
+        tgt.hull -= W.rand(6, 10);
+        tgt.morale -= 10;
+        this.say(`The fireship grapples the ${tgt.name.replace(' (flag)', '')} alight before she is cut loose.`);
+        this.floatAt(tgt, 'AFIRE', '#c2482e');
+        if (tgt.hull <= 0) this.markSunk(tgt);
+        else if (tgt === flag && !this.crisisUsed && !this.pendingCrisis) {
+          this.crisisUsed = true;
+          this.crisisKind = 'fire';
+          this.pendingCrisis = true;
+          this.crisisModalShown = false;
+        }
+      }
+    }
+
+    // the wind is nobody's ally: once in a battle it may back or veer,
+    // and the weather gauge changes hands with it. A line that is wearing
+    // together — or salted with weatherly ships and captains — is ready.
+    if (!this.windShifted && this.battleT >= 15 && this.battleT <= 45 && W.chance(0.015)) {
+      this.windShifted = true;
+      const capW = this.ships.filter(s => s.captain.alive && this.capHas(s.captain, 'weatherly')).length;
+      const shipW = this.ships.filter(s => s.trait === 'weatherly' && !s.struck && !s.sunk).length;
+      const ready = this.wearT > 0 || W.chance(0.18 * (capW + shipW));
+      if (this.gauge) {
+        if (ready) {
+          this.say('The wind backs two points — but the line was ready for it, and holds the gauge.');
+        } else {
+          this.gauge = false;
+          this.say('The wind backs two points. The gauge is theirs now.');
+          this.ships.forEach(s => { s.morale -= 4; });
+        }
+      } else if (ready || W.chance(0.5)) {
+        this.gauge = true;
+        this.say('The wind veers — and the gauge is yours. The line cheers.');
+        this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 5); });
+      } else {
+        this.say('The wind veers, then thinks better of it. The gauge stays theirs.');
+      }
+    }
 
     const eFlag = this.enemy.find(e => e.isEnemyFlag);
     if (eFlag && !eFlag.struck && !eFlag.sunk && !this.spineBroke &&
@@ -845,6 +938,7 @@ W.Fleet = {
     const flag = this.ships[0];
     const def = this.CRISIS_DEFS[this.crisisKind || 'fire'];
     if (kind === 'saved') {
+      if (this.campaign) this.campaign.crisesSaved = (this.campaign.crisesSaved || 0) + 1;
       this.say(def.saved);
       this.ships.forEach(s => { s.morale = Math.min(80, s.morale + 8); });
     } else if (kind === 'failed') {
@@ -928,7 +1022,7 @@ W.Fleet = {
       finalStage: this.campaign ? this.campaign.stage >= this.STAGES.length : true,
       prizeShips: win ? this.enemy.filter(s => s.struck).map(s => s.cls) : [],
       gold: win
-        ? Math.round((30 + prizes * 20) * (this.mod === 'hunt' ? 1.5 : 1)) + (this.mod === 'escort' ? 30 : 0)
+        ? Math.round((30 + prizes * 20) * (this.mod === 'hunt' ? 1.5 : 1)) + (this.mod === 'escort' ? 30 : 0) + (this.mod === 'roadstead' ? 40 : 0)
         : 0,
     };
     this.say(win ? `The enemy line is broken. ${prizes} prize${prizes === 1 ? '' : 's'} taken.`
@@ -951,8 +1045,110 @@ W.Fleet = {
       desc: 'The merchants pay ⚜30 for protection, and the enemy comes lighter by one ship — but there is less to take.' },
     hunt: { name: 'The commodore\'s hunt', type: 'battle',
       desc: 'Chase down a prize-rich line. Half again the prize money — against crews with their blood up.' },
+    roadstead: { name: 'Cut them out of the roadstead', type: 'battle',
+      desc: 'The enemy shelters under a shore battery, whose guns will play on your line the whole action. The Admiralty pays ⚜40 above prize money for insolence done well.' },
     storm: { name: 'The storm passage', type: 'storm',
       desc: 'Run the weather instead of the enemy. No action at all — but the sea taxes hulls and hands, and storms breed emergencies of their own.' },
+  },
+
+  // between actions the port has its own weather: people, coin, and news
+  PORT_EVENTS: {
+    pressgang: {
+      name: 'The press-gang works the taverns', cost: 0,
+      text: 'The port admiral offers you the sweepings of the waterfront — pressed men, unwilling but able-bodied. Your bosun reckons a dozen of them; he also reckons the squadron will grumble about it.',
+      a: { label: 'Take the pressed men (+12 hands, the people grumble)' },
+      b: { label: 'Volunteers only (+4 hands)' },
+    },
+    nightashore: {
+      name: 'A night ashore', cost: 15,
+      text: 'The people have earned a run ashore, and the taverns know it. It will cost the purse something, and sailors ashore find trouble the sea never showed them.',
+      a: { label: 'Open the purse (⚜15 — spirits rise, but a brawl may cost hands)' },
+      b: { label: 'Keep them aboard (safe, and dull)' },
+    },
+    fisherman: {
+      name: 'A fisherman with sharp eyes', cost: 10,
+      text: 'A grizzled fisherman rows out. For a coin he will tell you everything he has seen of the enemy squadron working these waters — and his sort see everything.',
+      a: { label: 'Pay him ⚜10 (every enemy intent revealed at the next muster)' },
+      b: { label: 'Wave him off' },
+    },
+    yardfire: {
+      name: 'Fire at the navy yard', cost: 0,
+      text: 'Smoke rises from the sheer-hulk by the yard. Your boats could reach it before the yard\'s own people do.',
+      a: { label: 'Send your boats (the yard remembers its friends — but fires burn helpers too)' },
+      b: { label: 'Look to your own ships' },
+    },
+    wager: {
+      name: 'A merchant house makes a wager', cost: 20,
+      text: 'A prize-agent with rings on his fingers offers odds: stake ⚜20, and if the squadron takes two prizes or better in its next action, he pays back sixty.',
+      a: { label: 'Stake ⚜20' },
+      b: { label: 'Decline politely' },
+    },
+  },
+
+  portChoice(which) {
+    const c = this.campaign;
+    const ev = this.PORT_EVENTS[c.portEvent];
+    c.portEvent = null;
+    if (!ev) return '';
+    const id = c.portEventId;
+    c.portEventId = null;
+    if (which === 'a' && ev.cost > c.gold) {
+      return 'The purse cannot bear it — the chance passes.';
+    }
+    if (id === 'pressgang') {
+      if (which === 'a') {
+        c.hands += 12; c.portMorale = -4;
+        this.chron('Pressed a dozen hands out of the taverns; the squadron grumbles.');
+        return 'A dozen pressed men come aboard under guard, cursing the service. The bosun is pleased; nobody else is.';
+      }
+      c.hands += 4;
+      this.chron('Four volunteers signed aboard.');
+      return 'Four volunteers sign the books — men who chose the sea, and will fight like it.';
+    }
+    if (id === 'nightashore') {
+      if (which === 'a') {
+        c.gold -= 15; c.portMorale = 6;
+        let line = 'The people come back singing, sunburnt and poorer, and the ships are the happier for it.';
+        if (W.chance(0.35)) {
+          c.hands = Math.max(0, c.hands - 2);
+          line += ' Two of them come back on stretchers after a disagreement about a card game.';
+        }
+        this.chron('Gave the people a night ashore.');
+        return line;
+      }
+      return 'The people take it quietly, which is worse than complaint.';
+    }
+    if (id === 'fisherman') {
+      if (which === 'a') {
+        c.gold -= 10; c.portIntel = true;
+        this.chron('Bought a fisherman\'s news of the enemy.');
+        return 'He talks for an hour: sail numbers, rigs, which captain flogs and which drinks. At the next muster, nothing about them will surprise you.';
+      }
+      return 'He rows off unhurried. What he knows, someone else will pay for.';
+    }
+    if (id === 'yardfire') {
+      if (which === 'a') {
+        if (W.chance(0.6)) {
+          const worst = this.ships.slice().sort((x, y) => (x.hull / x.hullMax) - (y.hull / y.hullMax))[0];
+          if (worst) worst.hull = Math.min(worst.hullMax, worst.hull + 12);
+          this.chron('Fought the yard fire; the yard returned the favor in oak.');
+          return 'Your boats reach the hulk first and drown the fire. The master shipwright says nothing, but a work gang spends the night on your worst-hurt ship, free of charge.';
+        }
+        c.hands = Math.max(0, c.hands - 2);
+        this.chron('Fought the yard fire; it cost two hands hurt.');
+        return 'The fire is beaten, but it bites back — two of your people are carried off with burns. The yard is grateful; gratitude does not stand watches.';
+      }
+      return 'The yard\'s own people get it out. Your ships ride untouched.';
+    }
+    if (id === 'wager') {
+      if (which === 'a') {
+        c.gold -= 20; c.wager = true;
+        this.chron('Staked ⚜20 with a prize-agent on the next action.');
+        return 'He writes it in a little book with a gold pencil. Two prizes or better, and sixty comes back.';
+      }
+      return 'He pockets the odds with a shrug. Money finds him either way.';
+    }
+    return '';
   },
 
   genOptions() {
@@ -962,7 +1158,7 @@ W.Fleet = {
       return [Object.assign({ id: 'patrol' }, this.ASSIGNMENTS.patrol,
         { name: 'The last action', desc: 'The enemy flag is at sea with a ship of the line. There is only one order this could ever be.' })];
     }
-    const pool = ['escort', 'hunt', 'storm'];
+    const pool = ['escort', 'hunt', 'storm'].concat(next >= 3 ? ['roadstead'] : []);
     const second = W.pick(pool);
     return [Object.assign({ id: 'patrol' }, this.ASSIGNMENTS.patrol),
       Object.assign({ id: second }, this.ASSIGNMENTS[second])];
@@ -1003,6 +1199,15 @@ W.Fleet = {
   settleAction() {
     const c = this.campaign;
     c.gold = Math.round(c.gold) + this.summary.gold;
+    if (c.wager) {
+      c.wager = false;
+      if ((this.summary.prizes | 0) >= 2) {
+        c.gold += 60;
+        this.chron('The wager pays: the prize-agent hands over ⚜60 with a bow.');
+      } else {
+        this.chron('The wager is lost; the agent keeps the stake and his smile.');
+      }
+    }
     for (const s of this.ships) {
       if (!s.captain.alive || s.captain.name === 'You') continue;
       if (s.sunk) {
@@ -1050,11 +1255,16 @@ W.Fleet = {
       }
     }
     const oldFlag = this.ships[0];
+    c.shipsLost = (c.shipsLost || 0) + this.ships.filter(x => x.struck || x.sunk).length;
     this.ships = this.ships.filter(s => !s.struck && !s.sunk);
     if (this.ships.length && this.ships[0] !== oldFlag) {
       this.say(`Your flag now flies aboard ${this.ships[0].name}.`);
     }
     c.lieutenantOffer = W.chance(0.45);
+    if (W.chance(0.45)) {
+      c.portEventId = W.pick(Object.keys(this.PORT_EVENTS));
+      c.portEvent = c.portEventId;
+    }
     c.actionOptions = this.genOptions();
     this.summary.settled = true;
     this.saveCruise();
@@ -1070,6 +1280,7 @@ W.Fleet = {
     ship.hull = Math.round(ship.hullMax * 0.45);
     ship.hands = 0; // she sails when you give her a prize crew
     this.ships.push(ship);
+    c.prizesTaken = (c.prizesTaken || 0) + 1;
     this.chron(`Took a ${this.CLASSES[cls].name} into service, christened ${nm}, under Captain ${capt.name}.`);
     return true;
   },
@@ -1091,6 +1302,7 @@ W.Fleet = {
     const credit = Math.round((this.PRIZE_VALUE[old.cls] || 50) *
       (0.35 + 0.4 * W.clamp(old.hull / old.hullMax, 0, 1)));
     c.gold += credit;
+    c.prizesTaken = (c.prizesTaken || 0) + 1;
     this.ships[idx] = ship;
     this.chron(`Sent ${old.name} into port (the yard pays ⚜${credit}) and shifted her people ` +
       `into a prize ${this.CLASSES[cls].name}, christened ${nm}.`);
@@ -1103,8 +1315,46 @@ W.Fleet = {
   },
 
   sellPrize(cls) {
+    this.campaign.prizesSold = (this.campaign.prizesSold || 0) + 1;
     this.campaign.gold += this.PRIZE_VALUE[cls] || 50;
     this.chron(`Sent in a ${this.CLASSES[cls].name} for ⚜${this.PRIZE_VALUE[cls] || 50}.`);
+  },
+
+  // the Gazette reads the cruise's ledger and passes the town's judgment
+  gazette(won) {
+    const c = this.campaign || {};
+    const prizes = (c.prizesTaken || 0) + (c.prizesSold || 0);
+    const lost = c.shipsLost || 0;
+    const stars = this.ships.filter(s => s.captain && s.captain.distinguished).length;
+    const crises = c.crisesFaced || 0;
+    const savedAll = crises > 0 && (c.crisesSaved || 0) >= crises;
+    const lines = [];
+    let head;
+    if (won) {
+      let score = 2;
+      if (lost === 0) score += 2; else if (lost === 1) score += 1;
+      if (prizes >= 6) score += 1;
+      if (stars >= 3) score += 1;
+      if (savedAll) score += 1;
+      head = score >= 6 ? 'A FAMOUS VICTORY'
+        : score >= 4 ? 'A HANDSOME CRUISE'
+        : 'A HARD-BOUGHT VICTORY';
+      lines.push(lost === 0
+        ? 'The commodore brings home every ship that sailed — a thing the service will talk about.'
+        : `${lost} of the squadron's ships ${lost === 1 ? 'was' : 'were'} lost upon the cruise.`);
+    } else {
+      head = (c.stage || 1) >= this.STAGES.length ? 'LOST IN SIGHT OF THE END'
+        : 'THE SEA KEEPS ITS OWN ACCOUNTS';
+      lines.push(`The squadron was lost at its ${['first', 'second', 'third', 'fourth', 'last'][Math.min((c.stage || 1) - 1, 4)]} action.`);
+    }
+    lines.push(prizes === 0 ? 'No prizes fell to the squadron.'
+      : `${prizes} prize${prizes === 1 ? '' : 's'} fell to the squadron` +
+        (c.prizesTaken ? `, ${c.prizesTaken} taken into the service` : '') + '.');
+    if (stars) lines.push(`${stars} of her captains ${stars === 1 ? 'is' : 'are'} mentioned by name.`);
+    if (crises) lines.push(savedAll
+      ? `Every emergency aboard the flag — ${crises} of them — was beaten.`
+      : `The flagship fought ${crises} ${crises === 1 ? 'emergency' : 'emergencies'} of her own.`);
+    return { head, lines };
   },
 
   hireLieutenant() {

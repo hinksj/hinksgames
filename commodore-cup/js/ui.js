@@ -486,8 +486,8 @@
     var mode = handChooseMode(st);
     if (mode) {
       var what = mode.type === 'passAll'
-        ? 'Choose a card to pass ' + (mode.dir === 1 ? 'left' : 'right')
-        : (mode.mode === 'discard' ? 'Choose a card to discard' : 'Choose a card to give');
+        ? 'Choose a card to pass ' + (mode.dir === 1 ? 'left' : 'right') + ' — everyone passes one'
+        : (mode.mode === 'discard' ? 'You alone must discard one card' : 'Choose a card to give');
       el.innerHTML = '<span class="msg">' + what + ' (' + esc(mode.source || '') + ') — click a card</span>';
       return;
     }
@@ -586,7 +586,17 @@
         if (pend.needCards && pend.then !== 'peek' && !p.hand.length) return false;
         return true;
       });
-      box.innerHTML = '<h3>' + esc(pend.source) + '</h3><div class="sub">choose a player</div>' +
+      var subs = {
+        forceDiscard: 'choose ONE player — they alone discard one card of their choice (picking yourself slims your own hand)',
+        steal: 'choose one player to steal a random card from',
+        peek: 'choose one player whose hand you\'ll see',
+        swapHands: 'choose one player to swap entire hands with',
+        forceDraw: 'choose one player who must draw 2 cards',
+        skip: 'choose one player to sit out their next turn',
+        giveTo: 'choose one player to receive your card'
+      };
+      box.innerHTML = '<h3>' + esc(pend.source) + '</h3><div class="sub">' +
+        (subs[pend.then] || 'choose a player') + '</div>' +
         '<div class="choices" id="mCh"></div>';
       var ch = box.querySelector('#mCh');
       opts.forEach(function (p) {
