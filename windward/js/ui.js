@@ -1131,7 +1131,15 @@ W.UI = {
       squadron of two to four ships. What you do not spend sails with you as the purse.
       <b>⚜ ${left}</b> remains.</p>
       <p><b>Your own commission</b> — you command the first ship you buy. Your gift as a captain:
-      <select data-owntrait>${traitOpts(cm.ownTrait)}</select></p>
+      <select data-owntrait>${traitOpts(cm.ownTrait)}</select><br>
+      <i class="sdesc">${({
+        gunnery: 'Your broadsides throw 20% more metal and your gun crews reload faster.',
+        boarder: 'Twice as likely to carry a ship when you lead the boarders over the rail.',
+        ironsides: 'Your crew\'s morale never breaks below 20 while you stand the quarterdeck.',
+        weatherly: 'Better odds of holding the weather gauge — the upwind advantage — as an action opens.',
+      })[cm.ownTrait]}</i></p>
+      <p class="sdesc"><b>A captain's gift</b>, for reading the slate below: ${Object.keys(F.TRAITS)
+        .map(k => `<b>${F.TRAITS[k].name}</b> — ${F.TRAITS[k].desc}`).join(' · ')}</p>
       <h4>THE YARD</h4>`;
     cm.yard.forEach((h, i) => {
       const b = cm.bought.find(x => x.yardIdx === i);
@@ -1189,7 +1197,7 @@ W.UI = {
     });
     this.drawThumbs(m);
     const own = m.querySelector('[data-owntrait]');
-    if (own) own.addEventListener('change', () => { cm.ownTrait = own.value; });
+    if (own) own.addEventListener('change', () => { cm.ownTrait = own.value; this.openCommission(); });
     m.querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => {
       const i = +b.dataset.buy;
       let nm = F.suggestName(), guard = 0;

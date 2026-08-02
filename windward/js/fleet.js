@@ -48,7 +48,7 @@ W.Fleet = {
   campaign: null,
 
   TRAITS: {
-    gunnery:   { name: 'Gunnery Master', desc: '+20% broadside weight.' },
+    gunnery:   { name: 'Gunnery Master', desc: '+20% broadside weight and a faster reload.' },
     boarder:   { name: 'Boarder',        desc: 'Twice as likely to carry a ship by boarding.' },
     ironsides: { name: 'Old Ironsides',  desc: 'His crew\'s morale never breaks below 20 while he stands.' },
     weatherly: { name: 'Weatherly',      desc: 'Better odds of holding the weather gauge at the start.' },
