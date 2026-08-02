@@ -220,8 +220,9 @@ W.UI = {
       els.pausehint.textContent = `⚠ error: ${W.Main.lastErr} (please report)`;
       els.pausehint.className = 'paused';
     } else {
-      els.pausehint.textContent = W.paused && W.state.mode === 'combat' ? '⏸ PAUSED (SPACE)' : 'SPACE to pause';
-      els.pausehint.className = W.paused && W.state.mode === 'combat' ? 'paused' : '';
+      const pmode = W.state.mode === 'combat' || W.state.mode === 'crisis';
+      els.pausehint.textContent = W.paused && pmode ? '⏸ PAUSED — SPACE to begin' : 'SPACE to pause';
+      els.pausehint.className = W.paused && pmode ? 'paused' : '';
     }
 
     els.escape.classList.toggle('hidden', !(W.state.mode === 'combat' && W.Combat.active));
@@ -567,6 +568,7 @@ W.UI = {
         <div class="gterm"><b>Signal hoists</b> — your only voice mid-battle, three per action, chosen from the signal book: ENGAGE MORE CLOSELY (the line fights harder), CONCENTRATE ON ONE SHIP (every gun on her), WEAR TOGETHER (a defensive turn), and DISCONTINUE THE ACTION (withdraw in good order — no prizes, no rout).</div>
         <div class="gterm"><b>The crisis</b> — if the flagship is badly hurt, you take command below decks: the full ship interior, fires and flooding, your own hands on it.</div></div>
         <div class="gsec"><h4>THE LONG GAME</h4>
+        <div class="gterm"><b>Long guns & carronades</b> — guns were not all alike. Long guns keep their full weight of metal at any range. Carronades — sailors called them smashers — are short, light guns that hit terribly hard once ships lie alongside, but tell for little at a distance. A ship's size also sets the weight of each ball: a cutter throws little 6-pound shot, a frigate 18s, a ship of the line 32s — that is the 'weight of metal' in the muster's matchup lines.</div>
         <div class="gterm"><b>⚜ Doubloons</b> — money, from prizes and events. Spent at free ports.</div>
         <div class="gterm"><b>Provisions</b> — one is eaten every sail. At zero the crew starves and <b>mutiny</b> brews.</div>
         <div class="gterm"><b>Shells</b> — ammunition for mortar-class guns only. Everything else shoots free.</div>
@@ -972,7 +974,9 @@ W.UI = {
       const st = F.SHIP_TRAITS[s.trait];
       body += `<div class="storerow">${this.captPortrait(s.captain.name)}<b>${i + 1}. ${s.name}</b>
         ${this.shipThumb(s.cls)}
-        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, ${s.hullMax} hull,
+        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns
+        <span data-tip="${F.BATTERIES[s.battery || 'long'].desc}">(<i>${F.BATTERIES[s.battery || 'long'].name.toLowerCase()}</i>)</span>,
+        ${s.hullMax} hull,
         ${spiritWord(s.morale)} crew · <i>${st.name}</i> (${st.desc})
         · Capt. ${s.captain.name}, <i>${t.name}</i>: ${t.desc}<br>
         <b style="color:#a02418">${s.intel ? 'Your glass says she ' + F.intentWord(s.order.tactic) + '.' : 'Her intent is unclear.'}</b>
@@ -1004,7 +1008,9 @@ W.UI = {
       const handsPct = Math.round(100 * s.hands / s.complement);
       body += `<div class="storerow">${this.captPortrait(s.captain.name)}<b>${i + 1}. ${s.name}</b>
         ${this.shipThumb(s.cls)}
-        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns, hull ${Math.ceil(s.hull)}/${s.hullMax},
+        <span class="sdesc"><b>${F.CLASSES[s.cls].name}</b> — ${s.guns} guns
+        <span data-tip="${F.BATTERIES[s.battery || 'long'].desc}">(<i>${F.BATTERIES[s.battery || 'long'].name.toLowerCase()}</i>)</span>,
+        hull ${Math.ceil(s.hull)}/${s.hullMax},
         crew ${handsPct}%${handsPct < 60 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
         · <i>${F.SHIP_TRAITS[s.trait].name}</i>
         · Capt. ${s.captain.name}${s.captain.distinguished ? ' ★' : ''},
@@ -1059,7 +1065,10 @@ W.UI = {
     const def = W.Fleet.CRISIS_DEFS[W.Fleet.crisisKind || 'fire'];
     this.modal({
       title: `⚠ ${def.banner.charAt(0) + def.banner.slice(1).toLowerCase()}!`,
-      body: `<p>${def.intro}</p><p class="sub">The line holds formation while you fight it.</p>`,
+      body: `<p>${def.intro}</p>
+        <p><b>How to fight it:</b> ${def.how}</p>
+        <p class="sub">You begin paused — press SPACE when you have read the deck.
+        The line holds formation while you fight it.</p>`,
       buttons: [{ label: 'Below decks!', fn: () => { this.closeModal(); W.Fleet.startCrisis(); } }],
     });
   },
@@ -1157,6 +1166,7 @@ W.UI = {
       const isFlag = b && cm.bought[0] === b;
       body += `<div class="storerow">${this.shipThumb(h.cls)}<b>${F.CLASSES[h.cls].name}</b>
         <span class="sdesc">${F.SHIP_TRAITS[h.trait].name} — ${F.SHIP_TRAITS[h.trait].desc}
+        · <span data-tip="${F.BATTERIES[h.battery].desc}"><i>${F.BATTERIES[h.battery].name.toLowerCase()}</i></span>
         · ⚜${h.price}</span>`;
       if (b) {
         body += `<span class="ctlgrp">${isFlag ? '<b>⚑ your flag</b>' : ''}
@@ -1193,7 +1203,7 @@ W.UI = {
               const captain = i === 0
                 ? { name: 'You', trait: cm.ownTrait, alive: true }
                 : cm.slate.find(cp => cp.name === b.captName);
-              return { cls: h.cls, trait: h.trait, name: b.name, captain };
+              return { cls: h.cls, trait: h.trait, battery: h.battery, name: b.name, captain };
             });
             const ashore = cm.slate.filter(cp => !takenCapts.has(cp.name));
             this.commission = null;
@@ -1272,7 +1282,8 @@ W.UI = {
       body += `<div class="storerow">${this.captPortrait(sh.captain.name, 'sm')}${this.shipThumb(sh.cls)}<b>${sh.name}</b>
         <span class="sdesc">${F.CLASSES[sh.cls].name} ·
           hull ${Math.ceil(sh.hull)}/${sh.hullMax} ·
-          guns ${sh.guns}/${sh.gunsMax}${sh.guns < sh.gunsMax ? ' <b style="color:#a02418">(dismounted)</b>' : ''} ·
+          guns ${sh.guns}/${sh.gunsMax}${sh.guns < sh.gunsMax ? ' <b style="color:#a02418">(dismounted)</b>' : ''}
+          (<i>${F.BATTERIES[sh.battery || 'long'].name.toLowerCase()}</i>) ·
           hands ${sh.hands}/${sh.complement}${sh.hands < sh.complement * 0.6 ? ' <b style="color:#a02418">(short-handed)</b>' : ''}
           · Capt. <select data-capt="${i}">${capOpts}</select>
           ${sh.captain.alive ? '' : ' †'}
@@ -1296,6 +1307,9 @@ W.UI = {
             <i>guns</i>
             ${sh.guns < sh.gunsMax ? `<button data-gun="${i}" ${c.gold < 8 ? 'disabled' : ''}>remount ⚜8</button>` : ''}
             ${sh.gunsMax < (F.CLASSES[sh.cls].guns + 2) ? `<button data-buygun="${i}" ${c.gold < 45 ? 'disabled' : ''}>add ⚜45</button>` : ''}
+            <button data-rearm="${i}" ${c.gold < 25 ? 'disabled' : ''}
+              data-tip="<b>Re-arm</b> — swap her battery: ${F.BATTERIES[(sh.battery || 'long') === 'long' ? 'carronade' : 'long'].desc}">
+              → ${(sh.battery || 'long') === 'long' ? 'carronades' : 'long guns'} ⚜25</button>
           </span>
           ${i > 0 ? `<button data-flag="${i}" data-tip="<b>Shift your flag</b> — this ship becomes the flagship: hers are the crises you fight by hand.">hoist flag here</button>` : ''}
         </span></div>`;
@@ -1350,6 +1364,10 @@ W.UI = {
     }));
     m.querySelectorAll('[data-buygun]').forEach(b => b.addEventListener('click', () => {
       F.buyGun(F.ships[+b.dataset.buygun]);
+      this.openRefit();
+    }));
+    m.querySelectorAll('[data-rearm]').forEach(b => b.addEventListener('click', () => {
+      F.reArm(F.ships[+b.dataset.rearm]);
       this.openRefit();
     }));
     m.querySelectorAll('[data-take]').forEach(b => b.addEventListener('click', () => {

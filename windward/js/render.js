@@ -132,8 +132,8 @@ W.Render = {
     if (W.state.mode === 'crisis' && W.player) {
       this.drawShip(W.player, dt);
       this.drawParts(dt);
-      ctx.fillStyle = 'rgba(6,13,21,0.6)';
-      ctx.fillRect(250, 6, 500, 42);
+      ctx.fillStyle = 'rgba(6,13,21,0.65)';
+      ctx.fillRect(230, 6, 540, 56);
       ctx.fillStyle = '#ff8a5c';
       ctx.font = 'bold 16px "IM Fell English", Georgia';
       ctx.textAlign = 'center';
@@ -141,7 +141,25 @@ W.Render = {
       ctx.fillText(`${cdef.banner} — ${Math.max(0, Math.ceil(W.Fleet.crisisTimer))}s`, 500, 24);
       ctx.font = '12px "IM Fell English", Georgia';
       ctx.fillStyle = '#cfe3f0';
-      ctx.fillText(cdef.sub, 500, 42);
+      ctx.fillText(cdef.sub, 500, 40);
+      // the running to-do list: what still stands between you and 'saved'
+      {
+        const P = W.player;
+        const fires = P.rooms.filter(rm => rm.fire > 0).length;
+        const leaks = P.rooms.filter(rm => rm.breach).length;
+        const wet = P.rooms.filter(rm => rm.water > 30).length;
+        const foes = P.intruders.filter(cc => cc.hp > 0).length;
+        const sailsBad = P.systems.sails && P.systems.sails.damage > 0;
+        const parts = [];
+        if (foes) parts.push(`${foes} boarder${foes > 1 ? 's' : ''} to cut down`);
+        if (fires) parts.push(`${fires} room${fires > 1 ? 's' : ''} burning`);
+        if (leaks) parts.push(`${leaks} hole${leaks > 1 ? 's' : ''} to plug`);
+        if (wet) parts.push(`water in ${wet} room${wet > 1 ? 's' : ''}`);
+        if (sailsBad && (W.Fleet.crisisKind === 'mast')) parts.push('sails to mend (crew to the Sails room)');
+        ctx.fillStyle = parts.length ? '#8fe3a8' : '#cfe3f0';
+        ctx.font = 'bold 12px "IM Fell English", Georgia';
+        ctx.fillText(parts.length ? 'STILL TO DO: ' + parts.join(' · ') : 'ALL CLEAR — she is saved…', 500, 57);
+      }
       return;
     }
 
@@ -883,8 +901,9 @@ W.Render = {
       ctx.stroke();
     }
 
-    // meeple: body capsule + head (Brass get a square head)
-    ctx.fillStyle = col;
+    // meeple: body capsule + head (Brass get a square head).
+    // Intruders are unmistakable: enemy red, marked FOE.
+    ctx.fillStyle = isIntruder ? '#a02418' : col;
     ctx.strokeStyle = isIntruder ? '#ff3b3b' : '#0a1018';
     ctx.lineWidth = 1.6;
     ctx.beginPath();
@@ -895,6 +914,13 @@ W.Render = {
     if (c.race === 'brass') ctx.rect(x - 3.6, y - 9.6, 7.2, 7.2);
     else ctx.arc(x, y - 6, 4.1, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
+
+    if (isIntruder) {
+      ctx.fillStyle = '#ff6a5c';
+      ctx.font = 'bold 9px Georgia';
+      ctx.textAlign = 'center';
+      ctx.fillText('FOE', x, y - 14);
+    }
 
     const frac = W.clamp(c.hp / c.maxHp, 0, 1);
     ctx.fillStyle = '#0a141f';

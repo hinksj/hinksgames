@@ -73,6 +73,13 @@ W.Fleet = {
     screen: { name: 'Screen the flag', desc: 'Stay by the flagship and take fire meant for her. Little of your own gunnery.' },
   },
 
+  // guns were not all alike: long guns keep their reach, carronades trade it
+  // for close-in weight
+  BATTERIES: {
+    long:      { name: 'Long guns',  desc: 'Standard battle guns: full weight of metal at any range.' },
+    carronade: { name: 'Carronades', desc: 'Smashers: short, light guns that throw murderous weight once alongside (about ten seconds in), but tell for little at a distance and are near useless standing off.' },
+  },
+
   // the classic doctrines survive as quick-set templates over per-ship orders
   PRESETS: {
     breakline: {
@@ -102,7 +109,7 @@ W.Fleet = {
       complement: comp, hands: comp,
       morale: side === 'player' ? 70
         : ({ cutter: 56, sloop: 60, brig: 63, frigate: 68, shipofline: 72 }[cls] || 64),
-      struck: false, sunk: false, rakeDone: false,
+      struck: false, sunk: false, rakeDone: false, battery: 'long',
       order: { tactic: 'engage', target: 0 },
       captain: { name: captName, trait, alive: true },
     };
@@ -117,6 +124,7 @@ W.Fleet = {
     const shipTraits = Object.keys(this.SHIP_TRAITS);
     const yard = ['cutter', 'sloop', 'sloop', 'brig', 'brig', 'frigate'].map(cls => ({
       cls, trait: W.pick(shipTraits), price: this.PRIZE_VALUE[cls],
+      battery: W.chance(0.3) ? 'carronade' : 'long',
     }));
     const slate = [];
     while (slate.length < 4) {
@@ -137,6 +145,7 @@ W.Fleet = {
       const ship = this.makeShip(sp.cls, i === 0 ? `${sp.name} (flag)` : sp.name,
         sp.captain.name, sp.captain.trait, 'player', sp.trait);
       ship.captain = sp.captain;
+      ship.battery = sp.battery || 'long';
       return ship;
     });
     this.setupAction();
@@ -185,6 +194,7 @@ W.Fleet = {
       else if (e.cls === 'frigate' || e.cls === 'shipofline') tactic = W.pick(['engage', 'cut']);
       if (e.captain.trait === 'boarder') tactic = 'board';
       e.order = { tactic, target: Math.min(i, this.ships.length - 1) };
+      e.battery = W.chance(tactic === 'board' || e.cls === 'cutter' ? 0.5 : 0.15) ? 'carronade' : 'long';
       e.intel = W.chance(0.75); // your lookouts read her rig and her history — usually
     });
     this.ships.forEach((s, i) => {
@@ -487,6 +497,7 @@ W.Fleet = {
     if (ship.captain && ship.captain.distinguished) w *= 1.08;
     if (ship.trait === 'dry') w *= 1.1;
     if (ship.trait === 'crank') w *= 0.9;
+    if (ship.battery === 'carronade') w *= tactic === 'range' ? 0.5 : 1.12;
     const out = { engage: 1, cut: 1.05, range: 0.6, board: 1.1, screen: 0.7 };
     if (tactic) w *= out[tactic] || 1;
     return w;
@@ -553,6 +564,10 @@ W.Fleet = {
     if (a.captain.distinguished) dmg *= 1.08;
     if (a.trait === 'dry') dmg *= 1.1;
     if (a.trait === 'crank') dmg *= 0.9;
+    if (a.battery === 'carronade') {
+      // smashers: murderous alongside, feeble at a distance
+      dmg *= tac === 'range' ? 0.45 : (this.battleT >= 10 ? 1.3 : 0.6);
+    }
     if (a.spineBroken) dmg *= 0.75; // a great ship fighting alone, half-hearted
     if (aIsMine && this.closerT > 0) dmg *= 1.18;
     if (aIsMine && this.wearT > 0) dmg *= 0.9;
@@ -695,6 +710,7 @@ W.Fleet = {
         + 'color. Take command of the damage party before the fire finds the magazine.',
       saved: 'The fire is beaten out — the line cheers the flag.',
       failed: 'The fire reaches the orlop before it dies. The flagship is badly hurt.',
+      how: 'Click a sailor, then click a burning room — they beat out the flames where they stand. Carpenters (square heads) resist the heat best. If a room shows a breach, crew there will plug it.',
     },
     flood: {
       banner: 'THE FLAGSHIP IS TAKING WATER',
@@ -703,6 +719,7 @@ W.Fleet = {
         + 'Take command of the damage party before she settles.',
       saved: 'The holes are plugged and the pumps gain. She swims — the line cheers the flag.',
       failed: 'She is saved, barely, waterlogged and wallowing. It costs hull and hands.',
+      how: 'Click a sailor, then click a flooded room — they plug the hole where they stand. Divers work fastest in the water, and the Pumps room drains her while it is manned.',
     },
     boarders: {
       banner: 'BOARDERS ON THE FLAGSHIP',
@@ -711,6 +728,7 @@ W.Fleet = {
         + 'Take command below — repel them hand to hand.',
       saved: 'The boarders are thrown back into the sea. The line cheers the flag.',
       failed: 'They are driven off at last, but they leave the flagship bloodied.',
+      how: 'The enemy are the RED figures marked FOE. Click a sailor, then click a room with foes in it — your people fight whoever shares their room. Marines hit hardest; pull badly wounded sailors out.',
     },
     mast: {
       banner: 'THE RIGGING IS SHOT THROUGH',
@@ -719,6 +737,7 @@ W.Fleet = {
         + 'burning festoons. If the sails cannot be worked, the flagship is a floating target.',
       saved: 'Jury-rigged and drawing again — she answers her helm. The line cheers the flag.',
       failed: 'She fights the rest of the action half-crippled, slow and shaken.',
+      how: 'Send crew to the Sails room to mend the rigging, and put out any fires on the way. Carpenters mend fastest.',
     },
     magazine: {
       banner: 'FIRE NEAR THE MAGAZINE',
@@ -727,6 +746,7 @@ W.Fleet = {
         + 'the powder. Every second of this fire is borrowed.',
       saved: 'The hold is drowned and the powder never knew. The line breathes again.',
       failed: 'The fire brushes the magazine before it dies.',
+      how: 'Click sailors onto the burning hold rooms NOW — every second of this one is borrowed. Carpenters resist the heat best.',
     },
   },
 
@@ -740,37 +760,42 @@ W.Fleet = {
     // the damage party reflects the flagship's muster: short-handed ships send
     // fewer; a full complement sends a specialist for the trouble at hand
     const ratio = flag ? flag.hands / flag.complement : 1;
-    const party = [{ race: 'human' }, { race: 'human' }, { race: 'tideborn' }];
+    // a real damage party: four hands, five with a decently manned flagship,
+    // and the specialist for the trouble at hand comes along much sooner
+    const party = [{ race: 'human' }, { race: 'human' }, { race: 'tideborn' }, { race: 'brass' }];
     if (ratio < 0.5) party.pop();
-    if (ratio >= 0.85) {
+    if (ratio >= 0.7) {
       party.push({ race: { fire: 'brass', mast: 'brass', magazine: 'brass',
         flood: 'tideborn', boarders: 'stormtouched' }[kind] || 'human' });
     }
     party.forEach(spec => W.player.addCrewSpec(spec));
     if (kind === 'fire') {
-      [W.pick(W.player.rooms), W.pick(W.player.rooms)].forEach(r => { r.fire = Math.max(r.fire, 55); });
+      [W.pick(W.player.rooms), W.pick(W.player.rooms)].forEach(r => { r.fire = Math.max(r.fire, 45); });
       const leak = W.pick(W.player.rooms.filter(r => r.y >= 2));
       if (leak) { leak.breach = true; leak.breachWork = 0; }
-      this.crisisTimer = 45;
+      this.crisisTimer = 60;
     } else if (kind === 'flood') {
       const below = W.player.rooms.filter(r => r.y >= 2);
       for (let i = 0; i < 3; i++) {
         const r = below[i % below.length];
         r.breach = true; r.breachWork = 0; r.water = Math.max(r.water, 25);
       }
-      this.crisisTimer = 50;
+      this.crisisTimer = 65;
     } else if (kind === 'boarders') {
-      for (let i = 0; i < 3; i++) {
+      // a wave you can beat: two, three deep in a cruise, and none at full fight
+      const n = (this.campaign && this.campaign.stage >= 3) ? 3 : 2;
+      for (let i = 0; i < n; i++) {
         const room = W.pick(W.player.rooms);
         const race = W.pick(['stormtouched', 'human']);
         const b = new W.Crew(race, W.nameFor(), 'enemy');
         b.ship = W.player;
         b.roomIdx = room.idx;
+        b.hp = Math.round(b.maxHp * 0.85);
         const ctr = W.player.center(room);
         b.px = ctr.x; b.py = ctr.y;
         W.player.intruders.push(b);
       }
-      this.crisisTimer = 60;
+      this.crisisTimer = 75;
     } else if (kind === 'mast') {
       const sails = W.player.systems.sails;
       if (sails) sails.damage = sails.level;
@@ -778,18 +803,19 @@ W.Fleet = {
       if (sailsRoom) sailsRoom.fire = 35;
       const cannons = W.player.systems.cannons;
       if (cannons) cannons.damage = Math.min(cannons.level, 1);
-      this.crisisTimer = 55;
+      this.crisisTimer = 70;
     } else { // magazine
       const holds = W.player.rooms.filter(r => !r.sys);
       const seat = holds.length ? W.pick(holds) : W.pick(W.player.rooms);
-      seat.fire = 70;
+      seat.fire = 60;
       const adj = seat.adj.length ? W.player.rooms[seat.adj[0]] : null;
-      if (adj) adj.fire = Math.max(adj.fire, 35);
-      this.crisisTimer = 30;
+      if (adj) adj.fire = Math.max(adj.fire, 25);
+      this.crisisTimer = 40;
     }
     this.phase = 'crisis';
     W.state.mode = 'crisis';
-    W.paused = false;
+    // start paused: read the deck before the clock runs
+    W.paused = true;
   },
 
   crisisTick(dt) {
@@ -1098,6 +1124,15 @@ W.Fleet = {
     if (pts <= 0) return false;
     c.gold -= pts;
     s.hull = Math.min(s.hullMax, s.hull + pts);
+    return true;
+  },
+
+  reArm(s) {
+    const c = this.campaign;
+    if (c.gold < 25) return false;
+    c.gold -= 25;
+    s.battery = s.battery === 'carronade' ? 'long' : 'carronade';
+    this.chron(`${s.name} re-armed with ${this.BATTERIES[s.battery].name.toLowerCase()}.`);
     return true;
   },
 
