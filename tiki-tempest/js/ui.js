@@ -208,7 +208,8 @@
       var fan = '';
       for (var k = 0; k < Math.min(p.hand.length, 12); k++) fan += '<img src="' + data.BACK_MAIN + '" alt="">';
       var barImgs = p.bar.map(function (id) {
-        var stealable = seagullMine && !p.umbrellas.length;
+        var stealable = seagullMine && !p.umbrellas.length &&
+          (st.mode !== 'draft' || p.i !== ui.mySeat);
         return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + '"' +
           (stealable ? ' class="steal" data-p="' + p.i + '" data-c="' + id + '"' : '') + '>';
       }).join('');
@@ -224,7 +225,9 @@
           ? ' <span class="umb" title="Pick locked in">✔</span>' : '') + '</div>' +
         '<div class="backfan" title="' + p.hand.length + ' cards in hand">' + fan + '</div>' +
         '<div class="meta">' + p.score + ' pts · 🍺' + p.beers.length + ' · ' + p.servedTotal + ' served</div>' +
-        '<div class="zone"><span class="zlabel">bar</span>' + (barImgs || '—') + '</div>' +
+        '<div class="zone"' + (seagullMine && p.umbrellas.length
+          ? ' title="Protected by Paper Umbrella — the seagull can\'t land here" style="opacity:0.55"'
+          : '') + '><span class="zlabel">bar</span>' + (barImgs || '—') + '</div>' +
         '<div class="zone"><span class="zlabel">served</span>' + (servedImgs || '—') + '</div>' +
         (st.mode === 'draft' && p.banked.length
           ? '<div class="zone"><span class="zlabel">set aside</span>' + p.banked.map(function (id) {
@@ -525,7 +528,7 @@
     }
     var pend = st.pending;
     if (pend && pend.type === 'seagull' && pend.by === ui.mySeat) {
-      el.innerHTML = '<span class="msg">🕊 Your seagull is circling — click an ingredient on any unprotected bar above</span>';
+      el.innerHTML = '<span class="msg">🕊 Your seagull is circling — click an ingredient on an unprotected RIVAL bar (☂️ bars are safe)</span>';
       return;
     }
     if (pend || st.phase === 'roundEnd' || st.phase === 'gameEnd') {

@@ -265,7 +265,7 @@
     var by = st.players[fx.by];
     switch (fx.type) {
       case 'seagull': {
-        var any = st.players.some(function (pl) { return pl.bar.length && !pl.umbrellas.length; });
+        var any = st.players.some(function (pl) { return pl.i !== fx.by && pl.bar.length && !pl.umbrellas.length; });
         if (!any) { log(st, 'The seagull finds every bar covered — it flies off.'); return false; }
         st.pending = { type: 'seagull', by: fx.by };
         return true;
@@ -474,6 +474,7 @@
     seagull: function (st, pend, a) {
       var tp = st.players[a.player];
       if (!tp) throw new Error('bad player');
+      if (a.player === pend.by) throw new Error('your own bar is not a target');
       if (tp.umbrellas.length) throw new Error('that bar is under an umbrella');
       if (tp.bar.indexOf(a.card) < 0) throw new Error('card not on that bar');
       removeFrom(tp.bar, a.card);

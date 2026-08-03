@@ -102,9 +102,9 @@
       case 'seagull': {
         var pick = null, pv = -1;
         st.players.forEach(function (pl) {
-          if (pl.umbrellas.length) return;
+          if (pl.umbrellas.length || pl.i === pend.by) return;
           pl.bar.forEach(function (id) {
-            var v = ingValue(st, by, CARDS[id].ing) + (pl.i === pend.by ? -0.5 : 0.5) +
+            var v = ingValue(st, by, CARDS[id].ing) + 0.5 +
               (st.aiLevel === 'hard' && pl.i === leaderSeat(st, pend.by, false) ? 1.0 : 0);
             if (v > pv) { pv = v; pick = { player: pl.i, card: id }; }
           });

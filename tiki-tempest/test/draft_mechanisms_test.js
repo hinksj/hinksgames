@@ -92,6 +92,10 @@ section('— Thieving Seagull: steals from bars, blocked by umbrella —');
   var threw = false;
   try { E.apply(st, { t: 'resolve', player: 2, card: 'ing-lime-1' }); } catch (e) { threw = true; }
   ok(threw, 'umbrella-protected bar rejects the steal');
+  var threwSelf = false;
+  toBar(st, 0, 'ing-lime-2');
+  try { E.apply(st, { t: 'resolve', player: 0, card: 'ing-lime-2' }); } catch (e) { threwSelf = true; }
+  ok(threwSelf, 'own bar rejected as a target in draft');
   E.apply(st, { t: 'resolve', player: 1, card: 'ing-rum-1' });
   ok(st.players[0].bar.indexOf('ing-rum-1') >= 0, 'stolen ingredient lands on the seagull player\'s bar');
   ok(st.players[1].bar.indexOf('ing-rum-1') < 0, 'victim bar lost it');
