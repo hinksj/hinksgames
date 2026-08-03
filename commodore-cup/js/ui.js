@@ -233,8 +233,8 @@
         esc(p.name) + (p.i === ui.mySeat ? ' <span class="you">(you)</span>' : '') +
         (p.skip ? ' 💤' : '') + '</div>' +
         '<div class="backfan" title="' + p.hand.length + ' cards in hand">' + fan + '</div>' +
-        '<div class="meta">' + p.hand.length + ' cards · ' + p.score + ' pts · ⚓' +
-        p.supporters + '/' + st.membersToWin + '</div>' +
+        '<div class="meta">' + p.hand.length + ' cards · ' + p.score + ' pts' +
+        (p.supporters > 0 ? ' · ⚓' + p.supporters + '/' + st.membersToWin : '') + '</div>' +
         '<div class="memberchips">' + chips + '</div>';
       row.appendChild(d);
     });
@@ -494,8 +494,8 @@
       return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + ' (played, +2)">';
     }).join('');
     $('myStatus').innerHTML =
-      '<div>' + esc(p.name) + ' — ' + p.score + ' pts · ⚓' + p.supporters + '/' +
-      st.membersToWin + ' members backing you · ' +
+      '<div>' + esc(p.name) + ' — ' + p.score + ' pts' +
+      (p.supporters > 0 ? ' · ⚓' + p.supporters + '/' + st.membersToWin + ' members backing you' : '') + ' · ' +
       '<button class="ghost" id="sortSuit" title="Group by suit — spot runs">sort by suit</button> ' +
       '<button class="ghost" id="sortAZ" title="Group by letter — spot sets">sort A–L</button>' +
       '<span style="opacity:.6"> · drag cards to rearrange</span></div>' +
