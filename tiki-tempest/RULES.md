@@ -56,7 +56,7 @@ shared menu.
 
 ## Draft Mode
 
-**Setup:** Menu of 4 recipes face up. Deal hands from the Main Deck — **10
+**Setup:** Menu of **4 recipes** face up at 2–3 players, **5** at 4+ (bigger tables need more targets — sim-tuned). Deal hands from the Main Deck — **10
 cards at 2 players, 9 at 3, 8 at 4, 7 at 5**. (Storm Surge dealt into an
 opening hand is reshuffled into the deck, as printed.) The rest of the deck
 stays as a face-down stock.
@@ -111,8 +111,8 @@ Mixologist**.
 
 ## Setup
 
-1. Shuffle the Recipe Deck; deal **4 recipes face up** in a row — the
-   **Drink Menu**.
+1. Shuffle the Recipe Deck; deal the **Drink Menu** face up — **4 recipes**
+   at 2–3 players, **5** at 4+.
 2. Shuffle the Main Deck; deal each player **5 cards**.
    - If anyone was dealt **Storm Surge**, shuffle it into the bottom half of
      the deck and deal them a replacement (as printed on the card).

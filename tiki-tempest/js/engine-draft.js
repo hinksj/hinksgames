@@ -52,8 +52,10 @@
       phase: 'pick', dir: 1, picks: {}, fxQueue: [],
       pending: null, winner: -1, log: [], _rndCalls: 0
     };
+    // bigger tables get a wider menu: 4 recipes up at 2-3 players, 5 at 4+
+    st.menuSize = opts.menuSize || (st.players.length >= 4 ? 5 : data.MENU_SIZE);
     st.recipeDeck = shuffleSt(st, data.RECIPE_DECK.slice());
-    for (var m = 0; m < data.MENU_SIZE; m++) st.menu.push(st.recipeDeck.pop());
+    for (var m = 0; m < st.menuSize; m++) st.menu.push(st.recipeDeck.pop());
     startRound(st);
     return st;
   }
@@ -81,7 +83,7 @@
     st.players.forEach(function (p) {
       p.served.forEach(function (e) { st.recipeSpent.push(e.card); });
     });
-    while (st.menu.length < data.MENU_SIZE) {
+    while (st.menu.length < (st.menuSize || data.MENU_SIZE)) {
       if (!refillMenuCard(st)) break;
     }
     st.players.forEach(function (p) {
