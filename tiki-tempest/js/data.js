@@ -108,7 +108,7 @@
     CARDS[xid] = { id: xid, kind: 'ing', ing: 'rum', name: 'Rum', rare: false,
       art: 'assets/cards/ing-rum.jpg' };
   }
-  var STOCKED_CUTS = { beer: 10, pineapple: 14, 'coconut-cream': 12, lime: 12 };
+  var STOCKED_CUTS = { beer: 10, pineapple: 16, 'coconut-cream': 14, lime: 12 };
   var DECKS = {
     printed: MAIN_DECK.slice(),
     stocked: MAIN_DECK.filter(function (id) {
