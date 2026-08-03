@@ -37,6 +37,7 @@
       mode: 'draft',
       deckIds: opts.deckIds || data.DECKS.stocked, // the tuned 125-card bar
       aiLevel: opts.aiLevel || 'regular',
+      houseFavorite: opts.houseFavorite !== false, favSeen: {},
       handBase: opts.handBase || data.HAND_BASE,
       passes: opts.passes || data.PASSES_PER_ROUND,
       seed: opts.seed || Math.floor(Math.random() * 1e9),
@@ -370,6 +371,12 @@
       st.discard.push(doubleCard);
       entry.doubled = true;
       entry.pts *= 2;
+    }
+    if (st.houseFavorite && !st.favSeen[r.rec]) {
+      st.favSeen[r.rec] = 1;
+      entry.pts += 2;
+      entry.fav = true;
+      log(st, '⭐ First ' + r.name + ' of the night — house favorite, +2!');
     }
     if (p.umbrellas.length) {
       entry.umbrella = true;

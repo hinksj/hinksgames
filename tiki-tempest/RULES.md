@@ -76,6 +76,11 @@ whenever it runs dry. Played picks resolve immediately:
 - **Special** → resolves at once (see table), except **Make It a Double**,
   which is **set aside** for later.
 
+**House Favorite:** the **first** serving of each distinct cocktail in the
+game earns **+2** (⭐ marked on the menu until claimed) — christen a drink
+before your rivals do. The bonus is flat: a Double doubles the printed value,
+then the star adds 2.
+
 **Serving is free, any time:** when your Bar covers a Menu recipe, serve it —
 pay the ingredients, take the card, refill the Menu. A set-aside Double can be
 spent as you serve. An umbrella'd bar garnishes the drink (+1) as usual.

@@ -50,7 +50,7 @@
     var c = CARDS[entry.card];
     srEl.innerHTML = '<div class="mr"><img src="' + c.art + '">' +
       '<div class="cap">' + esc(who) + ' serves ' + esc(c.name) + ' — ' + entry.pts + ' points' +
-      (entry.doubled ? ' · DOUBLED!' : '') + (entry.umbrella ? ' ☂️' : '') + '</div></div>';
+      (entry.doubled ? ' · DOUBLED!' : '') + (entry.fav ? ' · ⭐ house favorite' : '') + (entry.umbrella ? ' ☂️' : '') + '</div></div>';
     srEl.className = 'show';
     clearTimeout(srTimer);
     srTimer = setTimeout(function () { srEl.className = ''; }, 6500);
@@ -278,7 +278,8 @@
       var cls = got >= need ? 'got' : (got > 0 ? 'part' : '');
       var txt = need + ' ' + ING_NAME[k] + (got > 0 && got < need ? ' (' + got + ')' : '');
       return '<div class="ri ' + cls + '">' + esc(txt) + '</div>';
-    }).join('') + '<div class="ptsline">' + r.pts + ' pts</div>';
+    }).join('') + '<div class="ptsline">' + r.pts + ' pts' +
+      (ui.st.houseFavorite && !ui.st.favSeen[r.rec] ? ' · ⭐ first +2' : '') + '</div>';
   }
   function renderMenu(st) {
     var el = $('menuCards');
@@ -339,6 +340,7 @@
   // spectacles fire at state time; only narration drips
   function immediateFx(st, line) {
     if (line.indexOf('💬') === 0) return false;
+    if (line.indexOf('⭐') === 0) { toast(line, 4500); sfx('good'); return true; }
     if (line.indexOf('⛈') >= 0) { toast(line, 6500); sfx('bad'); return true; }
     if (line.indexOf('🔔') >= 0 || line.indexOf('📖') >= 0) { toast(line, 5500); sfx('round'); return true; }
     if (line.indexOf('The seagull finds') === 0 || line.indexOf('The torch gutters') === 0 ||

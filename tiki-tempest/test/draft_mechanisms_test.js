@@ -200,7 +200,7 @@ section('— Make It a Double + Paper Umbrella on a serve —');
   resetPhase(st);
   E.apply(st, { t: 'serve', seat: 0, recipe: 'rec-caribbean-sunset-1', double: true });
   var e = st.players[0].served[0];
-  ok(e && e.pts === 9, 'Sunset doubled then garnished: 4*2+1 = ' + (e && e.pts));
+  ok(e && e.pts === 11, 'Sunset doubled + house favorite + garnish: 4*2+2+1 = ' + (e && e.pts));
   ok(st.players[0].umbrellas.length === 0, 'umbrella garnish consumed the umbrella');
   ok(st.players[0].banked.length === 0, 'double consumed');
   ok(st.menu.length === data.MENU_SIZE, 'menu refilled');
