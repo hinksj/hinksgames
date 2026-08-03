@@ -160,6 +160,21 @@ W.Render = {
         ctx.font = 'bold 12px "IM Fell English", Georgia';
         ctx.fillText(parts.length ? 'STILL TO DO: ' + parts.join(' · ') : 'ALL CLEAR — she is saved…', 500, 57);
       }
+      // paused is a plan, not a bug — say so where it cannot be missed
+      if (W.paused) {
+        ctx.fillStyle = 'rgba(6,13,21,0.78)';
+        ctx.fillRect(280, 196, 440, 64);
+        ctx.strokeStyle = '#e9c46a';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(280, 196, 440, 64);
+        ctx.fillStyle = '#e9c46a';
+        ctx.font = 'bold 20px "IM Fell English", Georgia';
+        ctx.textAlign = 'center';
+        ctx.fillText('⏸ PAUSED — press SPACE to begin', 500, 224);
+        ctx.font = '12.5px "IM Fell English", Georgia';
+        ctx.fillStyle = '#cfe3f0';
+        ctx.fillText('Give your orders now; they are obeyed the moment time runs.', 500, 246);
+      }
       return;
     }
 
