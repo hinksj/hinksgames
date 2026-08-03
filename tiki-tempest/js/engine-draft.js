@@ -35,7 +35,7 @@
   function newGame(opts) {
     var st = {
       mode: 'draft',
-      deckIds: opts.deckIds || data.MAIN_DECK,
+      deckIds: opts.deckIds || data.DECKS.stocked, // the tuned 125-card bar
       aiLevel: opts.aiLevel || 'regular',
       handBase: opts.handBase || data.HAND_BASE,
       passes: opts.passes || data.PASSES_PER_ROUND,

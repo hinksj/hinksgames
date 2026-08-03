@@ -32,7 +32,7 @@
   function newGame(opts) {
     var st = {
       mode: 'classic',
-      deckIds: opts.deckIds || data.MAIN_DECK,
+      deckIds: opts.deckIds || data.DECKS.stocked, // the tuned 125-card bar
       aiLevel: opts.aiLevel || 'regular',
       seed: opts.seed || Math.floor(Math.random() * 1e9),
       rounds: opts.rounds || data.ROUNDS_DEFAULT,

@@ -41,11 +41,12 @@ bar — closes them down. In the spirit of Sushi Go!, with a storm rolling in.*
 - **Classic**: bartender turns — draw 2, play up to 2. Rules in **Classic
   Mode**; best over **2 rounds**.
 
-Both modes share the Drink Menu, serving, beers, and the special cards; either
-can be played with the full **printed deck (135)** or the **well-stocked bar**
-variant (125 — fewer beers and surplus lime, plus **4 extra rum**; every
-recipe needs rum, and the printed 20 run scarce across four bars — this is the
-recommended default).
+Both modes share the Drink Menu, serving, beers, and the special cards, and
+both deal from the **tuned 125-card bar**: rum 24, pineapple 16, coconut cream
+14, lime 12, the four rares as printed, beers 10, specials as printed. (The
+physical print run's 135-card mix — 20 rum, 18 pineapple, 16 coconut cream,
+16 lime, 16 beers — plays rum-starved across four bars; the tuned mix keeps
+rum as the game's one deliberate famine and nothing else.)
 
 ## Object
 

@@ -56,6 +56,11 @@ the project ontology). Recovered sources:
 
 The xlsx also lists "One side blank ×5" (filler, not gameplay). 162 total.
 
+**Deck note (Aug 2026):** after simulated and live playtesting, the digital
+game deals a tuned 125-card main deck (rum 24, pineapple 16, coconut cream 14,
+lime 12, beers 10; rares and specials as printed) — designer's ruling. The
+printed 135 mix remains recorded here and in `data.js` as `DECKS.printed`.
+
 ## Mechanics finalized in v1.0 (the 2024 design left these open)
 
 See RULES.md Designer's Notes. Headlines: turn = draw 2 / play up to 2 with
