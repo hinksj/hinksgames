@@ -329,9 +329,35 @@
     var el = $('log');
     if (ui.logLen > st.log.length) { el.innerHTML = ''; ui.logLen = 0; ui.logQueue = []; }
     ui.logQueue = ui.logQueue || [];
-    for (var qi = ui.logLen; qi < st.log.length; qi++) ui.logQueue.push(st.log[qi]);
+    for (var qi = ui.logLen; qi < st.log.length; qi++) {
+      var ln = st.log[qi];
+      ui.logQueue.push({ t: ln, quiet: immediateFx(st, ln) });
+    }
     ui.logLen = st.log.length;
     pumpLog();
+  }
+  // spectacles fire at state time; only narration drips
+  function immediateFx(st, line) {
+    if (line.indexOf('💬') === 0) return false;
+    if (line.indexOf('⛈') >= 0) { toast(line, 6500); sfx('bad'); return true; }
+    if (line.indexOf('🔔') >= 0 || line.indexOf('📖') >= 0) { toast(line, 5500); sfx('round'); return true; }
+    if (line.indexOf('The seagull finds') === 0 || line.indexOf('The torch gutters') === 0 ||
+        line.indexOf('No hands worth plundering') === 0 || line.indexOf("doesn't have it") >= 0) {
+      toast('💨 ' + line, 4500); sfx('skip'); return true;
+    }
+    if (line.indexOf(me().name + ' sets aside Make It a Double') === 0) {
+      toast('✌️ Make It a Double set aside — spend it when you serve a cocktail', 6000);
+      return true;
+    }
+    var idx = line.indexOf(me().name);
+    var tableWide = ['👐', '—', '🌴', '🌊', '🔔', '⛈', '🏆', '📖'].indexOf(line.charAt(0)) >= 0 ||
+      line.indexOf('Round ') === 0;
+    if (idx > 0 && !tableWide && (st.mode === 'draft' || st.turn !== ui.mySeat)) {
+      toast('⚠️ ' + line, 5000);
+      sfx('alert');
+      return true;
+    }
+    return false;
   }
   // engine bursts emit many lines at once; drip them at reading pace so the
   // narration lines up with what the table is doing (sounds fire per line)
@@ -347,44 +373,24 @@
     };
     step();
   }
-  function displayLogLine(st, line) {
+  function displayLogLine(st, entry) {
     var el = $('log');
-    {
-      var d = document.createElement('div');
-      if (line.indexOf('💬') === 0) {
-        d.className = 'chatline';
-        d.innerHTML = colorizeLine(line);
-        el.appendChild(d);
-        if (line.indexOf('💬 ' + me().name + ':') !== 0) { toast(line, 4000); sfx('pluck'); }
-        el.scrollTop = el.scrollHeight;
-        return;
-      }
-      if (line.indexOf(me().name) === 0) d.className = 'me';
+    var line = entry.t;
+    var d = document.createElement('div');
+    if (line.indexOf('💬') === 0) {
+      d.className = 'chatline';
       d.innerHTML = colorizeLine(line);
       el.appendChild(d);
-      // table-shaking events get a banner for everyone, not just a log line
-      if (line.indexOf('⛈') >= 0) { toast(line, 6500); sfx('bad'); }
-      else if (line.indexOf('🔔') >= 0 || line.indexOf('📖') >= 0) { toast(line, 5500); sfx('round'); }
-      // fizzled effects look like bugs if they only whisper in the log
-      else if (line.indexOf('The seagull finds') === 0 || line.indexOf('The torch gutters') === 0 ||
-               line.indexOf('No hands worth plundering') === 0 || line.indexOf("doesn't have it") >= 0) {
-        toast('💨 ' + line, 4500); sfx('skip');
-      }
-      else if (line.indexOf(me().name + ' sets aside Make It a Double') === 0) {
-        toast('✌️ Make It a Double set aside — spend it when you serve a cocktail', 6000);
-      }
-      var idx = line.indexOf(me().name);
-      var tableWide = ['👐', '—', '🌴', '🌊', '🔔', '⛈', '🏆', '📖'].indexOf(line.charAt(0)) >= 0 ||
-        line.indexOf('Round ') === 0;
-      var personal = idx > 0 && !tableWide &&
-        (st.mode === 'draft' || st.turn !== ui.mySeat);
-      if (personal) {
-        toast('⚠️ ' + line, 5000);
-        sfx('alert');
-      } else {
-        var s = soundForLine(line);
-        if (s) sfx(s);
-      }
+      if (line.indexOf('💬 ' + me().name + ':') !== 0) { toast(line, 4000); sfx('pluck'); }
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+    if (line.indexOf(me().name) === 0) d.className = 'me';
+    d.innerHTML = colorizeLine(line);
+    el.appendChild(d);
+    if (!entry.quiet) {
+      var snd = soundForLine(line);
+      if (snd) sfx(snd);
     }
     el.scrollTop = el.scrollHeight;
   }
