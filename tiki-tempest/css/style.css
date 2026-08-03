@@ -168,6 +168,7 @@ button.ghost { background: transparent; border-color: #8a5a34; color: var(--dim)
 .hcard.sel { transform: translateY(-26px); z-index: 490 !important; }
 .hcard.sel img { outline: 3px solid var(--gold); }
 .hcard.fresh img { outline: 3px solid var(--cyan); animation: freshPulse 3s ease-out; }
+.hcard.outgoing img { outline: 3px dashed var(--pink); filter: saturate(0.55) brightness(0.7); }
 @keyframes freshPulse {
   0% { box-shadow: 0 0 42px var(--cyan); }
   100% { box-shadow: 0 3px 14px #000c; }

@@ -423,7 +423,9 @@
       var c = CARDS[id];
       var d = document.createElement('div');
       var fresh = ui.newCards[id] && now - ui.newCards[id] < 3500;
-      d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '') + (fresh ? ' fresh' : '');
+      var outgoing = st.pending && st.pending.type === 'passAll' &&
+        st.pending.chosen && st.pending.chosen[ui.mySeat] === id;
+      d.className = 'hcard' + (ui.sel.indexOf(id) >= 0 ? ' sel' : '') + (fresh ? ' fresh' : '') + (outgoing ? ' outgoing' : '');
       d.style.zIndex = String(200 - idx);
       if (d.style.setProperty) {
         var mid = (hand.length - 1) / 2;
@@ -500,6 +502,15 @@
     el.innerHTML = '';
     var pend = st.pending;
     var mode = handChooseMode(st);
+    if (st.pending && st.pending.type === 'passAll' &&
+        st.pending.chosen && st.pending.chosen[ui.mySeat] !== undefined) {
+      var waitingOnP = st.players.filter(function (pl) {
+        return st.pending.need[pl.i] && st.pending.chosen[pl.i] === undefined;
+      }).map(function (pl) { return pl.name; });
+      el.innerHTML = '<span class="msg">🔒 Your card is locked in (dashed outline) — waiting on ' +
+        esc(waitingOnP.join(', ') || 'the pass') + '…</span>';
+      return;
+    }
     if (mode) {
       var what = mode.type === 'passAll'
         ? 'Choose a card to pass ' + (mode.dir === 1 ? 'left' : 'right') + ' — everyone passes one'
