@@ -134,9 +134,15 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 #log {
   background: #00000055; border: 1px solid #4a2a86; border-radius: 10px;
   padding: 8px 12px; overflow-y: auto; font-size: 13px; color: var(--dim);
-  height: clamp(180px, calc(100vh - 640px), 460px);
+  height: clamp(180px, calc(100vh - 600px), 560px);
+  scrollbar-width: thin; scrollbar-color: var(--panel-line) #1a083a;
 }
 #log .me { color: var(--text); }
+#log::-webkit-scrollbar { width: 10px; }
+#log::-webkit-scrollbar-track { background: #14052e; border-radius: 8px; }
+#log::-webkit-scrollbar-thumb { border-radius: 8px; border: 2px solid #14052e;
+  background: linear-gradient(180deg, var(--pink), var(--panel-line)); }
+#log::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #ff8ac6, #9a55ff); }
 
 /* ---------- my area ---------- */
 #myArea { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; background: linear-gradient(180deg, transparent, #0e0322 26%);

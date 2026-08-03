@@ -329,6 +329,7 @@
       for (var i = 0; i < 2; i++) {
         if (!drawOne(st, p)) return;
       }
+      log(st, p.name + ' draws 2 cards');
       st.phase = 'main';
       st.playsLeft = data.PLAYS_PER_TURN;
     },

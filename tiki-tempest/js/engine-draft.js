@@ -333,6 +333,8 @@
     }
     st.phase = 'pick';
     st.picks = {};
+    log(st, '— pick ' + Math.min(st.passes, st.passCount + 1) +
+      (st.passCount + 1 > st.passes ? ' (overtime)' : '/' + st.passes) + ' —');
     autoPicks(st);
   }
 
@@ -489,7 +491,7 @@
       var p = st.players[pend.by];
       pend.cards.forEach(function (id) { if (id !== a.keep) st.discard.push(id); });
       st.pending = null;
-      log(st, p.name + ' takes a card from the torchlight');
+      log(st, p.name + ' takes ' + CARDS[a.keep].name + ' from the torchlight');
       resolveKeep(st, p, a.keep);
       return true;
     },
