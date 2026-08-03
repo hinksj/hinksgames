@@ -26,12 +26,15 @@ W.Fleet = {
   },
 
   // the cruise: five actions, refit between each, prizes and losses persist
+  // each stage is a pool of possible enemy lines, near-equal in weight of
+  // metal: sometimes a pair of heavies, sometimes a swarm, sometimes the
+  // classic trio. The last action always has the ship of the line in it.
   STAGES: [
-    ['cutter', 'cutter', 'brig'],
-    ['cutter', 'brig', 'brig'],
-    ['cutter', 'brig', 'frigate'],
-    ['cutter', 'frigate', 'frigate'],
-    ['frigate', 'frigate', 'shipofline'],
+    [['cutter', 'cutter', 'brig'], ['sloop', 'brig'], ['cutter', 'cutter', 'cutter', 'cutter']],
+    [['cutter', 'brig', 'brig'], ['frigate', 'sloop'], ['sloop', 'sloop', 'cutter', 'cutter']],
+    [['cutter', 'brig', 'frigate'], ['frigate', 'frigate'], ['sloop', 'sloop', 'sloop', 'brig']],
+    [['cutter', 'frigate', 'frigate'], ['frigate', 'brig', 'brig'], ['brig', 'brig', 'brig', 'cutter']],
+    [['frigate', 'frigate', 'shipofline'], ['brig', 'brig', 'shipofline'], ['sloop', 'frigate', 'shipofline']],
   ],
   PRIZE_NAMES: ['Curlew', 'Tern', 'Cormorant', 'Firedrake', 'Meridian', 'Vigilant',
     'Dauntless', 'Sea Otter', 'Larkspur', 'Kestrel', 'Halcyon', 'Amaranth',
@@ -169,7 +172,35 @@ W.Fleet = {
   setupAction() {
     const c = this.campaign;
     const traits = Object.keys(this.TRAITS);
-    let line = this.STAGES[Math.min(c.stage, this.STAGES.length) - 1].slice();
+    let line = W.pick(this.STAGES[Math.min(c.stage, this.STAGES.length) - 1]).slice();
+    // FTL's bargain, made fair: the enemy is scaled to the squadron YOU
+    // bring — by hull class only. A gentle first action, an honest middle,
+    // a hard finale. Your refinements (extra guns, carronades, captains,
+    // full crews) are precisely the edge the enemy cannot copy — and your
+    // losses are mercifully not compounded.
+    const finaleStage = c.stage >= this.STAGES.length;
+    const myW = this.ships.reduce((a, s) =>
+      a + (this.CLASSES[s.cls] ? this.CLASSES[s.cls].guns : 8), 0);
+    const ramp = [0.72, 0.88, 1.0, 1.12, 1.22];
+    const target = Math.round(myW * (ramp[Math.min(c.stage, this.STAGES.length) - 1] || 1));
+    const wOf = (l) => l.reduce((a, cls) => a + this.CLASSES[cls].guns, 0);
+    const up = { cutter: 'sloop', sloop: 'brig', brig: 'frigate' };
+    const down = { frigate: 'brig', brig: 'sloop', sloop: 'cutter' };
+    let guard = 16;
+    while (guard-- > 0) {
+      const w = wOf(line);
+      if (w < target - 3) {
+        const cands = line.map((cls, k) => up[cls] ? k : -1).filter(k => k >= 0);
+        if (cands.length) { const k = W.pick(cands); line[k] = up[line[k]]; }
+        else if (line.length < 4) line.push('cutter');
+        else break;
+      } else if (w > target + 3) {
+        const cands = line.map((cls, k) => down[cls] ? k : -1).filter(k => k >= 0);
+        if (cands.length) { const k = W.pick(cands); line[k] = down[line[k]]; }
+        else if (line.length > 2 && !finaleStage) line.pop();
+        else break;
+      } else break;
+    }
     this.mod = this.pendingMod || 'patrol';
     this.pendingMod = null;
     if (this.mod === 'escort' && line.length > 2) line = line.slice(0, -1);
@@ -243,7 +274,7 @@ W.Fleet = {
     if (!p) return;
     this.ships.forEach((s, i) => {
       const o = p.set[Math.min(i, p.set.length - 1)];
-      s.order = { tactic: o.tactic, target: o.target };
+      s.order = { tactic: o.tactic, target: Math.min(o.target, this.enemy.length - 1) };
     });
     this.planName = p.name;
   },

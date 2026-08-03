@@ -1002,7 +1002,7 @@ W.Render = {
 
   enemyAnchor(i) {
     const n = (W.Fleet.enemy || []).length || 3;
-    const gap = n > 3 ? 96 : 122;
+    const gap = n >= 5 ? 78 : n > 3 ? 96 : 122;
     return { x: 640 + i * 22, y: 226 - ((n - 1) / 2) * gap + i * gap };
   },
 
@@ -1018,7 +1018,7 @@ W.Render = {
     const s = F.ships[i];
     const start = this.playerStart(i);
     const o = (s && s.order) || { tactic: 'engage', target: Math.min(i, 2) };
-    const tgt = this.enemyAnchor(W.clamp(o.target | 0, 0, 2));
+    const tgt = this.enemyAnchor(W.clamp(o.target | 0, 0, Math.max(0, (F.enemy || []).length - 1)));
     switch (o.tactic) {
       case 'cut':
         // the classic: pierce the gap astern of her, rake as you cross, come
@@ -1223,7 +1223,7 @@ W.Render = {
     ctx.setLineDash([7, 6]);
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    const a0 = this.enemyAnchor(0), a2 = this.enemyAnchor(2);
+    const a0 = this.enemyAnchor(0), a2 = this.enemyAnchor(Math.max(0, F.enemy.length - 1));
     ctx.moveTo(a0.x, a0.y - 55);
     ctx.lineTo(a2.x, a2.y + 55);
     ctx.stroke();
