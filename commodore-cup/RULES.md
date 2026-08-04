@@ -204,6 +204,12 @@ someone has both. Court those members.
 worth **+1** — the membership rewards a broad coalition, so the member deck
 stays worth fighting over to its last card.
 
+**Closing the rolls:** the moment the last member is courted, anyone still
+short of the vote threshold can never win — they are **out of the running**:
+their hand is discarded, their turns are skipped, and they can't be targeted.
+Their score stands for the record. If only one eligible skipper remains, the
+club acclaims them Commodore on the spot.
+
 ---
 
 ## Designer's Notes (what v1.0 fixed)

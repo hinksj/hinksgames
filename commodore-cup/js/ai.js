@@ -45,7 +45,7 @@
   function leader(st, notMe) {
     var best = -Infinity, bi = -1;
     st.players.forEach(function (p) {
-      if (p.i === notMe) return;
+      if (p.i === notMe || p.eliminated) return;
       var s = p.score + p.roundScore;
       if (s > best || (s === best && bi >= 0 && p.hand.length < st.players[bi].hand.length)) { best = s; bi = p.i; }
     });
@@ -54,7 +54,7 @@
   function richestHand(st, notMe) {
     var bi = -1, n = -1;
     st.players.forEach(function (p) {
-      if (p.i === notMe || !p.hand.length) return;
+      if (p.i === notMe || p.eliminated || !p.hand.length) return;
       if (p.hand.length > n) { n = p.hand.length; bi = p.i; }
     });
     return bi >= 0 ? bi : leader(st, notMe);

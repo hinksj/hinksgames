@@ -219,7 +219,7 @@
     row.innerHTML = '';
     st.players.forEach(function (p) {
       var d = document.createElement('div');
-      d.className = 'opp' + (st.turn === p.i && st.phase !== 'roundEnd' && st.phase !== 'gameEnd' ? ' active' : '');
+      d.className = 'opp' + (st.turn === p.i && st.phase !== 'roundEnd' && st.phase !== 'gameEnd' ? ' active' : '') + (p.eliminated ? ' out' : '');
       var chips = p.members.map(function (id) {
         return '<img src="' + CARDS[id].art + '" title="' + CARDS[id].name + ' (' +
           (CARDS[id].pts >= 0 ? '+' : '') + CARDS[id].pts + ')">';
@@ -233,8 +233,8 @@
         esc(p.name) + (p.i === ui.mySeat ? ' <span class="you">(you)</span>' : '') +
         (p.skip ? ' 💤' : '') + '</div>' +
         '<div class="backfan" title="' + p.hand.length + ' cards in hand">' + fan + '</div>' +
-        '<div class="meta">' + p.hand.length + ' cards · ' + p.score + ' pts' +
-        (p.supporters > 0 ? ' · ⚓' + p.supporters + '/' + st.membersToWin : '') + '</div>' +
+        '<div class="meta">' + p.hand.length + ' cards · ' + p.score + ' pts · ⚓' +
+        p.supporters + '/' + st.membersToWin + (p.eliminated ? ' · <b style="color:#ff8484">OUT</b>' : '') + '</div>' +
         '<div class="memberchips">' + chips + '</div>';
       row.appendChild(d);
     });
@@ -252,14 +252,20 @@
     var top = st.discard[st.discard.length - 1];
     el.appendChild(pile('Discard', top ? CARDS[top].art : null, st.discard.length,
       canDraw && !!top, function () { act({ t: 'draw', from: 'discard' }); }));
-    // members
-    el.appendChild(pile('Members', data.BACK_MEMBER, st.memberPile.length, false, null));
+    // members — an exhausted pile shows as an empty slot, not a zero
+    if (st.memberPile.length) {
+      el.appendChild(pile('Members', data.BACK_MEMBER, st.memberPile.length, false, null));
+    } else {
+      var gone = pile('rolls closed', null, null, false, null);
+      el.appendChild(gone);
+    }
   }
   function pile(label, art, count, clickable, onclick) {
     var d = document.createElement('div');
     d.className = 'pile' + (clickable ? ' clickable' : '');
     var img = art ? '<img src="' + art + '">' : '<div class="cardimg" style="background:#0006"></div>';
-    d.innerHTML = '<div class="stack">' + img + '<span class="count">' + count + '</span></div>' + label;
+    d.innerHTML = '<div class="stack">' + img +
+      (count === null ? '' : '<span class="count">' + count + '</span>') + '</div>' + label;
     if (clickable && onclick) d.querySelector('.stack').addEventListener('click', onclick);
     return d;
   }
@@ -494,8 +500,8 @@
       return '<img src="' + CARDS[id].art + '" title="' + esc(CARDS[id].name) + ' (played, +2)">';
     }).join('');
     $('myStatus').innerHTML =
-      '<div>' + esc(p.name) + ' — ' + p.score + ' pts' +
-      (p.supporters > 0 ? ' · ⚓' + p.supporters + '/' + st.membersToWin + ' members backing you' : '') + ' · ' +
+      '<div>' + esc(p.name) + ' — ' + p.score + ' pts · ⚓' + p.supporters + '/' +
+      st.membersToWin + ' members backing you' + (p.eliminated ? ' · OUT OF THE RUNNING' : '') + ' · ' +
       '<button class="ghost" id="sortSuit" title="Group by suit — spot runs">sort by suit</button> ' +
       '<button class="ghost" id="sortAZ" title="Group by letter — spot sets">sort A–L</button>' +
       '<span style="opacity:.6"> · drag cards to rearrange</span></div>' +
@@ -641,6 +647,7 @@
 
     if (pend.type === 'chooseTarget' && pend.by === ui.mySeat) {
       var opts = st.players.filter(function (p) {
+        if (p.eliminated) return false;
         if (p.i === ui.mySeat && !pend.allowSelf) return false;
         if (pend.needCards && pend.then !== 'peek' && !p.hand.length) return false;
         return true;

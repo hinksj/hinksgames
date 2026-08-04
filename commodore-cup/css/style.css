@@ -92,6 +92,7 @@ button.ghost { background: transparent; border-color: #6a4bb0; color: var(--dim)
 .opp .backfan img:first-child { margin-left: 0; }
 .opp .backfan .more { color: var(--dim); font-size: 12px; margin-left: 4px; }
 .opp.active { border-color: var(--gold); box-shadow: 0 0 14px #ffd16655; }
+.opp.out { opacity: 0.45; filter: saturate(0.4); }
 .opp .nm { font-weight: 600; }
 .opp .nm .you { color: var(--cyan); font-weight: 400; }
 .opp .meta { color: var(--dim); font-size: 13px; }

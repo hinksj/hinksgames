@@ -234,10 +234,41 @@
   function rightOf(st, i) { return (i - 1 + st.players.length) % st.players.length; }
   function acrossFrom(st, i) { return (i + Math.floor(st.players.length / 2)) % st.players.length; }
 
+  // once the member pile is spent, nobody below the vote threshold can ever
+  // win — they leave the running (designer's rule, Aug 2026)
+  function closeRolls(st) {
+    if (st.rollsClosed || st.memberPile.length || st.pending) return;
+    if (st.phase !== 'draw' && st.phase !== 'main') return;
+    st.rollsClosed = true;
+    log(st, '🫗 The last member is courted — the club rolls are CLOSED!');
+    st.players.forEach(function (p) {
+      if (p.supporters < st.membersToWin) {
+        p.eliminated = true;
+        while (p.hand.length) st.discard.push(p.hand.pop());
+        log(st, p.name + ' falls short of the votes and is out of the running.');
+      }
+    });
+    var alive = st.players.filter(function (p) { return !p.eliminated; });
+    if (alive.length === 1) {
+      var rows = scoreRound(st);
+      rows.forEach(function (r) {
+        st.players[r.player].roundScore = r.total;
+        st.players[r.player].score += r.total;
+      });
+      st.lastScores = rows;
+      var lands0 = Math.max(0, alive[0].supporters - st.membersToWin);
+      if (lands0 > 0) alive[0].score += lands0;
+      st.winner = alive[0].i;
+      st.phase = 'gameEnd';
+      log(st, alive[0].name + ' is the only eligible skipper left — acclaimed COMMODORE with ' +
+        alive[0].score + ' points!');
+    }
+  }
+
   function checkOut(st) {
     if (st.pending || st.outBy >= 0) return;
     for (var i = 0; i < st.players.length; i++) {
-      if (st.players[i].hand.length === 0) {
+      if (st.players[i].hand.length === 0 && !st.players[i].eliminated) {
         st.outBy = i;
         if (i === st.turn) st.players[i].toast = true;
         endRound(st);
@@ -376,7 +407,11 @@
             allowSelf: false, then: 'giveTo' });
         } else {
           var to = fx.dir === 'across' ? acrossFrom(st, by) : (fx.dir === 1 ? leftOf(st, by) : rightOf(st, by));
-          if (to === by) break;
+          var guard = 0;
+          while (st.players[to].eliminated && guard++ < st.players.length) {
+            to = leftOf(st, to);
+          }
+          if (to === by || st.players[to].eliminated) break;
           ask(st, { type: 'chooseCard', by: by, from: by, to: to, source: sourceName, mode: 'give' });
         }
         break;
@@ -395,7 +430,7 @@
         break;
       }
       case 'passAll': {
-        var need = st.players.map(function (pl) { return pl.hand.length > 0; });
+        var need = st.players.map(function (pl) { return !pl.eliminated && pl.hand.length > 0; });
         ask(st, { type: 'passAll', by: by, dir: fx.dir, source: sourceName,
           chosen: {}, need: need });
         break;
@@ -517,6 +552,7 @@
     chooseTarget: function (st, pend, a) {
       var t = a.target;
       if (typeof t !== 'number' || t < 0 || t >= st.players.length) throw new Error('bad target');
+      if (st.players[t].eliminated) throw new Error('they are out of the running');
       if (t === pend.by && !pend.allowSelf) throw new Error('cannot target yourself');
       if (pend.needCards && !st.players[t].hand.length && pend.then !== 'peek') throw new Error('target has no cards');
       var by = st.players[pend.by], tp = st.players[t];
@@ -604,9 +640,10 @@
         var id = pend.chosen[pl.i];
         if (id !== undefined) removeFromHand(pl, id);
       });
-      st.players.forEach(function (pl) {
-        var srcIdx = pend.dir === 1 ? rightOf(st, pl.i) : leftOf(st, pl.i);
-        var id = pend.chosen[srcIdx];
+      var ring = st.players.filter(function (pl) { return !pl.eliminated; });
+      ring.forEach(function (pl, k) {
+        var src = ring[(k + (pend.dir === 1 ? ring.length - 1 : 1)) % ring.length];
+        var id = pend.chosen[src.i];
         if (id !== undefined) pl.hand.push(id);
       });
       st.pending = null;
@@ -636,6 +673,10 @@
     st.phase = 'draw'; st.specialUsed = false; st.meldedThisTurn = false; st.courted = false;
     st.tookFromDiscard = null;
     var p = cur(st);
+    if (p.eliminated) {
+      advanceTurn(st);
+      return;
+    }
     if (p.skip) {
       p.skip = false;
       log(st, p.name + ' sits this one out.');
@@ -648,6 +689,7 @@
     var h = handlers[action.t];
     if (!h) throw new Error('unknown action ' + action.t);
     h(st, action);
+    closeRolls(st);
     return st;
   }
 
