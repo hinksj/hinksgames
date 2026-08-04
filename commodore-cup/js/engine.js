@@ -249,6 +249,10 @@
       }
     });
     var alive = st.players.filter(function (p) { return !p.eliminated; });
+    if (alive.length > 1 && cur(st).eliminated) {
+      // the courtier of the final member fell short themselves — turn ends
+      advanceTurn(st);
+    }
     if (alive.length === 1) {
       var rows = scoreRound(st);
       rows.forEach(function (r) {
