@@ -107,7 +107,10 @@
       if (!t || t.tagName !== 'IMG') return;
       var src = t.getAttribute('src') || '';
       if (src.indexOf('assets/cards/') !== 0 || src.indexOf('back-') >= 0) return;
-      showZoom(src, e.clientX > window.innerWidth / 2 ? 'left' : 'right', !!ui.pinned);
+      // center-stage only for hand hovers — the table (menu, melds, piles,
+      // rival bars) must stay visible while you aim at it
+      var inHand = t.closest && t.closest('#handRow');
+      showZoom(src, e.clientX > window.innerWidth / 2 ? 'left' : 'right', !!ui.pinned || !inHand);
     });
     document.addEventListener('mouseout', function (e) {
       if (e.target && e.target.tagName === 'IMG') {
