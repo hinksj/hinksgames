@@ -25,6 +25,7 @@
     return arr;
   }
   function log(st, msg) {
+    st.logTotal = (st.logTotal || 0) + 1; // survives the rolling trim below
     st.log.push(msg);
     if (st.log.length > 200) st.log.shift();
   }

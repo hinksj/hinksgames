@@ -39,7 +39,7 @@
     ui.send = (opts && opts.send) || null;
     ui.onLocalAction = (opts && opts.onLocalAction) || null;
     ui.roomCode = (opts && opts.room) || '';
-    ui.sel = []; ui.logLen = 0; ui.knownMembers = null;
+    ui.sel = []; ui.logSeen = undefined; ui.knownMembers = null;
     $('menu').style.display = 'none';
     $('table').style.display = 'block';
     $('tNet').textContent = ui.roomCode ? 'room ' + ui.roomCode : '';
@@ -368,13 +368,28 @@
   }
   function renderLog(st) {
     var el = $('log');
-    if (ui.logLen > st.log.length) { el.innerHTML = ''; ui.logLen = 0; ui.logQueue = []; }
-    ui.logQueue = ui.logQueue || [];
-    for (var qi = ui.logLen; qi < st.log.length; qi++) {
-      var ln = st.log[qi];
-      ui.logQueue.push({ t: ln, quiet: immediateFx(st, ln) });
+    // the engine trims old lines off the front, so diff on the monotonic
+    // counter — comparing lengths froze the log once games ran long
+    var total = st.logTotal || st.log.length;
+    if (ui.logSeen === undefined || ui.logSeen > total) {
+      el.innerHTML = '';
+      ui.logQueue = [];
+      ui.logSeen = Math.max(0, total - Math.min(st.log.length, 30));
     }
-    ui.logLen = st.log.length;
+    ui.logQueue = ui.logQueue || [];
+    var fresh = total - ui.logSeen;
+    if (fresh > 0) {
+      if (fresh > st.log.length) fresh = st.log.length; // trimmed past us
+      if (fresh > 30) { // joining late: don't drip a novel
+        ui.logQueue.push({ t: '… (' + (fresh - 30) + ' earlier events)', quiet: true });
+        fresh = 30;
+      }
+      var lines = st.log.slice(st.log.length - fresh);
+      for (var qi = 0; qi < lines.length; qi++) {
+        ui.logQueue.push({ t: lines[qi], quiet: immediateFx(st, lines[qi]) });
+      }
+      ui.logSeen = total;
+    }
     pumpLog();
   }
   // events that touch cards or players fire their spectacle the moment they
@@ -433,6 +448,7 @@
       var snd = soundForLine(line);
       if (snd) sfx(snd);
     }
+    while (el.removeChild && el.children.length > 400) el.removeChild(el.children[0]);
     el.scrollTop = el.scrollHeight;
   }
 
