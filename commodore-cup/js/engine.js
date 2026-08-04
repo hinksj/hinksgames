@@ -36,7 +36,7 @@
       membersToWin: opts.membersToWin != null ? opts.membersToWin
         : Math.min(data.MEMBERS_TO_WIN, Math.floor(data.MEMBER_DECK.length / names.length)),
       players: names.map(function (p, i) {
-        return { i: i, name: p.name, isAI: !!p.isAI, netId: p.netId || null,
+        return { i: i, name: p.name, isAI: !!p.isAI, netId: p.netId || null, avatar: p.avatar || null,
           hand: [], played: [], members: [], membersRound: [], supporters: 0, skip: false,
           score: 0, roundScore: 0, toast: false };
       }),

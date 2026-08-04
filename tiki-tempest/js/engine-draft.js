@@ -44,7 +44,7 @@
       rounds: opts.rounds || data.ROUNDS_DEFAULT,
       round: 0, finalRound: false,
       players: opts.names.map(function (p, i) {
-        return { i: i, name: p.name, isAI: !!p.isAI,
+        return { i: i, name: p.name, isAI: !!p.isAI, avatar: p.avatar || null,
           hand: [], bar: [], beers: [], served: [], banked: [], umbrellas: [],
           score: 0, roundScore: 0, servedTotal: 0 };
       }),

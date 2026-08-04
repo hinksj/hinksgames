@@ -4,6 +4,17 @@
   'use strict';
   var E = null, ai = null, data = G.data, CARDS = data.CARDS;
   var $ = function (id) { return document.getElementById(id); };
+  function avSlug(name) {
+    return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+  function avatarChip(p) {
+    var slug = avSlug(p.name);
+    G._avErr = G._avErr || {};
+    var img = G._avErr[slug] ? '' :
+      '<img src="assets/avatars/' + slug + '.png" onerror="window.TT._avErr[\'' + slug + '\']=1;this.remove()">';
+    return '<span class="avatar" style="background:' + SEAT_COLORS[p.i % 6] + '">' +
+      '<span class="ae">' + (p.avatar || esc(String(p.name).charAt(0).toUpperCase())) + '</span>' + img + '</span>';
+  }
   var SEAT_COLORS = ['#ffcf5c', '#4fd8c4', '#ff8c42', '#8dff9e', '#c39bff', '#ff6b6b'];
 
   var ui = {
@@ -217,7 +228,7 @@
         return '<img src="' + CARDS[e.card].art + '" title="' + esc(CARDS[e.card].name + ' — ' + e.pts + ' pts') + '">';
       }).join('');
       d.innerHTML =
-        '<div class="nm"><span class="seatdot" style="background:' + SEAT_COLORS[p.i % 6] + '"></span>' +
+        '<div class="nm">' + avatarChip(p) +
         esc(p.name) + (p.i === ui.mySeat ? ' <span class="you">(you)</span>' : '') +
         (p.umbrellas && p.umbrellas.length ? ' <span class="umb" title="Bar protected by ' +
           p.umbrellas.length + ' Paper Umbrella(s)">' + new Array(p.umbrellas.length + 1).join('☂️') + '</span>' : '') +

@@ -9,11 +9,22 @@
   }
   var $ = function (id) { return document.getElementById(id); };
 
-  var BOT_NAMES = ['Kona Kai', 'Trader Vic', 'Hula Lou', 'Don the Beachcomber',
-    'Mai Tai Mabel', 'Coco Loco'];
+  var BOTS = [
+    { name: 'Kona Kai', emoji: '🌺' }, { name: 'Trader Vic', emoji: '🍹' },
+    { name: 'Hula Lou', emoji: '🌴' }, { name: 'Don the Beachcomber', emoji: '🏝️' },
+    { name: 'Mai Tai Mabel', emoji: '🍸' }, { name: 'Coco Loco', emoji: '🥥' },
+    { name: 'Tiny Bubbles', emoji: '🫧' }, { name: 'Duke Kahuna', emoji: '🏄' },
+    { name: 'Lani Luau', emoji: '🌸' }, { name: 'Pele Punch', emoji: '🌋' },
+    { name: 'Sandy Shores', emoji: '🐚' }, { name: 'Marlin Monroe', emoji: '🐟' },
+    { name: 'Uke Lele', emoji: '🎸' }, { name: 'Big Wave Dave', emoji: '🌊' },
+    { name: 'Pineapple Pete', emoji: '🍍' }, { name: 'Salty Sue', emoji: '🧂' }
+  ];
   function botNames(n) {
-    var pool = BOT_NAMES.slice(), out = [];
-    for (var i = 0; i < n; i++) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    var pool = BOTS.slice(), out = [];
+    for (var i = 0; i < n; i++) {
+      var b = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      out.push(b);
+    }
     return out;
   }
   function myName() { return ($('mName').value || 'Bartender').trim().slice(0, 16); }
@@ -27,7 +38,7 @@
   $('btnSolo').addEventListener('click', function () {
     var bots = parseInt($('mBots').value, 10);
     var names = [{ name: myName(), isAI: false }].concat(
-      botNames(bots).map(function (n) { return { name: n, isAI: true }; }));
+      botNames(bots).map(function (b) { return { name: b.name, avatar: b.emoji, isAI: true }; }));
     var st = chosenEngine().newGame(gameOpts(names));
     ui.begin(st, 0, {});
   });
@@ -119,7 +130,7 @@
     var nBots = Math.min(parseInt($('lBots').value, 10), 5 - 1 - lobby.guests.length);
     var names = [{ name: myName(), isAI: false }];
     lobby.guests.forEach(function (g) { names.push({ name: g.name, isAI: false }); });
-    botNames(Math.max(0, nBots)).forEach(function (n) { names.push({ name: n, isAI: true }); });
+    botNames(Math.max(0, nBots)).forEach(function (b) { names.push({ name: b.name, avatar: b.emoji, isAI: true }); });
     if (names.length < 2) { ui.toast('Need at least one guest or AI rival.'); lobby.started = false; return; }
     var st = chosenEngine().newGame(gameOpts(names));
     lobby.guests.forEach(function (g, i) {
